@@ -1,12 +1,5 @@
 use crate::core::bitboard::bit;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Move {
-    pub from: u8,      // 0..63
-    pub to: u8,        // 0..63
-    pub promotion: u8, // 0..5 for piece type, 255 = none
-    pub flags: u8,     // bit flags for special moves
-}
+use crate::core::mov::{Move};
 
 // Flags
 pub const FLAG_CAPTURE: u8 = 1 << 0;
@@ -44,15 +37,7 @@ pub struct Position {
 
 impl Default for Position {
     fn default() -> Self {
-        Self {
-            pieces: [0; 12],
-            occupancy: [0; 3],
-            side_to_move: 0,
-            castling_rights: 0,
-            ep_square: 64,
-            halfmove_clock: 0,
-            fullmove_number: 1,
-        }
+        Self::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
     }
 }
 
@@ -76,11 +61,21 @@ impl Position {
         self.occupancy[1] &= mask;
         self.occupancy[2] &= mask;
     }
-}
 
-impl Position {
+    pub fn empty() -> Self {
+        Self {
+            pieces: [0; 12],
+            occupancy: [0; 3],
+            side_to_move: 0,
+            castling_rights: 0,
+            ep_square: 64,
+            halfmove_clock: 0,
+            fullmove_number: 1
+        }
+    }
+
     pub fn from_fen(fen: &str) -> Self {
-        let mut pos = Position::default();
+        let mut pos = Position::empty(); // <-- no recursion
         let parts: Vec<&str> = fen.split_whitespace().collect();
         let board_part = parts[0];
         let side_part = parts[1];
@@ -92,22 +87,12 @@ impl Position {
         let mut sq: i32 = 56; // a8
         for ch in board_part.chars() {
             match ch {
-                '/' => sq -= 16, // drop one rank
+                '/' => sq -= 16,
                 '1'..='8' => sq += ch.to_digit(10).unwrap() as i32,
                 _ => {
-                    let (piece_index, _) = match ch {
-                        'P' => (0, 0),
-                        'N' => (1, 0),
-                        'B' => (2, 0),
-                        'R' => (3, 0),
-                        'Q' => (4, 0),
-                        'K' => (5, 0),
-                        'p' => (6, 1),
-                        'n' => (7, 1),
-                        'b' => (8, 1),
-                        'r' => (9, 1),
-                        'q' => (10, 1),
-                        'k' => (11, 1),
+                    let piece_index = match ch {
+                        'P' => 0, 'N' => 1, 'B' => 2, 'R' => 3, 'Q' => 4, 'K' => 5,
+                        'p' => 6, 'n' => 7, 'b' => 8, 'r' => 9, 'q' => 10, 'k' => 11,
                         _ => panic!("Invalid FEN char: {}", ch),
                     };
                     pos.set_piece(sq as u8, piece_index);
@@ -119,18 +104,10 @@ impl Position {
         pos.side_to_move = if side_part == "w" { 0 } else { 1 };
 
         pos.castling_rights = 0;
-        if castling_part.contains('K') {
-            pos.castling_rights |= 1;
-        }
-        if castling_part.contains('Q') {
-            pos.castling_rights |= 2;
-        }
-        if castling_part.contains('k') {
-            pos.castling_rights |= 4;
-        }
-        if castling_part.contains('q') {
-            pos.castling_rights |= 8;
-        }
+        if castling_part.contains('K') { pos.castling_rights |= 1; }
+        if castling_part.contains('Q') { pos.castling_rights |= 2; }
+        if castling_part.contains('k') { pos.castling_rights |= 4; }
+        if castling_part.contains('q') { pos.castling_rights |= 8; }
 
         pos.ep_square = if ep_part != "-" {
             let file = ep_part.as_bytes()[0] - b'a';
@@ -188,9 +165,7 @@ impl Position {
         println!("Castling rights: {:04b}", self.castling_rights);
         println!("EP square: {}", self.ep_square);
     }
-}
 
-impl Position {
     pub fn apply_move(&self, mv: &Move) -> Position {
         let mut new_pos = self.clone();
 
@@ -332,4 +307,87 @@ impl Position {
     fn is_pawn_double_push(&self, piece_index: usize, from: u8, to: u8) -> bool {
         self.is_pawn(piece_index) && (from as i8 - to as i8).abs() == 16
     }
+
+    pub fn to_fen(&self) -> String {
+        let mut fen = String::new();
+
+        // 1. Piece placement
+        for rank in (0..8).rev() {
+            let mut empty = 0;
+            for file in 0..8 {
+                let sq = rank * 8 + file;
+                let mut piece_char = None;
+                for (i, bb) in self.pieces.iter().enumerate() {
+                    if (bb >> sq) & 1 != 0 {
+                        piece_char = Some(match i {
+                            0 => 'P', 1 => 'N', 2 => 'B', 3 => 'R', 4 => 'Q', 5 => 'K',
+                            6 => 'p', 7 => 'n', 8 => 'b', 9 => 'r', 10 => 'q', 11 => 'k',
+                            _ => '?',
+                        });
+                        break;
+                    }
+                }
+                if let Some(pc) = piece_char {
+                    if empty > 0 {
+                        fen.push_str(&empty.to_string());
+                        empty = 0;
+                    }
+                    fen.push(pc);
+                } else {
+                    empty += 1;
+                }
+            }
+            if empty > 0 {
+                fen.push_str(&empty.to_string());
+            }
+            if rank > 0 {
+                fen.push('/');
+            }
+        }
+
+        // 2. Side to move
+        fen.push(' ');
+        fen.push(if self.side_to_move == 0 { 'w' } else { 'b' });
+
+        // 3. Castling rights
+        fen.push(' ');
+        let mut castling = String::new();
+        if self.castling_rights & 0b0001 != 0 { castling.push('K'); }
+        if self.castling_rights & 0b0010 != 0 { castling.push('Q'); }
+        if self.castling_rights & 0b0100 != 0 { castling.push('k'); }
+        if self.castling_rights & 0b1000 != 0 { castling.push('q'); }
+        if castling.is_empty() { castling.push('-'); }
+        fen.push_str(&castling);
+
+        // 4. En passant target square
+        fen.push(' ');
+        if self.ep_square < 64 {
+            let file = (self.ep_square % 8) as u8;
+            let rank = (self.ep_square / 8) as u8;
+            fen.push((b'a' + file) as char);
+            fen.push((b'1' + rank) as char);
+        } else {
+            fen.push('-');
+        }
+
+        // 5. Halfmove clock
+        fen.push(' ');
+        fen.push_str(&self.halfmove_clock.to_string());
+
+        // 6. Fullmove number
+        fen.push(' ');
+        fen.push_str(&self.fullmove_number.to_string());
+
+        fen
+    }
+
+    pub fn all_pieces(&self) -> u64 {
+        self.pieces.iter().fold(0u64, |acc, &bb| acc | bb)
+    }
+
+    pub fn our_pieces(&self, side: u8) -> u64 {
+        let start = if side == 0 { 0 } else { 6 };
+        self.pieces[start..start + 6].iter().fold(0u64, |acc, &bb| acc | bb)
+    }
 }
+

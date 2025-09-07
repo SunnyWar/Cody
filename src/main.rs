@@ -2,10 +2,21 @@
 
 use cody::core::position::Position;
 use cody::search::{engine::Engine, evaluator::MaterialEvaluator, movegen::SimpleMoveGen};
+use cody::search::traits::MoveGenerator;
 
 fn main() {
     let mut engine = Engine::new(1024, SimpleMoveGen, MaterialEvaluator);
     let pos = Position::default();
+
+    println!("Starting position:");
+    println!("FEN: {}", pos.to_fen());
+
+    let moves = SimpleMoveGen.generate_moves(&pos);
+    println!("Generated {} moves", moves.len());
+    for m in &moves {
+        println!("{:?}", m);
+    }
+
     let score = engine.search(&pos, 1);
     println!("Search result: {}", score);
 }
