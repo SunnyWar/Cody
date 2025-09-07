@@ -29,7 +29,7 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
 
     fn search_node(&mut self, node_idx: usize, depth: usize) -> i32 {
         NODE_COUNT.fetch_add(1, Ordering::Relaxed);
-        
+
         if depth == 0 {
             let score = self.evaluator.evaluate(&self.arena.get(node_idx).position);
             self.arena.get_mut(node_idx).score = score;

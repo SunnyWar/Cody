@@ -1,4 +1,14 @@
 // src/core/bitboard.rs
+
+pub const FILE_A: u64 = 0x0101010101010101;
+pub const FILE_B: u64 = 0x0202020202020202;
+pub const FILE_C: u64 = 0x0404040404040404;
+pub const FILE_D: u64 = 0x0808080808080808;
+pub const FILE_E: u64 = 0x1010101010101010;
+pub const FILE_F: u64 = 0x2020202020202020;
+pub const FILE_G: u64 = 0x4040404040404040;
+pub const FILE_H: u64 = 0x8080808080808080;
+
 #[inline]
 pub const fn bit(sq: u8) -> u64 {
     1u64 << (sq as u32)
@@ -34,4 +44,3 @@ pub fn knight_attacks(sq: u8) -> u64 {
     let h2 = l2 | r2;
     (h1 << 16) | (h1 >> 16) | (h2 << 8) | (h2 >> 8)
 }
-

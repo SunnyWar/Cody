@@ -1,5 +1,5 @@
 use crate::core::bitboard::bit;
-use crate::core::mov::{Move};
+use crate::core::mov::Move;
 
 // Flags
 pub const FLAG_CAPTURE: u8 = 1 << 0;
@@ -42,6 +42,23 @@ impl Default for Position {
 }
 
 impl Position {
+    pub fn all_pieces(&self) -> u64 {
+        self.pieces.iter().fold(0u64, |acc, &bb| acc | bb)
+    }
+
+    pub fn our_pieces(&self, us: u8) -> u64 {
+        let start = if us == 0 { 0 } else { 6 };
+        let mut bb = 0u64;
+        for i in 0..6 {
+            bb |= self.pieces[start + i];
+        }
+        bb
+    }
+
+    pub fn their_pieces(&self, us: u8) -> u64 {
+        self.our_pieces(us ^ 1) // flip side: 0→1, 1→0
+    }
+
     #[inline]
     fn set_piece(&mut self, sq: u8, piece_index: usize) {
         let bit = 1u64 << sq;
@@ -70,7 +87,7 @@ impl Position {
             castling_rights: 0,
             ep_square: 64,
             halfmove_clock: 0,
-            fullmove_number: 1
+            fullmove_number: 1,
         }
     }
 
@@ -91,8 +108,18 @@ impl Position {
                 '1'..='8' => sq += ch.to_digit(10).unwrap() as i32,
                 _ => {
                     let piece_index = match ch {
-                        'P' => 0, 'N' => 1, 'B' => 2, 'R' => 3, 'Q' => 4, 'K' => 5,
-                        'p' => 6, 'n' => 7, 'b' => 8, 'r' => 9, 'q' => 10, 'k' => 11,
+                        'P' => 0,
+                        'N' => 1,
+                        'B' => 2,
+                        'R' => 3,
+                        'Q' => 4,
+                        'K' => 5,
+                        'p' => 6,
+                        'n' => 7,
+                        'b' => 8,
+                        'r' => 9,
+                        'q' => 10,
+                        'k' => 11,
                         _ => panic!("Invalid FEN char: {}", ch),
                     };
                     pos.set_piece(sq as u8, piece_index);
@@ -104,10 +131,18 @@ impl Position {
         pos.side_to_move = if side_part == "w" { 0 } else { 1 };
 
         pos.castling_rights = 0;
-        if castling_part.contains('K') { pos.castling_rights |= 1; }
-        if castling_part.contains('Q') { pos.castling_rights |= 2; }
-        if castling_part.contains('k') { pos.castling_rights |= 4; }
-        if castling_part.contains('q') { pos.castling_rights |= 8; }
+        if castling_part.contains('K') {
+            pos.castling_rights |= 1;
+        }
+        if castling_part.contains('Q') {
+            pos.castling_rights |= 2;
+        }
+        if castling_part.contains('k') {
+            pos.castling_rights |= 4;
+        }
+        if castling_part.contains('q') {
+            pos.castling_rights |= 8;
+        }
 
         pos.ep_square = if ep_part != "-" {
             let file = ep_part.as_bytes()[0] - b'a';
@@ -320,8 +355,18 @@ impl Position {
                 for (i, bb) in self.pieces.iter().enumerate() {
                     if (bb >> sq) & 1 != 0 {
                         piece_char = Some(match i {
-                            0 => 'P', 1 => 'N', 2 => 'B', 3 => 'R', 4 => 'Q', 5 => 'K',
-                            6 => 'p', 7 => 'n', 8 => 'b', 9 => 'r', 10 => 'q', 11 => 'k',
+                            0 => 'P',
+                            1 => 'N',
+                            2 => 'B',
+                            3 => 'R',
+                            4 => 'Q',
+                            5 => 'K',
+                            6 => 'p',
+                            7 => 'n',
+                            8 => 'b',
+                            9 => 'r',
+                            10 => 'q',
+                            11 => 'k',
                             _ => '?',
                         });
                         break;
@@ -352,11 +397,21 @@ impl Position {
         // 3. Castling rights
         fen.push(' ');
         let mut castling = String::new();
-        if self.castling_rights & 0b0001 != 0 { castling.push('K'); }
-        if self.castling_rights & 0b0010 != 0 { castling.push('Q'); }
-        if self.castling_rights & 0b0100 != 0 { castling.push('k'); }
-        if self.castling_rights & 0b1000 != 0 { castling.push('q'); }
-        if castling.is_empty() { castling.push('-'); }
+        if self.castling_rights & 0b0001 != 0 {
+            castling.push('K');
+        }
+        if self.castling_rights & 0b0010 != 0 {
+            castling.push('Q');
+        }
+        if self.castling_rights & 0b0100 != 0 {
+            castling.push('k');
+        }
+        if self.castling_rights & 0b1000 != 0 {
+            castling.push('q');
+        }
+        if castling.is_empty() {
+            castling.push('-');
+        }
         fen.push_str(&castling);
 
         // 4. En passant target square
@@ -380,14 +435,4 @@ impl Position {
 
         fen
     }
-
-    pub fn all_pieces(&self) -> u64 {
-        self.pieces.iter().fold(0u64, |acc, &bb| acc | bb)
-    }
-
-    pub fn our_pieces(&self, side: u8) -> u64 {
-        let start = if side == 0 { 0 } else { 6 };
-        self.pieces[start..start + 6].iter().fold(0u64, |acc, &bb| acc | bb)
-    }
 }
-
