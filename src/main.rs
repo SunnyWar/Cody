@@ -7,7 +7,7 @@ use cody::search::{engine::Engine, evaluator::MaterialEvaluator, movegen::Simple
 use std::sync::atomic::Ordering;
 
 fn main() {
-    let mut engine = Engine::new(1024, SimpleMoveGen, MaterialEvaluator);
+    let mut engine = Engine::new(65536, SimpleMoveGen, MaterialEvaluator);
     let pos = Position::default();
 
     println!("Starting position:");
@@ -19,8 +19,13 @@ fn main() {
         println!("{:?}", m);
     }
 
-    NODE_COUNT.store(0, Ordering::Relaxed);
-    let score = engine.search(&pos, 1);
-    println!("info nodes {}", NODE_COUNT.load(Ordering::Relaxed));
+    let depth = 4;
+    let score = engine.search(&pos, depth);
+
+    println!(
+        "info depth {} nodes {}",
+        depth,
+        NODE_COUNT.load(Ordering::Relaxed)
+    );
     println!("Search result: {}", score);
 }

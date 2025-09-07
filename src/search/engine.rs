@@ -23,44 +23,37 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
     pub fn search(&mut self, root: &Position, depth: usize) -> i32 {
         NODE_COUNT.store(0, Ordering::Relaxed);
         self.arena.reset();
-        let root_idx = self.arena.alloc().expect("Arena full");
-        self.arena.get_mut(root_idx).position = root.clone();
-        self.search_node(root_idx, depth)
+        self.arena.get_mut(0).position.copy_from(root);
+        self.search_node(0, depth)
     }
 
-    fn search_node(&mut self, node_idx: usize, depth: usize) -> i32 {
+    fn search_node(&mut self, ply: usize, remaining: usize) -> i32 {
         NODE_COUNT.fetch_add(1, Ordering::Relaxed);
 
-        // Leaf node: evaluate and store score
-        if depth == 0 {
-            let score = self.evaluator.evaluate(&self.arena.get(node_idx).position);
-            self.arena.get_mut(node_idx).score = score;
-            return score;
+        if remaining == 0 {
+            return self.evaluator.evaluate(&self.arena.get(ply).position);
         }
 
-        let moves = self
-            .movegen
-            .generate_moves(&self.arena.get(node_idx).position);
+        let moves;
+        {
+            let (parent, child) = self.arena.get_pair_mut(ply, ply + 1);
+            moves = self.movegen.generate_moves(&parent.position);
 
-        let mut best_score = i32::MIN;
-
-        for mv in moves {
-            if let Some(child_idx) = self.arena.alloc() {
-                let (parent_node, child_node) = self.arena.get_pair_mut(node_idx, child_idx);
-                parent_node
-                    .position
-                    .apply_move_into(&mv, &mut child_node.position);
-
-                let score = self.search_node(child_idx, depth - 1);
-                best_score = best_score.max(score);
-            } else {
-                // Arena full — treat as leaf
-                let score = self.evaluator.evaluate(&self.arena.get(node_idx).position);
-                best_score = best_score.max(score);
+            for m in &moves {
+                parent.position.apply_move_into(m, &mut child.position);
             }
         }
 
-        self.arena.get_mut(node_idx).score = best_score;
+        let mut best_score = i32::MIN;
+        for m in moves {
+            {
+                let (parent, child) = self.arena.get_pair_mut(ply, ply + 1);
+                parent.position.apply_move_into(&m, &mut child.position);
+            }
+            let score = -self.search_node(ply + 1, remaining - 1);
+            best_score = best_score.max(score);
+        }
+
         best_score
     }
 }
