@@ -3,9 +3,12 @@
 use crate::core::bitboard::{FILE_A, FILE_H, bit_iter, knight_attacks};
 use crate::core::mov::Move;
 use crate::core::position::Position;
-use crate::search::traits::MoveGenerator;
 
 pub struct SimpleMoveGen;
+
+pub trait MoveGenerator {
+    fn generate_moves(&self, pos: &Position) -> Vec<Move>;
+}
 
 impl MoveGenerator for SimpleMoveGen {
     fn generate_moves(&self, pos: &Position) -> Vec<Move> {

@@ -1,5 +1,6 @@
 use crate::core::{arena::Arena, position::Position};
-use crate::search::traits::{Evaluator, MoveGenerator};
+use crate::search::evaluator::Evaluator;
+use crate::search::movegen::MoveGenerator;
 
 use std::sync::atomic::{AtomicU64, Ordering};
 pub static NODE_COUNT: AtomicU64 = AtomicU64::new(0);
@@ -30,6 +31,7 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
     fn search_node(&mut self, node_idx: usize, depth: usize) -> i32 {
         NODE_COUNT.fetch_add(1, Ordering::Relaxed);
 
+        // Leaf node: evaluate and store score
         if depth == 0 {
             let score = self.evaluator.evaluate(&self.arena.get(node_idx).position);
             self.arena.get_mut(node_idx).score = score;
@@ -39,13 +41,21 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
         let moves = self
             .movegen
             .generate_moves(&self.arena.get(node_idx).position);
+
         let mut best_score = i32::MIN;
 
         for mv in moves {
             if let Some(child_idx) = self.arena.alloc() {
-                let new_pos = self.arena.get(node_idx).position.apply_move(&mv);
-                self.arena.get_mut(child_idx).position = new_pos;
+                let (parent_node, child_node) = self.arena.get_pair_mut(node_idx, child_idx);
+                parent_node
+                    .position
+                    .apply_move_into(&mv, &mut child_node.position);
+
                 let score = self.search_node(child_idx, depth - 1);
+                best_score = best_score.max(score);
+            } else {
+                // Arena full — treat as leaf
+                let score = self.evaluator.evaluate(&self.arena.get(node_idx).position);
                 best_score = best_score.max(score);
             }
         }

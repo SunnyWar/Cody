@@ -35,4 +35,10 @@ impl Arena {
     pub fn reset(&mut self) {
         self.next_free = 0;
     }
+
+    pub fn get_pair_mut(&mut self, idx1: usize, idx2: usize) -> (&Node, &mut Node) {
+        assert!(idx1 != idx2);
+        let ptr = self.nodes.as_mut_ptr();
+        unsafe { (&*ptr.add(idx1), &mut *ptr.add(idx2)) }
+    }
 }

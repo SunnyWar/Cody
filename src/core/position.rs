@@ -8,7 +8,7 @@ pub const FLAG_QUEENSIDE_CASTLE: u8 = 1 << 2;
 pub const FLAG_EN_PASSANT: u8 = 1 << 3;
 pub const FLAG_PROMOTION: u8 = 1 << 4;
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Position {
     /// One bitboard per piece type & color:
     /// 0..5 = white P,N,B,R,Q,K
@@ -42,6 +42,11 @@ impl Default for Position {
 }
 
 impl Position {
+    #[inline]
+    pub fn copy_from(&mut self, other: &Position) {
+        *self = *other; // struct assignment, no heap
+    }
+
     pub fn all_pieces(&self) -> u64 {
         self.pieces.iter().fold(0u64, |acc, &bb| acc | bb)
     }
@@ -66,17 +71,6 @@ impl Position {
         let color = piece_index / 6;
         self.occupancy[color] |= bit;
         self.occupancy[2] |= bit;
-    }
-
-    #[inline]
-    fn clear_square(&mut self, sq: u8) {
-        let mask = !(1u64 << sq);
-        for bb in &mut self.pieces {
-            *bb &= mask;
-        }
-        self.occupancy[0] &= mask;
-        self.occupancy[1] &= mask;
-        self.occupancy[2] &= mask;
     }
 
     pub fn empty() -> Self {
@@ -201,19 +195,20 @@ impl Position {
         println!("EP square: {}", self.ep_square);
     }
 
-    pub fn apply_move(&self, mv: &Move) -> Position {
-        let mut new_pos = self.clone();
+    pub fn apply_move_into(&self, mv: &Move, out: &mut Position) {
+        // Start as a copy of self — struct assignment, no heap
+        *out = *self;
 
         let us = self.side_to_move;
         let them = us ^ 1;
 
         // 1. Remove moving piece from `from`
-        let piece_index = new_pos
+        let piece_index = out
             .pieces
             .iter_mut()
             .position(|bb| (*bb >> mv.from) & 1 != 0)
             .map(|idx| {
-                new_pos.pieces[idx] &= !(1u64 << mv.from);
+                out.pieces[idx] &= !(1u64 << mv.from);
                 idx
             })
             .expect("No piece on from-square");
@@ -226,63 +221,61 @@ impl Position {
                 mv.to
             };
 
-            if let Some(idx) = new_pos
+            if let Some(idx) = out
                 .pieces
                 .iter_mut()
                 .position(|bb| (*bb >> capture_sq) & 1 != 0)
             {
-                new_pos.pieces[idx] &= !(1u64 << capture_sq);
+                out.pieces[idx] &= !(1u64 << capture_sq);
             }
         }
 
         // 3. Handle castling rook move
         if mv.flags & FLAG_KINGSIDE_CASTLE != 0 {
             let (rook_from, rook_to) = if us == 0 { (7, 5) } else { (63, 61) };
-            new_pos.move_piece(rook_from, rook_to);
+            out.move_piece(rook_from, rook_to);
         } else if mv.flags & FLAG_QUEENSIDE_CASTLE != 0 {
             let (rook_from, rook_to) = if us == 0 { (0, 3) } else { (56, 59) };
-            new_pos.move_piece(rook_from, rook_to);
+            out.move_piece(rook_from, rook_to);
         }
 
         // 4. Place moving piece on `to` (promotion or normal)
         if mv.flags & FLAG_PROMOTION != 0 {
             let promo_index: usize = (us as usize) * 6 + (mv.promotion as usize);
-            new_pos.pieces[promo_index] |= bit(mv.to);
+            out.pieces[promo_index] |= bit(mv.to);
         } else {
-            new_pos.pieces[piece_index] |= bit(mv.to);
+            out.pieces[piece_index] |= bit(mv.to);
         }
 
         // 5. Update occupancy
-        new_pos.occupancy[0] = new_pos.pieces[0..6].iter().fold(0, |acc, &bb| acc | bb);
-        new_pos.occupancy[1] = new_pos.pieces[6..12].iter().fold(0, |acc, &bb| acc | bb);
-        new_pos.occupancy[2] = new_pos.occupancy[0] | new_pos.occupancy[1];
+        out.occupancy[0] = out.pieces[0..6].iter().fold(0, |acc, &bb| acc | bb);
+        out.occupancy[1] = out.pieces[6..12].iter().fold(0, |acc, &bb| acc | bb);
+        out.occupancy[2] = out.occupancy[0] | out.occupancy[1];
 
         // 6. Update castling rights
-        new_pos.update_castling_rights(mv.from, mv.to);
+        out.update_castling_rights(mv.from, mv.to);
 
         // 7. Update en passant square
         if self.is_pawn_double_push(piece_index, mv.from, mv.to) {
-            new_pos.ep_square = if us == 0 { mv.from + 8 } else { mv.from - 8 };
+            out.ep_square = if us == 0 { mv.from + 8 } else { mv.from - 8 };
         } else {
-            new_pos.ep_square = 64;
+            out.ep_square = 64;
         }
 
         // 8. Update halfmove clock
         if mv.flags & (FLAG_CAPTURE | FLAG_EN_PASSANT) != 0 || self.is_pawn(piece_index) {
-            new_pos.halfmove_clock = 0;
+            out.halfmove_clock = 0;
         } else {
-            new_pos.halfmove_clock += 1;
+            out.halfmove_clock += 1;
         }
 
         // 9. Update fullmove number
         if us == 1 {
-            new_pos.fullmove_number += 1;
+            out.fullmove_number += 1;
         }
 
         // 10. Switch side
-        new_pos.side_to_move = them;
-
-        new_pos
+        out.side_to_move = them;
     }
 
     fn move_piece(&mut self, from: u8, to: u8) {
