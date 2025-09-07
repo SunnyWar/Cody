@@ -1,4 +1,5 @@
-use crate::core::position::{Move, Position};
+use crate::core::position::{Position};
+use crate::core::mov::{Move};
 
 pub trait MoveGenerator {
     fn generate_moves(&self, pos: &Position) -> Vec<Move>;
