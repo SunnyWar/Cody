@@ -2,7 +2,7 @@
 
 use cody::core::position::Position;
 use cody::search::engine::NODE_COUNT;
-use cody::search::traits::MoveGenerator;
+use cody::search::movegen::MoveGenerator;
 use cody::search::{engine::Engine, evaluator::MaterialEvaluator, movegen::SimpleMoveGen};
 use std::sync::atomic::Ordering;
 
