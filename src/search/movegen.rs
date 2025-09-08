@@ -1,8 +1,8 @@
 // src/search/movegen.rs
 
 use crate::core::bitboard::{
-    BISHOP_ATTACKS, BISHOP_MASKS, FILE_A, FILE_H, KING_ATTACKS, KNIGHT_ATTACKS, ROOK_ATTACKS,
-    ROOK_MASKS, bit_iter, occ_to_index,
+    BISHOP_ATTACKS, BISHOP_MASKS, FILE_A, FILE_H, KING_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS,
+    ROOK_ATTACKS, ROOK_MASKS, bit_iter, occ_to_index,
 };
 use crate::core::mov::Move;
 use crate::core::piece::{Color, PieceType, piece_index};
@@ -31,54 +31,53 @@ impl MoveGenerator for SimpleMoveGen {
     }
 
     fn in_check(&self, pos: &Position) -> bool {
-        let us: Color = pos.side_to_move;
-        let them = match us {
-            Color::White => Color::Black,
-            Color::Black => Color::White,
-        };
+        let us = pos.side_to_move;
+        let them = us.opposite();
 
         let king_bb = pos.pieces[piece_index(us, PieceType::King)];
         if king_bb == 0 {
             return false;
         }
         let king_sq = king_bb.trailing_zeros() as usize;
-        let occ = pos.all_pieces();
+        let occ = pos.occupancy[2]; // all pieces
 
-        // 1. Rook/Queen (straight lines)
-        let rook_like = pos.pieces[piece_index(them, PieceType::Rook)]
-            | pos.pieces[piece_index(them, PieceType::Queen)];
-        let rmask = ROOK_MASKS[king_sq];
-        let rindex = occ_to_index(occ & rmask, rmask);
-        if ROOK_ATTACKS[king_sq][rindex] & rook_like != 0 {
-            return true;
-        }
-
-        // 2. Bishop/Queen (diagonals)
-        let bishop_like = pos.pieces[piece_index(them, PieceType::Bishop)]
-            | pos.pieces[piece_index(them, PieceType::Queen)];
-        let bmask = BISHOP_MASKS[king_sq];
-        let bindex = occ_to_index(occ & bmask, bmask);
-        if BISHOP_ATTACKS[king_sq][bindex] & bishop_like != 0 {
-            return true;
-        }
-
-        // 3. Knights
+        // 1. Knights
         if KNIGHT_ATTACKS[king_sq] & pos.pieces[piece_index(them, PieceType::Knight)] != 0 {
             return true;
         }
 
-        // 4. Pawns
-        let pawn_attacks = match them {
-            Color::White => ((king_bb >> 7) & !FILE_A) | ((king_bb >> 9) & !FILE_H),
-            Color::Black => ((king_bb << 7) & !FILE_H) | ((king_bb << 9) & !FILE_A),
-        };
-        if pawn_attacks & pos.pieces[piece_index(them, PieceType::Pawn)] != 0 {
+        // 2. Pawns
+        if PAWN_ATTACKS[them as usize][king_sq] & pos.pieces[piece_index(them, PieceType::Pawn)]
+            != 0
+        {
             return true;
         }
 
-        // 5. Opponent king
+        // 3. Opponent king
         if KING_ATTACKS[king_sq] & pos.pieces[piece_index(them, PieceType::King)] != 0 {
             return true;
+        }
+
+        // 4. Rook/Queen
+        let rook_like = pos.pieces[piece_index(them, PieceType::Rook)]
+            | pos.pieces[piece_index(them, PieceType::Queen)];
+        if rook_like != 0 {
+            let rmask = ROOK_MASKS[king_sq];
+            let rindex = occ_to_index(occ & rmask, rmask);
+            if ROOK_ATTACKS[king_sq][rindex] & rook_like != 0 {
+                return true;
+            }
+        }
+
+        // 5. Bishop/Queen
+        let bishop_like = pos.pieces[piece_index(them, PieceType::Bishop)]
+            | pos.pieces[piece_index(them, PieceType::Queen)];
+        if bishop_like != 0 {
+            let bmask = BISHOP_MASKS[king_sq];
+            let bindex = occ_to_index(occ & bmask, bmask);
+            if BISHOP_ATTACKS[king_sq][bindex] & bishop_like != 0 {
+                return true;
+            }
         }
 
         false
@@ -87,7 +86,7 @@ impl MoveGenerator for SimpleMoveGen {
 
 impl SimpleMoveGen {
     fn gen_pawn_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
-        let pawns = pos.pieces[if us == Color::White { 0 } else { 6 }];
+        let pawns = pos.pieces[piece_index(us, PieceType::Pawn)];
         let empty = !pos.all_pieces();
         let their_pieces = pos.their_pieces(us);
 
@@ -137,8 +136,8 @@ impl SimpleMoveGen {
     }
 
     fn gen_knight_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
-        let knights = pos.pieces[if us == Color::White { 1 } else { 7 }];
-        let targets = !pos.our_pieces(us);
+        let knights = pos.pieces[piece_index(us, PieceType::Knight)];
+        let targets = pos.their_pieces(us);
         for from in bit_iter(knights) {
             let attacks = KNIGHT_ATTACKS[from as usize] & targets;
             for to in bit_iter(attacks) {
@@ -148,8 +147,8 @@ impl SimpleMoveGen {
     }
 
     fn gen_bishop_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
-        let bishops = pos.pieces[if us == Color::White { 2 } else { 8 }];
-        let targets = !pos.our_pieces(us);
+        let bishops = pos.pieces[piece_index(us, PieceType::Bishop)];
+        let targets = pos.their_pieces(us);
         let occ = pos.all_pieces();
 
         for from in bit_iter(bishops) {
@@ -164,8 +163,8 @@ impl SimpleMoveGen {
     }
 
     fn gen_rook_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
-        let rooks = pos.pieces[if us == Color::White { 3 } else { 9 }];
-        let targets = !pos.our_pieces(us);
+        let rooks = pos.pieces[piece_index(us, PieceType::Rook)];
+        let targets = pos.their_pieces(us);
         let occ = pos.all_pieces();
 
         for from in bit_iter(rooks) {
@@ -180,8 +179,8 @@ impl SimpleMoveGen {
     }
 
     fn gen_queen_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
-        let queens = pos.pieces[if us == Color::White { 4 } else { 10 }];
-        let targets = !pos.our_pieces(us);
+        let queens = pos.pieces[piece_index(us, PieceType::Queen)];
+        let targets = pos.their_pieces(us);
         let occ = pos.all_pieces();
 
         for from in bit_iter(queens) {
@@ -205,8 +204,8 @@ impl SimpleMoveGen {
     }
 
     fn gen_king_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
-        let king = pos.pieces[if us == Color::White { 5 } else { 11 }];
-        let targets = !pos.our_pieces(us);
+        let king = pos.pieces[piece_index(us, PieceType::King)];
+        let targets = pos.their_pieces(us);
 
         for from in bit_iter(king) {
             let attacks = KING_ATTACKS[from as usize] & targets;

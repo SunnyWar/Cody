@@ -1,5 +1,7 @@
 // src/core/bitboard.rs
 
+use crate::core::piece::Color;
+
 pub const FILE_A: u64 = 0x0101010101010101;
 pub const FILE_B: u64 = 0x0202020202020202;
 pub const FILE_C: u64 = 0x0404040404040404;
@@ -376,5 +378,27 @@ pub static BISHOP_ATTACKS: [[u64; 512]; 64] = {
         }
         sq += 1;
     }
+    table
+};
+
+pub const PAWN_ATTACKS: [[u64; 64]; 2] = {
+    let mut table = [[0u64; 64]; 2];
+
+    // White pawn attacks
+    let mut sq = 0;
+    while sq < 64 {
+        let bb = 1u64 << sq;
+        table[Color::White as usize][sq] = ((bb >> 7) & !FILE_A) | ((bb >> 9) & !FILE_H);
+        sq += 1;
+    }
+
+    // Black pawn attacks
+    let mut sq = 0;
+    while sq < 64 {
+        let bb = 1u64 << sq;
+        table[Color::Black as usize][sq] = ((bb << 7) & !FILE_H) | ((bb << 9) & !FILE_A);
+        sq += 1;
+    }
+
     table
 };
