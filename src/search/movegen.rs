@@ -163,12 +163,30 @@ impl SimpleMoveGen {
 
     fn gen_knight_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
         let knights = pos.pieces[piece_index(us, PieceType::Knight)];
+        if knights == 0 {
+            return; // early bail
+        }
+
         let targets = pos.their_pieces(us);
+
         for from in bit_iter(knights) {
-            let attacks = KNIGHT_ATTACKS[from as usize] & targets;
+            // Knights always land on opposite color from origin — prefilter targets
+            let filtered_targets = targets & !SQUARE_COLOR_MASK[from as usize];
+
+            let attacks = KNIGHT_ATTACKS[from as usize] & filtered_targets;
+            if attacks == 0 {
+                continue; // cheap zero-check
+            }
+
+            // Type-consistent pushes (Move::new expects u8)
             for to in bit_iter(attacks) {
                 moves.push(Move::new(from, to));
             }
+
+            debug_assert_eq!(
+                KNIGHT_ATTACKS[from as usize] & SQUARE_COLOR_MASK[from as usize],
+                0
+            );
         }
     }
 
