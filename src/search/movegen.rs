@@ -46,18 +46,19 @@ impl MoveGenerator for SimpleMoveGen {
 
         // 1. Knights (opposite color only)
         let knight_like = pos.pieces[piece_index(them, PieceType::Knight)] & !king_color_mask;
-        if KNIGHT_ATTACKS[king_sq] & knight_like != 0 {
+        if knight_like != 0 && (KNIGHT_ATTACKS[king_sq] & knight_like) != 0 {
             return true;
         }
 
         // 2. Pawns (same color only)
         let pawn_like = pos.pieces[piece_index(them, PieceType::Pawn)] & king_color_mask;
-        if PAWN_ATTACKS[them as usize][king_sq] & pawn_like != 0 {
+        if pawn_like != 0 && (PAWN_ATTACKS[them as usize][king_sq] & pawn_like) != 0 {
             return true;
         }
 
         // 3. Opponent king
-        if KING_ATTACKS[king_sq] & pos.pieces[piece_index(them, PieceType::King)] != 0 {
+        let opp_king = pos.pieces[piece_index(them, PieceType::King)];
+        if opp_king != 0 && (KING_ATTACKS[king_sq] & opp_king) != 0 {
             return true;
         }
 
@@ -68,7 +69,7 @@ impl MoveGenerator for SimpleMoveGen {
         if rook_like != 0 {
             let rmask = ROOK_MASKS[king_sq];
             let rindex = occ_to_index(occ & rmask, rmask);
-            if ROOK_ATTACKS[king_sq][rindex] & rook_like != 0 {
+            if (ROOK_ATTACKS[king_sq][rindex] & rook_like) != 0 {
                 return true;
             }
         }
@@ -81,7 +82,7 @@ impl MoveGenerator for SimpleMoveGen {
         if bishop_like != 0 {
             let bmask = BISHOP_MASKS[king_sq];
             let bindex = occ_to_index(occ & bmask, bmask);
-            if BISHOP_ATTACKS[king_sq][bindex] & bishop_like != 0 {
+            if (BISHOP_ATTACKS[king_sq][bindex] & bishop_like) != 0 {
                 return true;
             }
         }

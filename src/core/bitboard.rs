@@ -57,7 +57,7 @@ pub const SQUARE_COLOR_MASK: [u64; NUM_SQUARES] = {
     let mut arr = [0u64; NUM_SQUARES];
     let mut sq = 0;
     while sq < NUM_SQUARES {
-        arr[sq] = if (sq / BOARD_SIZE + sq % BOARD_SIZE) % 2 == 0 {
+        arr[sq] = if (sq / BOARD_SIZE + sq % BOARD_SIZE).is_multiple_of(2) {
             LIGHT_SQUARES
         } else {
             DARK_SQUARES
