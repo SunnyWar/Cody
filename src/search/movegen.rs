@@ -1,6 +1,9 @@
 // src/search/movegen.rs
 
-use crate::core::bitboard::{FILE_A, FILE_H, bit_iter, knight_attacks};
+use crate::core::bitboard::{
+    BISHOP_ATTACKS, BISHOP_MASKS, FILE_A, FILE_H, KING_ATTACKS, KNIGHT_ATTACKS, ROOK_ATTACKS,
+    ROOK_MASKS, bit_iter, occ_to_index,
+};
 use crate::core::mov::Move;
 use crate::core::position::Position;
 
@@ -34,25 +37,29 @@ impl MoveGenerator for SimpleMoveGen {
         if king_bb == 0 {
             return false;
         }
-        let king_sq = king_bb.trailing_zeros() as u8;
+        let king_sq = king_bb.trailing_zeros() as usize;
         let occ = pos.all_pieces();
 
         // 1. Rook/Queen (straight lines)
         let rook_like =
             pos.pieces[if them == 0 { 3 } else { 9 }] | pos.pieces[if them == 0 { 4 } else { 10 }];
-        if rook_attacks(king_sq, occ) & rook_like != 0 {
+        let rmask = ROOK_MASKS[king_sq];
+        let rindex = occ_to_index(occ & rmask, rmask);
+        if ROOK_ATTACKS[king_sq][rindex] & rook_like != 0 {
             return true;
         }
 
         // 2. Bishop/Queen (diagonals)
         let bishop_like =
             pos.pieces[if them == 0 { 2 } else { 8 }] | pos.pieces[if them == 0 { 4 } else { 10 }];
-        if bishop_attacks(king_sq, occ) & bishop_like != 0 {
+        let bmask = BISHOP_MASKS[king_sq];
+        let bindex = occ_to_index(occ & bmask, bmask);
+        if BISHOP_ATTACKS[king_sq][bindex] & bishop_like != 0 {
             return true;
         }
 
         // 3. Knights
-        if knight_attacks(king_sq) & pos.pieces[if them == 0 { 1 } else { 7 }] != 0 {
+        if KNIGHT_ATTACKS[king_sq] & pos.pieces[if them == 0 { 1 } else { 7 }] != 0 {
             return true;
         }
 
@@ -67,7 +74,7 @@ impl MoveGenerator for SimpleMoveGen {
         }
 
         // 5. Opponent king
-        if king_attacks(king_sq) & pos.pieces[if them == 0 { 5 } else { 11 }] != 0 {
+        if KING_ATTACKS[king_sq] & pos.pieces[if them == 0 { 5 } else { 11 }] != 0 {
             return true;
         }
 
@@ -130,7 +137,7 @@ impl SimpleMoveGen {
         let knights = pos.pieces[if us == 0 { 1 } else { 7 }];
         let targets = !pos.our_pieces(us);
         for from in bit_iter(knights) {
-            let attacks = knight_attacks(from) & targets;
+            let attacks = KNIGHT_ATTACKS[from as usize] & targets;
             for to in bit_iter(attacks) {
                 moves.push(Move::new(from, to));
             }
@@ -140,8 +147,13 @@ impl SimpleMoveGen {
     fn gen_bishop_moves(&self, pos: &Position, us: u8, moves: &mut Vec<Move>) {
         let bishops = pos.pieces[if us == 0 { 2 } else { 8 }];
         let targets = !pos.our_pieces(us);
+        let occ = pos.all_pieces();
+
         for from in bit_iter(bishops) {
-            let attacks = bishop_attacks(from, pos.all_pieces()) & targets;
+            let mask = BISHOP_MASKS[from as usize];
+            let index = occ_to_index(occ & mask, mask);
+            let attacks = BISHOP_ATTACKS[from as usize][index] & targets;
+
             for to in bit_iter(attacks) {
                 moves.push(Move::new(from, to));
             }
@@ -151,8 +163,13 @@ impl SimpleMoveGen {
     fn gen_rook_moves(&self, pos: &Position, us: u8, moves: &mut Vec<Move>) {
         let rooks = pos.pieces[if us == 0 { 3 } else { 9 }];
         let targets = !pos.our_pieces(us);
+        let occ = pos.all_pieces();
+
         for from in bit_iter(rooks) {
-            let attacks = rook_attacks(from, pos.all_pieces()) & targets;
+            let mask = ROOK_MASKS[from as usize];
+            let index = occ_to_index(occ & mask, mask);
+            let attacks = ROOK_ATTACKS[from as usize][index] & targets;
+
             for to in bit_iter(attacks) {
                 moves.push(Move::new(from, to));
             }
@@ -162,8 +179,22 @@ impl SimpleMoveGen {
     fn gen_queen_moves(&self, pos: &Position, us: u8, moves: &mut Vec<Move>) {
         let queens = pos.pieces[if us == 0 { 4 } else { 10 }];
         let targets = !pos.our_pieces(us);
+        let occ = pos.all_pieces();
+
         for from in bit_iter(queens) {
-            let attacks = queen_attacks(from, pos.all_pieces()) & targets;
+            // Rook component
+            let rmask = ROOK_MASKS[from as usize];
+            let rindex = occ_to_index(occ & rmask, rmask);
+            let rook_attacks = ROOK_ATTACKS[from as usize][rindex];
+
+            // Bishop component
+            let bmask = BISHOP_MASKS[from as usize];
+            let bindex = occ_to_index(occ & bmask, bmask);
+            let bishop_attacks = BISHOP_ATTACKS[from as usize][bindex];
+
+            // Combine and mask with targets
+            let attacks = (rook_attacks | bishop_attacks) & targets;
+
             for to in bit_iter(attacks) {
                 moves.push(Move::new(from, to));
             }
@@ -173,126 +204,14 @@ impl SimpleMoveGen {
     fn gen_king_moves(&self, pos: &Position, us: u8, moves: &mut Vec<Move>) {
         let king = pos.pieces[if us == 0 { 5 } else { 11 }];
         let targets = !pos.our_pieces(us);
+
         for from in bit_iter(king) {
-            let attacks = king_attacks(from) & targets;
+            let attacks = KING_ATTACKS[from as usize] & targets;
             for to in bit_iter(attacks) {
                 moves.push(Move::new(from, to));
             }
         }
-        // Castling can be added here
+
+        // TODO: Castling logic can be added here if desired
     }
-}
-
-pub fn rook_attacks(sq: u8, occ: u64) -> u64 {
-    let mut attacks = 0u64;
-    let mut mask;
-
-    // North
-    mask = sq as i8 + 8;
-    while mask < 64 {
-        attacks |= 1u64 << mask;
-        if occ & (1u64 << mask) != 0 {
-            break;
-        }
-        mask += 8;
-    }
-
-    // South
-    mask = sq as i8 - 8;
-    while mask >= 0 {
-        attacks |= 1u64 << mask;
-        if occ & (1u64 << mask) != 0 {
-            break;
-        }
-        mask -= 8;
-    }
-
-    // East
-    mask = sq as i8 + 1;
-    while mask % 8 != 0 {
-        attacks |= 1u64 << mask;
-        if occ & (1u64 << mask) != 0 {
-            break;
-        }
-        mask += 1;
-    }
-
-    // West
-    mask = sq as i8 - 1;
-    while mask % 8 != 7 && mask >= 0 {
-        attacks |= 1u64 << mask;
-        if occ & (1u64 << mask) != 0 {
-            break;
-        }
-        mask -= 1;
-    }
-
-    attacks
-}
-
-pub fn queen_attacks(sq: u8, occ: u64) -> u64 {
-    rook_attacks(sq, occ) | bishop_attacks(sq, occ)
-}
-
-pub fn king_attacks(sq: u8) -> u64 {
-    let bb = 1u64 << sq;
-    let not_a = 0xfefefefefefefefe;
-    let not_h = 0x7f7f7f7f7f7f7f7f;
-
-    let mut attacks = 0u64;
-    attacks |= (bb << 8) | (bb >> 8); // up/down
-    attacks |= (bb << 1) & not_a; // right
-    attacks |= (bb >> 1) & not_h; // left
-    attacks |= (bb << 9) & not_a; // up-right
-    attacks |= (bb << 7) & not_h; // up-left
-    attacks |= (bb >> 7) & not_a; // down-right
-    attacks |= (bb >> 9) & not_h; // down-left
-    attacks
-}
-
-pub fn bishop_attacks(sq: u8, occ: u64) -> u64 {
-    let mut attacks = 0u64;
-    let mut mask;
-
-    // NE
-    mask = sq as i8 + 9;
-    while mask < 64 && mask % 8 != 0 {
-        attacks |= 1u64 << mask;
-        if occ & (1u64 << mask) != 0 {
-            break;
-        }
-        mask += 9;
-    }
-
-    // NW
-    mask = sq as i8 + 7;
-    while mask < 64 && mask % 8 != 7 {
-        attacks |= 1u64 << mask;
-        if occ & (1u64 << mask) != 0 {
-            break;
-        }
-        mask += 7;
-    }
-
-    // SE
-    mask = sq as i8 - 7;
-    while mask >= 0 && mask % 8 != 0 {
-        attacks |= 1u64 << mask;
-        if occ & (1u64 << mask) != 0 {
-            break;
-        }
-        mask -= 7;
-    }
-
-    // SW
-    mask = sq as i8 - 9;
-    while mask >= 0 && mask % 8 != 7 {
-        attacks |= 1u64 << mask;
-        if occ & (1u64 << mask) != 0 {
-            break;
-        }
-        mask -= 9;
-    }
-
-    attacks
 }

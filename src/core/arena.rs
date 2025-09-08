@@ -1,5 +1,5 @@
-/// Fixed-block memory arena for search nodes.
-/// Phase 1: focus on allocation/recycling speed, not chess logic.
+// src/core/arena.rs
+
 use crate::core::node::Node;
 
 pub struct Arena {
