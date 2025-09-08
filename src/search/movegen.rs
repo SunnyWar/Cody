@@ -17,17 +17,27 @@ pub trait MoveGenerator {
     fn in_check(&self, pos: &Position) -> bool;
 }
 
+struct MoveGenContext {
+    us: Color,
+    occ: u64,
+    not_ours: u64,
+}
+
 impl MoveGenerator for SimpleMoveGen {
     fn generate_moves(&self, pos: &Position) -> Vec<Move> {
         let mut moves = Vec::new();
-        let us = pos.side_to_move;
+        let ctx = MoveGenContext {
+            us: pos.side_to_move,
+            occ: pos.all_pieces(),
+            not_ours: !pos.our_pieces(pos.side_to_move),
+        };
 
-        self.generate_all_pawn_moves(pos, us, &mut moves);
-        self.generate_all_knight_moves(pos, us, &mut moves);
-        self.generate_all_bishop_moves(pos, us, &mut moves);
-        self.generate_all_rook_moves(pos, us, &mut moves);
-        self.generate_all_queen_moves(pos, us, &mut moves);
-        self.generate_all_king_moves(pos, us, &mut moves);
+        self.generate_all_pawn_moves(pos, &ctx, &mut moves);
+        self.generate_all_knight_moves(pos, &ctx, &mut moves);
+        self.generate_all_bishop_moves(pos, &ctx, &mut moves);
+        self.generate_all_rook_moves(pos, &ctx, &mut moves);
+        self.generate_all_queen_moves(pos, &ctx, &mut moves);
+        self.generate_all_king_moves(pos, &ctx, &mut moves);
 
         moves
     }
@@ -93,16 +103,16 @@ impl MoveGenerator for SimpleMoveGen {
 }
 
 impl SimpleMoveGen {
-    fn generate_all_pawn_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
-        let pawns = pos.pieces[piece_index(us, PieceType::Pawn)];
+    fn generate_all_pawn_moves(&self, pos: &Position, ctx: &MoveGenContext, moves: &mut Vec<Move>) {
+        let pawns = pos.pieces[piece_index(ctx.us, PieceType::Pawn)];
         if pawns == 0 {
             return;
         }
 
-        let empty = !pos.all_pieces();
-        let their_pieces = pos.their_pieces(us);
+        let empty = !ctx.occ;
+        let their_pieces = pos.their_pieces(ctx.us);
 
-        if us == Color::White {
+        if ctx.us == Color::White {
             let single_push = (pawns << NORTH) & empty;
             if single_push != 0 {
                 for to in bit_iter(single_push) {
@@ -163,16 +173,19 @@ impl SimpleMoveGen {
         // TODO - en passant and promotions
     }
 
-    fn generate_all_knight_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
-        let knights = pos.pieces[piece_index(us, PieceType::Knight)];
+    fn generate_all_knight_moves(
+        &self,
+        pos: &Position,
+        ctx: &MoveGenContext,
+        moves: &mut Vec<Move>,
+    ) {
+        let knights = pos.pieces[piece_index(ctx.us, PieceType::Knight)];
         if knights == 0 {
             return; // early bail
         }
 
-        let not_ours = !pos.our_pieces(us);
-
         for from in bit_iter(knights) {
-            let attacks = KNIGHT_ATTACKS[from as usize] & not_ours;
+            let attacks = KNIGHT_ATTACKS[from as usize] & ctx.not_ours;
             if attacks == 0 {
                 continue; // cheap zero-check
             }
@@ -189,18 +202,20 @@ impl SimpleMoveGen {
         }
     }
 
-    fn generate_all_bishop_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
-        let bishops = pos.pieces[piece_index(us, PieceType::Bishop)];
+    fn generate_all_bishop_moves(
+        &self,
+        pos: &Position,
+        ctx: &MoveGenContext,
+        moves: &mut Vec<Move>,
+    ) {
+        let bishops = pos.pieces[piece_index(ctx.us, PieceType::Bishop)];
         if bishops == 0 {
             return; // early bail
         }
 
-        let occ = pos.all_pieces();
-        let not_ours = !pos.our_pieces(us);
-
         for from in bit_iter(bishops) {
             // Prefilter: same color complex + diagonals
-            let reachable = not_ours
+            let reachable = ctx.not_ours
                 & SQUARE_COLOR_MASK[from as usize]
                 & (DIAGONAL_MASKS[from as usize] | ANTIDIAGONAL_MASKS[from as usize]);
             if reachable == 0 {
@@ -208,8 +223,8 @@ impl SimpleMoveGen {
             }
 
             let mask = BISHOP_MASKS[from as usize];
-            let index = occ_to_index(occ & mask, mask);
-            let attacks = BISHOP_ATTACKS[from as usize][index] & not_ours;
+            let index = occ_to_index(ctx.occ & mask, mask);
+            let attacks = BISHOP_ATTACKS[from as usize][index] & ctx.not_ours;
             if attacks == 0 {
                 continue; // cheap zero-check
             }
@@ -223,25 +238,22 @@ impl SimpleMoveGen {
         }
     }
 
-    fn generate_all_rook_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
-        let rooks = pos.pieces[piece_index(us, PieceType::Rook)];
+    fn generate_all_rook_moves(&self, pos: &Position, ctx: &MoveGenContext, moves: &mut Vec<Move>) {
+        let rooks = pos.pieces[piece_index(ctx.us, PieceType::Rook)];
         if rooks == 0 {
             return; // early bail
         }
 
-        let occ = pos.all_pieces();
-        let not_ours = !pos.our_pieces(us);
-
         for from in bit_iter(rooks) {
             // Prefilter: only rank/file from 'from'
-            let reachable = not_ours & (RANK_MASKS[from as usize] | FILE_MASKS[from as usize]);
+            let reachable = ctx.not_ours & (RANK_MASKS[from as usize] | FILE_MASKS[from as usize]);
             if reachable == 0 {
                 continue; // no possible moves along rank/file
             }
 
             let mask = ROOK_MASKS[from as usize];
-            let index = occ_to_index(occ & mask, mask);
-            let attacks = ROOK_ATTACKS[from as usize][index] & not_ours;
+            let index = occ_to_index(ctx.occ & mask, mask);
+            let attacks = ROOK_ATTACKS[from as usize][index] & ctx.not_ours;
             if attacks == 0 {
                 continue; // cheap zero-check
             }
@@ -258,18 +270,20 @@ impl SimpleMoveGen {
         }
     }
 
-    fn generate_all_queen_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
-        let queens = pos.pieces[piece_index(us, PieceType::Queen)];
+    fn generate_all_queen_moves(
+        &self,
+        pos: &Position,
+        ctx: &MoveGenContext,
+        moves: &mut Vec<Move>,
+    ) {
+        let queens = pos.pieces[piece_index(ctx.us, PieceType::Queen)];
         if queens == 0 {
             return; // early bail
         }
 
-        let occ = pos.all_pieces();
-        let not_ours = !pos.our_pieces(us);
-
         for from in bit_iter(queens) {
             // Prefilter: queens can only move along rank/file/diagonals
-            let reachable = not_ours
+            let reachable = ctx.not_ours
                 & (RANK_MASKS[from as usize]
                     | FILE_MASKS[from as usize]
                     | DIAGONAL_MASKS[from as usize]
@@ -280,16 +294,16 @@ impl SimpleMoveGen {
 
             // Rook-like component
             let rmask = ROOK_MASKS[from as usize];
-            let rindex = occ_to_index(occ & rmask, rmask);
+            let rindex = occ_to_index(ctx.occ & rmask, rmask);
             let rook_attacks = ROOK_ATTACKS[from as usize][rindex];
 
             // Bishop-like component
             let bmask = BISHOP_MASKS[from as usize];
-            let bindex = occ_to_index(occ & bmask, bmask);
+            let bindex = occ_to_index(ctx.occ & bmask, bmask);
             let bishop_attacks = BISHOP_ATTACKS[from as usize][bindex];
 
             // Combine and mask with not_ours
-            let attacks = (rook_attacks | bishop_attacks) & not_ours;
+            let attacks = (rook_attacks | bishop_attacks) & ctx.not_ours;
             if attacks == 0 {
                 continue; // cheap zero-check
             }
@@ -311,12 +325,11 @@ impl SimpleMoveGen {
         }
     }
 
-    fn generate_all_king_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
-        let king = pos.pieces[piece_index(us, PieceType::King)];
-        let not_ours = !pos.our_pieces(us);
+    fn generate_all_king_moves(&self, pos: &Position, ctx: &MoveGenContext, moves: &mut Vec<Move>) {
+        let king = pos.pieces[piece_index(ctx.us, PieceType::King)];
 
         for from in bit_iter(king) {
-            let attacks = KING_ATTACKS[from as usize] & not_ours;
+            let attacks = KING_ATTACKS[from as usize] & ctx.not_ours;
             if attacks == 0 {
                 continue; // cheap zero-check
             }
