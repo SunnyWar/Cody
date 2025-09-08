@@ -322,13 +322,24 @@ impl SimpleMoveGen {
 
     fn gen_king_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
         let king = pos.pieces[piece_index(us, PieceType::King)];
+
         let targets = pos.their_pieces(us);
 
         for from in bit_iter(king) {
             let attacks = KING_ATTACKS[from as usize] & targets;
+            if attacks == 0 {
+                continue; // cheap zero-check
+            }
+
             for to in bit_iter(attacks) {
                 moves.push(Move::new(from, to));
             }
+
+            // check: king attacks must be within one square in any direction
+            debug_assert!(
+                attacks & !KING_ATTACKS[from as usize] == 0,
+                "King attack set contains illegal squares"
+            );
         }
 
         // TODO: Castling logic can be added here if desired
