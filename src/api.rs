@@ -46,9 +46,21 @@ impl CodyApi {
         // TODO: parse FEN or "startpos" and set position
     }
 
-    fn handle_go(&mut self, _cmd: &str, out: &mut impl Write) {
-        let depth = 5; // TODO: parse from command
-        let pos = Position::default(); // TODO: use parsed position
+    fn handle_go(&mut self, cmd: &str, out: &mut impl Write) {
+        // Default depth if none specified
+        let mut depth = 5;
+
+        // Parse "depth N" from the UCI go command
+        let tokens: Vec<&str> = cmd.split_whitespace().collect();
+        if let Some(i) = tokens.iter().position(|&t| t == "depth")
+            && let Some(d_str) = tokens.get(i + 1)
+            && let Ok(d_val) = d_str.parse::<usize>()
+        {
+            depth = d_val;
+        }
+
+        // TODO: replace with actual parsed position from "position" command
+        let pos = Position::default();
 
         let start = std::time::Instant::now();
         let (best_move, score) = self.engine.search(&pos, depth);
