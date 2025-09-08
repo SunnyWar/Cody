@@ -1,9 +1,10 @@
 // src/search/movegen.rs
 
 use crate::core::bitboard::{
-    ANTIDIAGONAL_MASKS, BISHOP_ATTACKS, BISHOP_MASKS, DIAGONAL_MASKS, FILE_A, FILE_H, FILE_MASKS,
-    KING_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS, RANK_MASKS, ROOK_ATTACKS, ROOK_MASKS,
-    SQUARE_COLOR_MASK, bit_iter, occ_to_index,
+    ANTIDIAGONAL_MASKS, BISHOP_ATTACKS, BISHOP_MASKS, DIAGONAL_MASKS, DOUBLE_NORTH, DOUBLE_SOUTH,
+    FILE_A, FILE_H, FILE_MASKS, KING_ATTACKS, KNIGHT_ATTACKS, NORTH, NORTH_EAST, NORTH_WEST,
+    PAWN_ATTACKS, RANK_4_MASK, RANK_5_MASK, RANK_MASKS, ROOK_ATTACKS, ROOK_MASKS, SOUTH,
+    SOUTH_EAST, SOUTH_WEST, SQUARE_COLOR_MASK, bit_iter, occ_to_index,
 };
 use crate::core::mov::Move;
 use crate::core::piece::{Color, PieceType, piece_index};
@@ -94,50 +95,68 @@ impl MoveGenerator for SimpleMoveGen {
 impl SimpleMoveGen {
     fn gen_pawn_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
         let pawns = pos.pieces[piece_index(us, PieceType::Pawn)];
+        if pawns == 0 {
+            return; // no pawns, nothing to do
+        }
+
         let empty = !pos.all_pieces();
         let their_pieces = pos.their_pieces(us);
 
         if us == Color::White {
-            // single pushes
-            let single_push = (pawns << 8) & empty;
-            for to in bit_iter(single_push) {
-                moves.push(Move::new(to - 8, to));
+            let single_push = (pawns << NORTH) & empty;
+            if single_push != 0 {
+                for to in bit_iter(single_push) {
+                    moves.push(Move::new((to as i32 - NORTH) as u8, to));
+                }
             }
-            // double pushes
-            let rank4_mask: u64 = 0x00000000FF000000; // adjust for your indexing
-            let double_push = ((single_push << 8) & empty) & rank4_mask;
-            for to in bit_iter(double_push) {
-                moves.push(Move::new(to - 16, to));
+
+            let double_push = ((single_push << NORTH) & empty) & RANK_4_MASK;
+            if double_push != 0 {
+                for to in bit_iter(double_push) {
+                    moves.push(Move::new((to as i32 - DOUBLE_NORTH) as u8, to));
+                }
             }
-            // captures
-            let left_caps = (pawns << 7) & their_pieces & !FILE_H;
-            let right_caps = (pawns << 9) & their_pieces & !FILE_A;
-            for to in bit_iter(left_caps) {
-                moves.push(Move::new(to - 7, to));
+
+            let left_caps = (pawns << NORTH_WEST) & their_pieces & !FILE_H;
+            if left_caps != 0 {
+                for to in bit_iter(left_caps) {
+                    moves.push(Move::new((to as i32 - NORTH_WEST) as u8, to));
+                }
             }
-            for to in bit_iter(right_caps) {
-                moves.push(Move::new(to - 9, to));
+
+            let right_caps = (pawns << NORTH_EAST) & their_pieces & !FILE_A;
+            if right_caps != 0 {
+                for to in bit_iter(right_caps) {
+                    moves.push(Move::new((to as i32 - NORTH_EAST) as u8, to));
+                }
             }
         } else {
-            // single pushes
-            let single_push = (pawns >> 8) & empty;
-            for to in bit_iter(single_push) {
-                moves.push(Move::new(to + 8, to));
+            let single_push = (pawns >> -SOUTH) & empty;
+            if single_push != 0 {
+                for to in bit_iter(single_push) {
+                    moves.push(Move::new((to as i32 - SOUTH) as u8, to));
+                }
             }
-            // double pushes
-            let rank5_mask: u64 = 0x000000FF00000000; // adjust for your indexing
-            let double_push = ((single_push >> 8) & empty) & rank5_mask;
-            for to in bit_iter(double_push) {
-                moves.push(Move::new(to + 16, to));
+
+            let double_push = ((single_push >> -SOUTH) & empty) & RANK_5_MASK;
+            if double_push != 0 {
+                for to in bit_iter(double_push) {
+                    moves.push(Move::new((to as i32 - DOUBLE_SOUTH) as u8, to));
+                }
             }
-            // captures
-            let left_caps = (pawns >> 9) & their_pieces & !FILE_H;
-            let right_caps = (pawns >> 7) & their_pieces & !FILE_A;
-            for to in bit_iter(left_caps) {
-                moves.push(Move::new(to + 9, to));
+
+            let left_caps = (pawns >> -SOUTH_EAST) & their_pieces & !FILE_H;
+            if left_caps != 0 {
+                for to in bit_iter(left_caps) {
+                    moves.push(Move::new((to as i32 - SOUTH_EAST) as u8, to));
+                }
             }
-            for to in bit_iter(right_caps) {
-                moves.push(Move::new(to + 7, to));
+
+            let right_caps = (pawns >> -SOUTH_WEST) & their_pieces & !FILE_A;
+            if right_caps != 0 {
+                for to in bit_iter(right_caps) {
+                    moves.push(Move::new((to as i32 - SOUTH_WEST) as u8, to));
+                }
             }
         }
     }
