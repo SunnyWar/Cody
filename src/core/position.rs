@@ -1,5 +1,7 @@
 use crate::core::bitboard::bit;
 use crate::core::mov::Move;
+use crate::core::piece::PieceType;
+use crate::core::square::Square;
 
 // Flags
 pub const FLAG_CAPTURE: u8 = 1 << 0;
@@ -426,5 +428,37 @@ impl Position {
         fen.push_str(&self.fullmove_number.to_string());
 
         fen
+    }
+
+    // UCI moves are always lowercase, e.g. "e2e4", "e7e8q"
+    pub fn parse_uci_move(&self, mv: &str) -> Option<Move> {
+        if mv.len() < 4 {
+            return None;
+        }
+
+        // Parse source and destination squares
+        let from_file = mv.as_bytes()[0] as char;
+        let from_rank = mv.as_bytes()[1] as char;
+        let to_file = mv.as_bytes()[2] as char;
+        let to_rank = mv.as_bytes()[3] as char;
+
+        let from_sq = Square::from_coords(from_file, from_rank)?;
+        let to_sq = Square::from_coords(to_file, to_rank)?;
+
+        // Optional promotion piece
+        let promo = if mv.len() == 5 {
+            PieceType::from_uci(mv.as_bytes()[4] as char)
+        } else {
+            None
+        };
+
+        // Generate all legal moves and find the one that matches
+        self.generate_legal_moves()
+            .into_iter()
+            .find(|m| m.from() == from_sq && m.to() == to_sq && m.promotion() == promo)
+    }
+
+    pub fn generate_legal_moves(&self) -> Vec<Move> {
+        Vec::new()
     }
 }

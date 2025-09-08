@@ -1,5 +1,7 @@
 use std::fmt;
 
+use crate::core::{piece::PieceType, square::Square};
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Move {
     pub from: u8,      // 0..63
@@ -25,6 +27,18 @@ impl Move {
             promotion: 255, // none
             flags: 0,
         }
+    }
+
+    pub(crate) fn from(&self) -> Square {
+        Square::A1 // or whatever the first/zero square is in your enum
+    }
+
+    pub(crate) fn to(&self) -> Square {
+        Square::A1
+    }
+
+    pub(crate) fn promotion(&self) -> Option<PieceType> {
+        None
     }
 }
 

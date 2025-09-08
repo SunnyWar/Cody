@@ -22,6 +22,7 @@ impl CodyApi {
             match cmd.as_str() {
                 "uci" => self.handle_uci(&mut stdout),
                 "isready" => self.handle_isready(&mut stdout),
+                "ucinewgame" => self.handle_newgame(&mut stdout),
                 cmd if cmd.starts_with("position") => self.handle_position(cmd, &mut stdout),
                 cmd if cmd.starts_with("go") => self.handle_go(cmd, &mut stdout),
                 cmd if cmd.starts_with("bench") => self.handle_bench(cmd, &mut stdout),
@@ -42,8 +43,46 @@ impl CodyApi {
         writeln!(out, "readyok").unwrap();
     }
 
-    fn handle_position(&mut self, _cmd: &str, _out: &mut impl Write) {
-        // TODO: parse FEN or "startpos" and set position
+    fn handle_position(&mut self, cmd: &str, _out: &mut impl Write) {
+        // Strip the leading "position" keyword
+        let mut tokens = cmd.split_whitespace().skip(1).peekable();
+
+        let pos = if let Some(tok) = tokens.peek() {
+            match *tok {
+                "startpos" => {
+                    tokens.next(); // consume "startpos"
+                    Position::default() // your default() should be the standard start position
+                }
+                "fen" => {
+                    tokens.next(); // consume "fen"
+                    // Collect FEN parts until we hit "moves" or run out
+                    let fen_parts: Vec<&str> =
+                        tokens.by_ref().take_while(|&t| t != "moves").collect();
+                    let fen_str = fen_parts.join(" ");
+                    Position::from_fen(&fen_str)
+                }
+                _ => {
+                    // Unknown format — fall back to default
+                    Position::default()
+                }
+            }
+        } else {
+            Position::default()
+        };
+
+        // If there’s a "moves" section, apply them in order
+        if let Some(&"moves") = tokens.peek() {
+            tokens.next(); // consume "moves"
+            for mv in tokens {
+                // Assuming you have a way to parse UCI move strings into your Move type
+                if let Some(parsed) = pos.parse_uci_move(mv) {
+                    // TODO
+                }
+            }
+        }
+
+        // Store the position in your engine state
+        // TODO
     }
 
     fn handle_go(&mut self, cmd: &str, out: &mut impl Write) {
@@ -124,5 +163,10 @@ impl CodyApi {
         )
         .unwrap();
         out.flush().unwrap();
+    }
+
+    fn handle_newgame(&mut self, _out: &mut impl Write) {
+        // No output required by UCI.
+        // If all state is reset in `handle_go`, nothing to do here.
     }
 }
