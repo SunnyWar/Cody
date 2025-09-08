@@ -207,9 +207,8 @@ impl Position {
             .pieces
             .iter_mut()
             .position(|bb| (*bb >> mv.from) & 1 != 0)
-            .map(|idx| {
+            .inspect(|&idx| {
                 out.pieces[idx] &= !(1u64 << mv.from);
-                idx
             })
             .expect("No piece on from-square");
 
@@ -410,8 +409,8 @@ impl Position {
         // 4. En passant target square
         fen.push(' ');
         if self.ep_square < 64 {
-            let file = (self.ep_square % 8) as u8;
-            let rank = (self.ep_square / 8) as u8;
+            let file = self.ep_square % 8;
+            let rank = self.ep_square / 8;
             fen.push((b'a' + file) as char);
             fen.push((b'1' + rank) as char);
         } else {
