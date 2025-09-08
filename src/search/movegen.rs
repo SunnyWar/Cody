@@ -184,6 +184,7 @@ impl SimpleMoveGen {
             }
 
             debug_assert_eq!(
+                // check: no same-color squares in knight attacks
                 KNIGHT_ATTACKS[from as usize] & SQUARE_COLOR_MASK[from as usize],
                 0
             );
@@ -192,17 +193,36 @@ impl SimpleMoveGen {
 
     fn gen_bishop_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
         let bishops = pos.pieces[piece_index(us, PieceType::Bishop)];
+        if bishops == 0 {
+            return; // early bail
+        }
+
         let targets = pos.their_pieces(us);
         let occ = pos.all_pieces();
 
         for from in bit_iter(bishops) {
+            // Bishops only attack same-color squares as their origin
+            let filtered_targets = targets & SQUARE_COLOR_MASK[from as usize];
+
+            // Cheap skip if no possible captures on same color
+            if filtered_targets == 0 {
+                continue;
+            }
+
             let mask = BISHOP_MASKS[from as usize];
             let index = occ_to_index(occ & mask, mask);
-            let attacks = BISHOP_ATTACKS[from as usize][index] & targets;
+            let attacks = BISHOP_ATTACKS[from as usize][index] & filtered_targets;
+
+            if attacks == 0 {
+                continue; // cheap zero-check
+            }
 
             for to in bit_iter(attacks) {
                 moves.push(Move::new(from, to));
             }
+
+            // check: bishop attacks never cross color complexes
+            debug_assert_eq!(attacks & !SQUARE_COLOR_MASK[from as usize], 0);
         }
     }
 
