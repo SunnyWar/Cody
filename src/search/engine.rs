@@ -5,6 +5,8 @@ use crate::search::movegen::MoveGenerator;
 use std::sync::atomic::{AtomicU64, Ordering};
 pub static NODE_COUNT: AtomicU64 = AtomicU64::new(0);
 
+const MATE_SCORE: i32 = -1;
+
 pub struct Engine<M: MoveGenerator, E: Evaluator> {
     arena: Arena,
     movegen: M,
@@ -34,13 +36,19 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
             return self.evaluator.evaluate(&self.arena.get(ply).position);
         }
 
-        let moves;
-        {
-            let (parent, child) = self.arena.get_pair_mut(ply, ply + 1);
-            moves = self.movegen.generate_moves(&parent.position);
+        let moves = {
+            let (parent, _) = self.arena.get_pair_mut(ply, ply + 1);
+            self.movegen.generate_moves(&parent.position)
+        };
 
-            for m in &moves {
-                parent.position.apply_move_into(m, &mut child.position);
+        if moves.is_empty() {
+            let pos = &self.arena.get(ply).position;
+            if self.movegen.in_check(pos) {
+                // Checkmate: losing sooner is worse
+                return -MATE_SCORE + ply as i32;
+            } else {
+                // Stalemate
+                return 0;
             }
         }
 

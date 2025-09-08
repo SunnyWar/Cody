@@ -8,6 +8,7 @@ pub struct SimpleMoveGen;
 
 pub trait MoveGenerator {
     fn generate_moves(&self, pos: &Position) -> Vec<Move>;
+    fn in_check(&self, pos: &Position) -> bool;
 }
 
 impl MoveGenerator for SimpleMoveGen {
@@ -23,6 +24,54 @@ impl MoveGenerator for SimpleMoveGen {
         self.gen_king_moves(pos, us, &mut moves);
 
         moves
+    }
+
+    fn in_check(&self, pos: &Position) -> bool {
+        let us = pos.side_to_move;
+        let them = 1 - us;
+
+        let king_bb = pos.pieces[if us == 0 { 5 } else { 11 }];
+        if king_bb == 0 {
+            return false;
+        }
+        let king_sq = king_bb.trailing_zeros() as u8;
+        let occ = pos.all_pieces();
+
+        // 1. Rook/Queen (straight lines)
+        let rook_like =
+            pos.pieces[if them == 0 { 3 } else { 9 }] | pos.pieces[if them == 0 { 4 } else { 10 }];
+        if rook_attacks(king_sq, occ) & rook_like != 0 {
+            return true;
+        }
+
+        // 2. Bishop/Queen (diagonals)
+        let bishop_like =
+            pos.pieces[if them == 0 { 2 } else { 8 }] | pos.pieces[if them == 0 { 4 } else { 10 }];
+        if bishop_attacks(king_sq, occ) & bishop_like != 0 {
+            return true;
+        }
+
+        // 3. Knights
+        if knight_attacks(king_sq) & pos.pieces[if them == 0 { 1 } else { 7 }] != 0 {
+            return true;
+        }
+
+        // 4. Pawns
+        let pawn_attacks = if them == 0 {
+            ((king_bb >> 7) & !FILE_A) | ((king_bb >> 9) & !FILE_H)
+        } else {
+            ((king_bb << 7) & !FILE_H) | ((king_bb << 9) & !FILE_A)
+        };
+        if pawn_attacks & pos.pieces[if them == 0 { 0 } else { 6 }] != 0 {
+            return true;
+        }
+
+        // 5. Opponent king
+        if king_attacks(king_sq) & pos.pieces[if them == 0 { 5 } else { 11 }] != 0 {
+            return true;
+        }
+
+        false
     }
 }
 
