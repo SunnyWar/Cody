@@ -11,6 +11,24 @@ pub const FILE_F: u64 = 0x2020202020202020;
 pub const FILE_G: u64 = 0x4040404040404040;
 pub const FILE_H: u64 = 0x8080808080808080;
 
+pub const RANK_1_MASK: u64 = 0x00000000000000FF;
+pub const RANK_2_MASK: u64 = 0x000000000000FF00;
+pub const RANK_3_MASK: u64 = 0x0000000000FF0000;
+pub const RANK_4_MASK: u64 = 0x00000000FF000000;
+pub const RANK_5_MASK: u64 = 0x000000FF00000000;
+pub const RANK_6_MASK: u64 = 0x0000FF0000000000;
+pub const RANK_7_MASK: u64 = 0x00FF000000000000;
+pub const RANK_8_MASK: u64 = 0xFF00000000000000;
+
+pub const NORTH: i32 = 8;
+pub const SOUTH: i32 = -8;
+pub const NORTH_EAST: i32 = 9;
+pub const NORTH_WEST: i32 = 7;
+pub const SOUTH_EAST: i32 = -7;
+pub const SOUTH_WEST: i32 = -9;
+pub const DOUBLE_NORTH: i32 = 16;
+pub const DOUBLE_SOUTH: i32 = -16;
+
 // File masks to prevent wrap-around when shifting
 pub const NOT_FILE_A: u64 = 0xfefefefefefefefe;
 pub const NOT_FILE_AB: u64 = 0xfcfcfcfcfcfcfcfc;
