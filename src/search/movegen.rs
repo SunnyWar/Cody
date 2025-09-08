@@ -96,7 +96,7 @@ impl SimpleMoveGen {
     fn gen_pawn_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
         let pawns = pos.pieces[piece_index(us, PieceType::Pawn)];
         if pawns == 0 {
-            return; // no pawns, nothing to do
+            return;
         }
 
         let empty = !pos.all_pieces();
@@ -164,7 +164,7 @@ impl SimpleMoveGen {
     fn gen_knight_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
         let knights = pos.pieces[piece_index(us, PieceType::Knight)];
         if knights == 0 {
-            return; // early bail
+            return;
         }
 
         let targets = pos.their_pieces(us);
@@ -175,7 +175,7 @@ impl SimpleMoveGen {
 
             let attacks = KNIGHT_ATTACKS[from as usize] & filtered_targets;
             if attacks == 0 {
-                continue; // cheap zero-check
+                continue;
             }
 
             // Type-consistent pushes (Move::new expects u8)
@@ -194,7 +194,7 @@ impl SimpleMoveGen {
     fn gen_bishop_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
         let bishops = pos.pieces[piece_index(us, PieceType::Bishop)];
         if bishops == 0 {
-            return; // early bail
+            return;
         }
 
         let targets = pos.their_pieces(us);
@@ -214,7 +214,7 @@ impl SimpleMoveGen {
             let attacks = BISHOP_ATTACKS[from as usize][index] & filtered_targets;
 
             if attacks == 0 {
-                continue; // cheap zero-check
+                continue;
             }
 
             for to in bit_iter(attacks) {
@@ -229,7 +229,7 @@ impl SimpleMoveGen {
     fn gen_rook_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
         let rooks = pos.pieces[piece_index(us, PieceType::Rook)];
         if rooks == 0 {
-            return; // early bail
+            return;
         }
 
         let targets = pos.their_pieces(us);
@@ -249,7 +249,7 @@ impl SimpleMoveGen {
             let attacks = ROOK_ATTACKS[from as usize][index] & filtered_targets;
 
             if attacks == 0 {
-                continue; // cheap zero-check
+                continue;
             }
 
             for to in bit_iter(attacks) {
@@ -266,26 +266,57 @@ impl SimpleMoveGen {
 
     fn gen_queen_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
         let queens = pos.pieces[piece_index(us, PieceType::Queen)];
+        if queens == 0 {
+            return;
+        }
+
         let targets = pos.their_pieces(us);
         let occ = pos.all_pieces();
 
         for from in bit_iter(queens) {
-            // Rook component
+            // Prefilter: queens can only attack along rank/file/diagonals
+            let filtered_targets = targets
+                & (RANK_MASKS[from as usize]
+                    | FILE_MASKS[from as usize]
+                    | DIAGONAL_MASKS[from as usize]
+                    | ANTIDIAGONAL_MASKS[from as usize]);
+
+            if filtered_targets == 0 {
+                continue; // no possible captures along queen lines
+            }
+
+            // Rook-like component
             let rmask = ROOK_MASKS[from as usize];
             let rindex = occ_to_index(occ & rmask, rmask);
             let rook_attacks = ROOK_ATTACKS[from as usize][rindex];
 
-            // Bishop component
+            // Bishop-like component
             let bmask = BISHOP_MASKS[from as usize];
             let bindex = occ_to_index(occ & bmask, bmask);
             let bishop_attacks = BISHOP_ATTACKS[from as usize][bindex];
 
-            // Combine and mask with targets
-            let attacks = (rook_attacks | bishop_attacks) & targets;
+            // Combine and mask with filtered targets
+            let attacks = (rook_attacks | bishop_attacks) & filtered_targets;
+
+            if attacks == 0 {
+                continue;
+            }
 
             for to in bit_iter(attacks) {
                 moves.push(Move::new(from, to));
             }
+
+            // Rook attacks must be confined to the same rank or file as the origin square.
+            debug_assert_eq!(
+                rook_attacks & !(RANK_MASKS[from as usize] | FILE_MASKS[from as usize]),
+                0
+            );
+            // Bishop attacks must be confined to the same diagonals as the origin square.
+            debug_assert_eq!(
+                bishop_attacks
+                    & !(DIAGONAL_MASKS[from as usize] | ANTIDIAGONAL_MASKS[from as usize]),
+                0
+            );
         }
     }
 
