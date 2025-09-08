@@ -10,8 +10,8 @@ pub enum PieceType {
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Color {
-    White = 0,
-    Black = 1,
+    White,
+    Black,
 }
 
 impl Color {
