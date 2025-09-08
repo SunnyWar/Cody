@@ -22,12 +22,12 @@ impl MoveGenerator for SimpleMoveGen {
         let mut moves = Vec::new();
         let us = pos.side_to_move;
 
-        self.gen_pawn_moves(pos, us, &mut moves);
-        self.gen_knight_moves(pos, us, &mut moves);
-        self.gen_bishop_moves(pos, us, &mut moves);
-        self.gen_rook_moves(pos, us, &mut moves);
-        self.gen_queen_moves(pos, us, &mut moves);
-        self.gen_king_moves(pos, us, &mut moves);
+        self.generate_all_pawn_moves(pos, us, &mut moves);
+        self.generate_all_knight_moves(pos, us, &mut moves);
+        self.generate_all_bishop_moves(pos, us, &mut moves);
+        self.generate_all_rook_moves(pos, us, &mut moves);
+        self.generate_all_queen_moves(pos, us, &mut moves);
+        self.generate_all_king_moves(pos, us, &mut moves);
 
         moves
     }
@@ -93,7 +93,7 @@ impl MoveGenerator for SimpleMoveGen {
 }
 
 impl SimpleMoveGen {
-    fn gen_pawn_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
+    fn generate_all_pawn_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
         let pawns = pos.pieces[piece_index(us, PieceType::Pawn)];
         if pawns == 0 {
             return;
@@ -159,104 +159,98 @@ impl SimpleMoveGen {
                 }
             }
         }
+
+        // TODO - en passant and promotions
     }
 
-    fn gen_knight_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
+    fn generate_all_knight_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
         let knights = pos.pieces[piece_index(us, PieceType::Knight)];
         if knights == 0 {
-            return;
+            return; // early bail
         }
 
-        let targets = pos.their_pieces(us);
+        let not_ours = !pos.our_pieces(us);
 
         for from in bit_iter(knights) {
-            // Knights always land on opposite color from origin — prefilter targets
-            let filtered_targets = targets & !SQUARE_COLOR_MASK[from as usize];
-
-            let attacks = KNIGHT_ATTACKS[from as usize] & filtered_targets;
+            let attacks = KNIGHT_ATTACKS[from as usize] & not_ours;
             if attacks == 0 {
-                continue;
+                continue; // cheap zero-check
             }
 
-            // Type-consistent pushes (Move::new expects u8)
             for to in bit_iter(attacks) {
                 moves.push(Move::new(from, to));
             }
 
+            // Debug: knights never land on same color as origin
             debug_assert_eq!(
-                // check: no same-color squares in knight attacks
                 KNIGHT_ATTACKS[from as usize] & SQUARE_COLOR_MASK[from as usize],
                 0
             );
         }
     }
 
-    fn gen_bishop_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
+    fn generate_all_bishop_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
         let bishops = pos.pieces[piece_index(us, PieceType::Bishop)];
         if bishops == 0 {
-            return;
+            return; // early bail
         }
 
-        let targets = pos.their_pieces(us);
         let occ = pos.all_pieces();
+        let not_ours = !pos.our_pieces(us);
 
         for from in bit_iter(bishops) {
-            // Bishops only attack same-color squares as their origin
-            let filtered_targets = targets & SQUARE_COLOR_MASK[from as usize];
-
-            // Cheap skip if no possible captures on same color
-            if filtered_targets == 0 {
-                continue;
+            // Prefilter: same color complex + diagonals
+            let reachable = not_ours
+                & SQUARE_COLOR_MASK[from as usize]
+                & (DIAGONAL_MASKS[from as usize] | ANTIDIAGONAL_MASKS[from as usize]);
+            if reachable == 0 {
+                continue; // cheap skip
             }
 
             let mask = BISHOP_MASKS[from as usize];
             let index = occ_to_index(occ & mask, mask);
-            let attacks = BISHOP_ATTACKS[from as usize][index] & filtered_targets;
-
+            let attacks = BISHOP_ATTACKS[from as usize][index] & not_ours;
             if attacks == 0 {
-                continue;
+                continue; // cheap zero-check
             }
 
             for to in bit_iter(attacks) {
                 moves.push(Move::new(from, to));
             }
 
-            // check: bishop attacks never cross color complexes
+            // Debug: bishop attacks never cross color complexes
             debug_assert_eq!(attacks & !SQUARE_COLOR_MASK[from as usize], 0);
         }
     }
 
-    fn gen_rook_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
+    fn generate_all_rook_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
         let rooks = pos.pieces[piece_index(us, PieceType::Rook)];
         if rooks == 0 {
-            return;
+            return; // early bail
         }
 
-        let targets = pos.their_pieces(us);
         let occ = pos.all_pieces();
+        let not_ours = !pos.our_pieces(us);
 
         for from in bit_iter(rooks) {
-            // Rooks only attack along same rank or file — prefilter targets
-            let filtered_targets =
-                targets & (RANK_MASKS[from as usize] | FILE_MASKS[from as usize]);
-
-            if filtered_targets == 0 {
-                continue; // no possible captures along rank/file
+            // Prefilter: only rank/file from 'from'
+            let reachable = not_ours & (RANK_MASKS[from as usize] | FILE_MASKS[from as usize]);
+            if reachable == 0 {
+                continue; // no possible moves along rank/file
             }
 
             let mask = ROOK_MASKS[from as usize];
             let index = occ_to_index(occ & mask, mask);
-            let attacks = ROOK_ATTACKS[from as usize][index] & filtered_targets;
-
+            let attacks = ROOK_ATTACKS[from as usize][index] & not_ours;
             if attacks == 0 {
-                continue;
+                continue; // cheap zero-check
             }
 
             for to in bit_iter(attacks) {
                 moves.push(Move::new(from, to));
             }
 
-            // check: rook attacks should be confined to same rank/file
+            // Debug: rook attacks should be confined to same rank/file
             debug_assert_eq!(
                 attacks & !(RANK_MASKS[from as usize] | FILE_MASKS[from as usize]),
                 0
@@ -264,25 +258,24 @@ impl SimpleMoveGen {
         }
     }
 
-    fn gen_queen_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
+    fn generate_all_queen_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
         let queens = pos.pieces[piece_index(us, PieceType::Queen)];
         if queens == 0 {
-            return;
+            return; // early bail
         }
 
-        let targets = pos.their_pieces(us);
         let occ = pos.all_pieces();
+        let not_ours = !pos.our_pieces(us);
 
         for from in bit_iter(queens) {
-            // Prefilter: queens can only attack along rank/file/diagonals
-            let filtered_targets = targets
+            // Prefilter: queens can only move along rank/file/diagonals
+            let reachable = not_ours
                 & (RANK_MASKS[from as usize]
                     | FILE_MASKS[from as usize]
                     | DIAGONAL_MASKS[from as usize]
                     | ANTIDIAGONAL_MASKS[from as usize]);
-
-            if filtered_targets == 0 {
-                continue; // no possible captures along queen lines
+            if reachable == 0 {
+                continue; // no possible moves along queen lines
             }
 
             // Rook-like component
@@ -295,38 +288,8 @@ impl SimpleMoveGen {
             let bindex = occ_to_index(occ & bmask, bmask);
             let bishop_attacks = BISHOP_ATTACKS[from as usize][bindex];
 
-            // Combine and mask with filtered targets
-            let attacks = (rook_attacks | bishop_attacks) & filtered_targets;
-
-            if attacks == 0 {
-                continue;
-            }
-
-            for to in bit_iter(attacks) {
-                moves.push(Move::new(from, to));
-            }
-
-            // Rook attacks must be confined to the same rank or file as the origin square.
-            debug_assert_eq!(
-                rook_attacks & !(RANK_MASKS[from as usize] | FILE_MASKS[from as usize]),
-                0
-            );
-            // Bishop attacks must be confined to the same diagonals as the origin square.
-            debug_assert_eq!(
-                bishop_attacks
-                    & !(DIAGONAL_MASKS[from as usize] | ANTIDIAGONAL_MASKS[from as usize]),
-                0
-            );
-        }
-    }
-
-    fn gen_king_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
-        let king = pos.pieces[piece_index(us, PieceType::King)];
-
-        let targets = pos.their_pieces(us);
-
-        for from in bit_iter(king) {
-            let attacks = KING_ATTACKS[from as usize] & targets;
+            // Combine and mask with not_ours
+            let attacks = (rook_attacks | bishop_attacks) & not_ours;
             if attacks == 0 {
                 continue; // cheap zero-check
             }
@@ -335,7 +298,34 @@ impl SimpleMoveGen {
                 moves.push(Move::new(from, to));
             }
 
-            // check: king attacks must be within one square in any direction
+            // Debug geometry validation
+            debug_assert_eq!(
+                rook_attacks & !(RANK_MASKS[from as usize] | FILE_MASKS[from as usize]),
+                0
+            );
+            debug_assert_eq!(
+                bishop_attacks
+                    & !(DIAGONAL_MASKS[from as usize] | ANTIDIAGONAL_MASKS[from as usize]),
+                0
+            );
+        }
+    }
+
+    fn generate_all_king_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
+        let king = pos.pieces[piece_index(us, PieceType::King)];
+        let not_ours = !pos.our_pieces(us);
+
+        for from in bit_iter(king) {
+            let attacks = KING_ATTACKS[from as usize] & not_ours;
+            if attacks == 0 {
+                continue; // cheap zero-check
+            }
+
+            for to in bit_iter(attacks) {
+                moves.push(Move::new(from, to));
+            }
+
+            // Debug: king attacks must be within one square in any direction
             debug_assert!(
                 attacks & !KING_ATTACKS[from as usize] == 0,
                 "King attack set contains illegal squares"
