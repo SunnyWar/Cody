@@ -34,7 +34,7 @@ impl CodyApi {
 
     fn handle_uci(&self, out: &mut impl Write) {
         writeln!(out, "id name Cody").unwrap();
-        writeln!(out, "id author David").unwrap();
+        writeln!(out, "id author Strong Noodle").unwrap();
         writeln!(out, "uciok").unwrap();
     }
 
