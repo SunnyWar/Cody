@@ -51,21 +51,23 @@ impl CodyApi {
         let pos = Position::default(); // TODO: use parsed position
 
         let start = std::time::Instant::now();
-        let score = self.engine.search(&pos, depth);
+        let (best_move, score) = self.engine.search(&pos, depth);
         let elapsed = start.elapsed().as_secs_f64();
         let nodes = NODE_COUNT.load(Ordering::Relaxed);
         let nps = (nodes as f64 / elapsed) as u64;
 
         writeln!(
             out,
-            "info depth {} nodes {} time {} nps {}",
+            "info depth {} score cp {} nodes {} time {} nps {}",
             depth,
+            score,
             nodes,
             (elapsed * 1000.0) as u64,
             nps
         )
         .unwrap();
-        writeln!(out, "bestmove e2e4").unwrap(); // TODO: actual best move
+
+        writeln!(out, "bestmove {}", best_move).unwrap();
     }
 
     fn handle_bench(&mut self, _cmd: &str, out: &mut impl Write) {
