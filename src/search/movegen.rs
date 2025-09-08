@@ -1,8 +1,9 @@
 // src/search/movegen.rs
 
 use crate::core::bitboard::{
-    BISHOP_ATTACKS, BISHOP_MASKS, FILE_A, FILE_H, KING_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS,
-    ROOK_ATTACKS, ROOK_MASKS, bit_iter, occ_to_index,
+    ANTIDIAGONAL_MASKS, BISHOP_ATTACKS, BISHOP_MASKS, DIAGONAL_MASKS, FILE_A, FILE_H, FILE_MASKS,
+    KING_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS, RANK_MASKS, ROOK_ATTACKS, ROOK_MASKS,
+    SQUARE_COLOR_MASK, bit_iter, occ_to_index,
 };
 use crate::core::mov::Move;
 use crate::core::piece::{Color, PieceType, piece_index};
@@ -38,18 +39,20 @@ impl MoveGenerator for SimpleMoveGen {
         if king_bb == 0 {
             return false;
         }
-        let king_sq = king_bb.trailing_zeros() as usize;
-        let occ = pos.occupancy[2]; // all pieces
 
-        // 1. Knights
-        if KNIGHT_ATTACKS[king_sq] & pos.pieces[piece_index(them, PieceType::Knight)] != 0 {
+        let king_sq = king_bb.trailing_zeros() as usize;
+        let occ = pos.occupancy[2];
+        let king_color_mask = SQUARE_COLOR_MASK[king_sq];
+
+        // 1. Knights (opposite color only)
+        let knight_like = pos.pieces[piece_index(them, PieceType::Knight)] & !king_color_mask;
+        if KNIGHT_ATTACKS[king_sq] & knight_like != 0 {
             return true;
         }
 
-        // 2. Pawns
-        if PAWN_ATTACKS[them as usize][king_sq] & pos.pieces[piece_index(them, PieceType::Pawn)]
-            != 0
-        {
+        // 2. Pawns (same color only)
+        let pawn_like = pos.pieces[piece_index(them, PieceType::Pawn)] & king_color_mask;
+        if PAWN_ATTACKS[them as usize][king_sq] & pawn_like != 0 {
             return true;
         }
 
@@ -58,9 +61,10 @@ impl MoveGenerator for SimpleMoveGen {
             return true;
         }
 
-        // 4. Rook/Queen
-        let rook_like = pos.pieces[piece_index(them, PieceType::Rook)]
-            | pos.pieces[piece_index(them, PieceType::Queen)];
+        // 4. Rook/Queen (same rank/file only)
+        let rook_like = (pos.pieces[piece_index(them, PieceType::Rook)]
+            | pos.pieces[piece_index(them, PieceType::Queen)])
+            & (RANK_MASKS[king_sq] | FILE_MASKS[king_sq]);
         if rook_like != 0 {
             let rmask = ROOK_MASKS[king_sq];
             let rindex = occ_to_index(occ & rmask, rmask);
@@ -69,9 +73,11 @@ impl MoveGenerator for SimpleMoveGen {
             }
         }
 
-        // 5. Bishop/Queen
-        let bishop_like = pos.pieces[piece_index(them, PieceType::Bishop)]
-            | pos.pieces[piece_index(them, PieceType::Queen)];
+        // 5. Bishop/Queen (same color + same diagonal/antidiagonal)
+        let bishop_like = (pos.pieces[piece_index(them, PieceType::Bishop)]
+            | pos.pieces[piece_index(them, PieceType::Queen)])
+            & king_color_mask
+            & (DIAGONAL_MASKS[king_sq] | ANTIDIAGONAL_MASKS[king_sq]);
         if bishop_like != 0 {
             let bmask = BISHOP_MASKS[king_sq];
             let bindex = occ_to_index(occ & bmask, bmask);
