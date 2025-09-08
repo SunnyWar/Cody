@@ -1,6 +1,6 @@
 use crate::core::bitboard::bit;
 use crate::core::mov::Move;
-use crate::core::piece::PieceType;
+use crate::core::piece::{Color, PieceType};
 use crate::core::square::Square;
 
 // Flags
@@ -21,7 +21,7 @@ pub struct Position {
     pub occupancy: [u64; 3],
 
     /// 0 = white, 1 = black
-    pub side_to_move: u8,
+    pub side_to_move: Color,
 
     /// Castling rights: bit 0 = white kingside, bit 1 = white queenside,
     /// bit 2 = black kingside, bit 3 = black queenside
@@ -53,8 +53,8 @@ impl Position {
         self.pieces.iter().fold(0u64, |acc, &bb| acc | bb)
     }
 
-    pub fn our_pieces(&self, us: u8) -> u64 {
-        let start = if us == 0 { 0 } else { 6 };
+    pub fn our_pieces(&self, us: Color) -> u64 {
+        let start = if us == Color::White { 0 } else { 6 };
         let mut bb = 0u64;
         for i in 0..6 {
             bb |= self.pieces[start + i];
@@ -62,8 +62,8 @@ impl Position {
         bb
     }
 
-    pub fn their_pieces(&self, us: u8) -> u64 {
-        self.our_pieces(us ^ 1) // flip side: 0→1, 1→0
+    pub fn their_pieces(&self, us: Color) -> u64 {
+        self.our_pieces(us.opposite()) // flip side: 0→1, 1→0
     }
 
     #[inline]
@@ -79,7 +79,7 @@ impl Position {
         Self {
             pieces: [0; 12],
             occupancy: [0; 3],
-            side_to_move: 0,
+            side_to_move: Color::White,
             castling_rights: 0,
             ep_square: 64,
             halfmove_clock: 0,
@@ -124,7 +124,11 @@ impl Position {
             }
         }
 
-        pos.side_to_move = if side_part == "w" { 0 } else { 1 };
+        pos.side_to_move = if side_part == "w" {
+            Color::White
+        } else {
+            Color::Black
+        };
 
         pos.castling_rights = 0;
         if castling_part.contains('K') {
@@ -187,7 +191,7 @@ impl Position {
         println!("  a b c d e f g h");
         println!(
             "Side to move: {}",
-            if self.side_to_move == 0 {
+            if self.side_to_move == Color::White {
                 "White"
             } else {
                 "Black"
@@ -202,7 +206,7 @@ impl Position {
         *out = *self;
 
         let us = self.side_to_move;
-        let them = us ^ 1;
+        let them = us.opposite();
 
         // 1. Remove moving piece from `from`
         let piece_index = out
@@ -217,7 +221,10 @@ impl Position {
         // 2. Handle captures (including en passant)
         if mv.flags & FLAG_CAPTURE != 0 {
             let capture_sq = if mv.flags & FLAG_EN_PASSANT != 0 {
-                if us == 0 { mv.to - 8 } else { mv.to + 8 }
+                match us {
+                    Color::White => mv.to - 8, // White captures en passant: captured pawn is behind
+                    Color::Black => mv.to + 8, // Black captures en passant: captured pawn is ahead
+                }
             } else {
                 mv.to
             };
@@ -233,10 +240,16 @@ impl Position {
 
         // 3. Handle castling rook move
         if mv.flags & FLAG_KINGSIDE_CASTLE != 0 {
-            let (rook_from, rook_to) = if us == 0 { (7, 5) } else { (63, 61) };
+            let (rook_from, rook_to) = match us {
+                Color::White => (7, 5),   // White's rook: h1 → f1
+                Color::Black => (63, 61), // Black's rook: h8 → f8
+            };
             out.move_piece(rook_from, rook_to);
         } else if mv.flags & FLAG_QUEENSIDE_CASTLE != 0 {
-            let (rook_from, rook_to) = if us == 0 { (0, 3) } else { (56, 59) };
+            let (rook_from, rook_to) = match us {
+                Color::White => (0, 3),   // White's rook: a1 → d1
+                Color::Black => (56, 59), // Black's rook: a8 → d8
+            };
             out.move_piece(rook_from, rook_to);
         }
 
@@ -258,9 +271,12 @@ impl Position {
 
         // 7. Update en passant square
         if self.is_pawn_double_push(piece_index, mv.from, mv.to) {
-            out.ep_square = if us == 0 { mv.from + 8 } else { mv.from - 8 };
+            out.ep_square = match us {
+                Color::White => mv.from + 8, // White double push: EP square is ahead
+                Color::Black => mv.from - 8, // Black double push: EP square is behind
+            };
         } else {
-            out.ep_square = 64;
+            out.ep_square = 64; // No EP available
         }
 
         // 8. Update halfmove clock
@@ -271,7 +287,7 @@ impl Position {
         }
 
         // 9. Update fullmove number
-        if us == 1 {
+        if us == Color::Black {
             out.fullmove_number += 1;
         }
 
@@ -386,7 +402,11 @@ impl Position {
 
         // 2. Side to move
         fen.push(' ');
-        fen.push(if self.side_to_move == 0 { 'w' } else { 'b' });
+        fen.push(if self.side_to_move == Color::White {
+            'w'
+        } else {
+            'b'
+        });
 
         // 3. Castling rights
         fen.push(' ');
