@@ -1,3 +1,4 @@
+use crate::core::mov::Move;
 use crate::core::{arena::Arena, position::Position};
 use crate::search::evaluator::Evaluator;
 use crate::search::movegen::MoveGenerator;
@@ -22,11 +23,42 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
         }
     }
 
-    pub fn search(&mut self, root: &Position, depth: usize) -> i32 {
+    pub fn search(&mut self, root: &Position, depth: usize) -> (Move, i32) {
         NODE_COUNT.store(0, Ordering::Relaxed);
         self.arena.reset();
         self.arena.get_mut(0).position.copy_from(root);
-        self.search_node(0, depth)
+
+        let moves = {
+            let (parent, _) = self.arena.get_pair_mut(0, 1);
+            self.movegen.generate_moves(&parent.position)
+        };
+
+        if moves.is_empty() {
+            let score = if self.movegen.in_check(root) {
+                -MATE_SCORE
+            } else {
+                0
+            };
+            return (Move::null(), score);
+        }
+
+        let mut best_score = i32::MIN;
+        let mut best_move = Move::null();
+
+        for m in moves {
+            {
+                let (parent, child) = self.arena.get_pair_mut(0, 1);
+                parent.position.apply_move_into(&m, &mut child.position);
+            }
+            let score = -self.search_node(1, depth - 1);
+
+            if score > best_score {
+                best_score = score;
+                best_move = m;
+            }
+        }
+
+        (best_move, best_score)
     }
 
     fn search_node(&mut self, ply: usize, remaining: usize) -> i32 {
