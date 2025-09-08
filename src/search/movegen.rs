@@ -228,17 +228,39 @@ impl SimpleMoveGen {
 
     fn gen_rook_moves(&self, pos: &Position, us: Color, moves: &mut Vec<Move>) {
         let rooks = pos.pieces[piece_index(us, PieceType::Rook)];
+        if rooks == 0 {
+            return; // early bail
+        }
+
         let targets = pos.their_pieces(us);
         let occ = pos.all_pieces();
 
         for from in bit_iter(rooks) {
+            // Rooks only attack along same rank or file — prefilter targets
+            let filtered_targets =
+                targets & (RANK_MASKS[from as usize] | FILE_MASKS[from as usize]);
+
+            if filtered_targets == 0 {
+                continue; // no possible captures along rank/file
+            }
+
             let mask = ROOK_MASKS[from as usize];
             let index = occ_to_index(occ & mask, mask);
-            let attacks = ROOK_ATTACKS[from as usize][index] & targets;
+            let attacks = ROOK_ATTACKS[from as usize][index] & filtered_targets;
+
+            if attacks == 0 {
+                continue; // cheap zero-check
+            }
 
             for to in bit_iter(attacks) {
                 moves.push(Move::new(from, to));
             }
+
+            // check: rook attacks should be confined to same rank/file
+            debug_assert_eq!(
+                attacks & !(RANK_MASKS[from as usize] | FILE_MASKS[from as usize]),
+                0
+            );
         }
     }
 
