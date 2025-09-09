@@ -1,4 +1,4 @@
-use cody::{Engine, MaterialEvaluator, NODE_COUNT, Position, SimpleMoveGen, TEST_POSITIONS};
+use cody::{Engine, MaterialEvaluator, NODE_COUNT, Position, SimpleMoveGen, TEST_CASES};
 use std::io::{self, BufRead, Write};
 use std::sync::atomic::Ordering;
 
@@ -127,11 +127,11 @@ impl CodyApi {
         let mut total_nodes = 0u64;
         let start_all = std::time::Instant::now();
 
-        for pos in TEST_POSITIONS.iter() {
+        for pos in TEST_CASES.iter() {
             NODE_COUNT.store(0, Ordering::Relaxed);
 
             let start = std::time::Instant::now();
-            let _score = self.engine.search(pos, depth);
+            let _score = self.engine.search(&pos.position(), depth);
             let elapsed = start.elapsed().as_secs_f64();
             let nodes = NODE_COUNT.load(Ordering::Relaxed);
             total_nodes += nodes;
