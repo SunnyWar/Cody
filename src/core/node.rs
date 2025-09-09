@@ -1,3 +1,5 @@
+// src/core/node.rs
+
 use crate::core::position::Position;
 
 #[derive(Clone, Default)]

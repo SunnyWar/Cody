@@ -20,14 +20,14 @@ pub const RANK_6_MASK: u64 = 0x0000FF0000000000;
 pub const RANK_7_MASK: u64 = 0x00FF000000000000;
 pub const RANK_8_MASK: u64 = 0xFF00000000000000;
 
-pub const NORTH: i32 = 8;
-pub const SOUTH: i32 = -8;
-pub const NORTH_EAST: i32 = 9;
-pub const NORTH_WEST: i32 = 7;
-pub const SOUTH_EAST: i32 = -7;
-pub const SOUTH_WEST: i32 = -9;
-pub const DOUBLE_NORTH: i32 = 16;
-pub const DOUBLE_SOUTH: i32 = -16;
+pub const NORTH: i8 = 8;
+pub const SOUTH: i8 = -8;
+pub const NORTH_EAST: i8 = 9;
+pub const NORTH_WEST: i8 = 7;
+pub const SOUTH_EAST: i8 = -7;
+pub const SOUTH_WEST: i8 = -9;
+pub const DOUBLE_NORTH: i8 = 16;
+pub const DOUBLE_SOUTH: i8 = -16;
 
 // File masks to prevent wrap-around when shifting
 pub const NOT_FILE_A: u64 = 0xfefefefefefefefe;

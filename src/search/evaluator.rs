@@ -1,5 +1,9 @@
 // src/search/evaluator.rs
-use crate::core::position::Position;
+
+use crate::core::{
+    piece::{Color, Piece, PieceKind},
+    position::Position,
+};
 
 /// Piece values in centipawns
 const PIECE_VALUES: [i32; 6] = [
@@ -23,14 +27,32 @@ impl Evaluator for MaterialEvaluator {
     fn evaluate(&self, pos: &Position) -> i32 {
         let mut score = 0;
 
-        // White pieces: indices 0..6
-        for (i, bb) in pos.pieces[0..6].iter().enumerate() {
-            score += PIECE_VALUES[i] * bb.count_ones() as i32;
+        // White pieces
+        for kind in [
+            PieceKind::Pawn,
+            PieceKind::Knight,
+            PieceKind::Bishop,
+            PieceKind::Rook,
+            PieceKind::Queen,
+            PieceKind::King,
+        ] {
+            let piece = Piece::from_parts(Color::White, Some(kind));
+            let bb = pos.pieces.get(piece);
+            score += PIECE_VALUES[kind as usize] * bb.0.count_ones() as i32;
         }
 
-        // Black pieces: indices 6..12
-        for (i, bb) in pos.pieces[6..12].iter().enumerate() {
-            score -= PIECE_VALUES[i] * bb.count_ones() as i32;
+        // Black pieces
+        for kind in [
+            PieceKind::Pawn,
+            PieceKind::Knight,
+            PieceKind::Bishop,
+            PieceKind::Rook,
+            PieceKind::Queen,
+            PieceKind::King,
+        ] {
+            let piece = Piece::from_parts(Color::Black, Some(kind));
+            let bb = pos.pieces.get(piece);
+            score -= PIECE_VALUES[kind as usize] * bb.0.count_ones() as i32;
         }
 
         score
