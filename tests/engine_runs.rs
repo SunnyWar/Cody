@@ -1,11 +1,20 @@
 // tests/engine_runs.rs
+use cody::{Engine, MaterialEvaluator, SimpleMoveGen, TEST_CASES};
 
-use cody::{Engine, MaterialEvaluator, SimpleMoveGen, TEST_POSITIONS};
-
-#[test]
-fn engine_runs_on_all_positions() {
-    let mut engine = Engine::new(1024, SimpleMoveGen, MaterialEvaluator);
-    for pos in TEST_POSITIONS.iter() {
-        let _score = engine.search(pos, 1);
+macro_rules! gen_tests {
+    ($($name:ident: $idx:expr),* $(,)?) => {
+        $(
+            #[test]
+            fn $name() {
+                let case = &TEST_CASES[$idx];
+                let mut engine = Engine::new(1024, SimpleMoveGen, MaterialEvaluator);
+                let (_, score) = engine.search(&case.position(), 1);
+                assert_eq!(score, case.expected_score, "FEN: {}", case.fen);
+                // later: assert_eq!(best_move, case.expected_move);
+            }
+        )*
     }
 }
+
+#[cfg(not(rust_analyzer))]
+include!(concat!(env!("OUT_DIR"), "/generated_tests.rs"));

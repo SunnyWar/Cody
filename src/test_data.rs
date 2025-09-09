@@ -1,6 +1,32 @@
 use crate::core::position::Position;
 use once_cell::sync::Lazy;
 
+pub struct TestCase {
+    pub fen: &'static str,
+    pub expected_score: i32,
+    pub expected_move: &'static str,
+}
+
+impl TestCase {
+    pub fn position(&self) -> Position {
+        Position::from_fen(self.fen)
+    }
+}
+pub static TEST_CASES: Lazy<Vec<TestCase>> = Lazy::new(|| {
+    vec![
+        TestCase {
+            fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            expected_score: 0,
+            expected_move: "e2e4",
+        },
+        TestCase {
+            fen: "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 10",
+            expected_score: 15,
+            expected_move: "e5f6",
+        },
+    ]
+});
+
 pub static TEST_POSITIONS: Lazy<Vec<Position>> = Lazy::new(|| {
     vec![
         Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
