@@ -1,6 +1,6 @@
 // src/api.rs
 
-use cody::{Engine, MaterialEvaluator, NODE_COUNT, Position, SimpleMoveGen, TEST_CASES};
+use cody::{Engine, MaterialEvaluator, NODE_COUNT, Position, SimpleMoveGen, TEST_CASES, TestCase};
 use std::io::{self, BufRead, Write};
 use std::sync::atomic::Ordering;
 
@@ -126,10 +126,17 @@ impl CodyApi {
     fn handle_bench(&mut self, _cmd: &str, out: &mut impl Write) {
         let depth = 4;
 
+        // Clone into a Vec so we can sort
+        let mut cases: Vec<&TestCase> = TEST_CASES.iter().collect();
+        cases.sort_by(|a, b| a.name.cmp(b.name)); // alphabetical by name
+
         let mut total_nodes = 0u64;
         let start_all = std::time::Instant::now();
 
-        for pos in TEST_CASES.iter() {
+        // Precompute width for alignment
+        let name_width = cases.iter().map(|tc| tc.name.len()).max().unwrap_or(0);
+
+        for pos in cases {
             NODE_COUNT.store(0, Ordering::Relaxed);
 
             let start = std::time::Instant::now();
@@ -141,10 +148,12 @@ impl CodyApi {
 
             writeln!(
                 out,
-                "benchpos nodes {} time {:.0} nps {}",
+                "{:<width$}  nodes {:>10}  time {:>5}  nps {:>10}",
+                pos.name,
                 nodes,
-                elapsed * 1000.0,
-                nps
+                format!("{:.0}", elapsed * 1000.0),
+                nps,
+                width = name_width
             )
             .unwrap();
             out.flush().unwrap();
