@@ -25,6 +25,5 @@ macro_rules! gen_tests {
     }
 }
 
-
 #[cfg(not(rust_analyzer))]
 include!(concat!(env!("OUT_DIR"), "/generated_tests.rs"));

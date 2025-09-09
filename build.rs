@@ -1,7 +1,7 @@
+use regex::Regex;
 use std::env;
 use std::fs;
 use std::path::Path;
-use regex::Regex;
 
 fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();

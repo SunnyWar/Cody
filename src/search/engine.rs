@@ -2,7 +2,7 @@ use crate::core::mov::Move;
 use crate::core::{arena::Arena, position::Position};
 use crate::search::evaluator::Evaluator;
 use crate::search::movegen::MoveGenerator;
-
+use rand::prelude::IndexedRandom;
 use std::sync::atomic::{AtomicU64, Ordering};
 pub static NODE_COUNT: AtomicU64 = AtomicU64::new(0);
 
@@ -43,7 +43,7 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
         }
 
         let mut best_score = i32::MIN;
-        let mut best_move = Move::null();
+        let mut best_moves = Vec::new();
 
         for m in moves {
             {
@@ -54,11 +54,17 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
 
             if score > best_score {
                 best_score = score;
-                best_move = m;
+                best_moves.clear();
+                best_moves.push(m);
+            } else if score == best_score {
+                best_moves.push(m);
             }
         }
 
-        (best_move, best_score)
+        let mut rng = rand::rng();
+        let chosen_move = *best_moves.choose(&mut rng).unwrap_or(&Move::null());
+
+        (chosen_move, best_score)
     }
 
     fn search_node(&mut self, ply: usize, remaining: usize) -> i32 {
