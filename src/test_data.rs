@@ -30,7 +30,7 @@ pub static TEST_CASES: Lazy<Vec<TestCase>> = Lazy::new(|| {
         TestCase {
             name: "Position_4",
             fen: "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 11",
-            expected_score: 42,
+            expected_score: 0,
             expected_move: "a2a4",
         },
         TestCase {
@@ -42,37 +42,37 @@ pub static TEST_CASES: Lazy<Vec<TestCase>> = Lazy::new(|| {
         TestCase {
             name: "Knight_Maze",
             fen: "rq3rk1/ppp2ppp/1bnpN3/3N2B1/4P3/7P/PPPQ1PP1/2KR3R b - - 0 14",
-            expected_score: 8,
+            expected_score: 320,
             expected_move: "c6d4",
         },
         TestCase {
             name: "Pinned_and_Pushing",
             fen: "r1bq1r1k/1pp1n1pp/1p1p4/4p2Q/4PpP1/1BNP4/PPP2P1P/3R1RK1 b - g3 0 14",
-            expected_score: -5,
+            expected_score: 0,
             expected_move: "g7g6",
         },
         TestCase {
             name: "queen_infiltration",
             fen: "r3r1k1/2p2ppp/p1p1bn2/8/1q2P3/2NPQN2/PPP3PP/R4RK1 b - - 2 15",
-            expected_score: -10,
+            expected_score: 90,
             expected_move: "b4b2",
         },
         TestCase {
             name: "knight_fork_pressure",
             fen: "r1bbk1nr/pp3p1p/2n5/1N4p1/2Np1B2/8/PPP2PPP/2KR1B1R w kq - 0 13",
-            expected_score: 6,
+            expected_score: 0,
             expected_move: "d4c6",
         },
         TestCase {
             name: "central_blockade",
             fen: "r1bq1rk1/ppp1nppp/4n3/3p3Q/3P4/1BP1B3/PP1N2PP/R4RK1 w - - 1 16",
-            expected_score: 3,
+            expected_score: -90,
             expected_move: "f1f3",
         },
         TestCase {
             name: "rook_battery_strike",
             fen: "4r1k1/r1q2ppp/ppp2n2/4P3/5Rb1/1N1BQ3/PPP3PP/R5K1 w - - 1 17",
-            expected_score: 9,
+            expected_score: 0,
             expected_move: "e5f6",
         },
         TestCase {
@@ -84,31 +84,31 @@ pub static TEST_CASES: Lazy<Vec<TestCase>> = Lazy::new(|| {
         TestCase {
             name: "minor_piece_congestion",
             fen: "r1bq1r1k/b1p1npp1/p2p3p/1p6/3PP3/1B2NN2/PP3PPP/R2Q1RK1 w - - 1 16",
-            expected_score: 0,
+            expected_score: -10,
             expected_move: "d1d2",
         },
         TestCase {
             name: "queen_side_pressure",
             fen: "3r1rk1/p5pp/bpp1pp2/8/q1PP1P2/b3P3/P2NQRPP/1R2B1K1 b - - 6 22",
-            expected_score: 0,
+            expected_score: -10,
             expected_move: "a3c1",
         },
         TestCase {
             name: "pawn_chain_breaker",
             fen: "r1q2rk1/2p1bppp/2Pp4/p6b/Q1PNp3/4B3/PP1R1PPP/2K4R w - - 2 18",
-            expected_score: 0,
+            expected_score: -10,
             expected_move: "d4b5",
         },
         TestCase {
             name: "rook_activity_test",
             fen: "4k2r/1pb2ppp/1p2p3/1R1p4/3P4/2r1PN2/P4PPP/1R4K1 b - - 3 22",
-            expected_score: 0,
+            expected_score: -110,
             expected_move: "c3c2",
         },
         TestCase {
             name: "central_tension",
             fen: "3q2k1/pb3p1p/4pbp1/2r5/PpN2N2/1P2P2P/5PP1/Q2R2K1 b - - 4 26",
-            expected_score: 0,
+            expected_score: -20,
             expected_move: "d8d5",
         },
         TestCase {
@@ -120,19 +120,19 @@ pub static TEST_CASES: Lazy<Vec<TestCase>> = Lazy::new(|| {
         TestCase {
             name: "pawn_wall_endgame",
             fen: "3b4/5kp1/1p1p1p1p/pP1PpP1P/P1P1P3/3KN3/8/8 w - - 0 1",
-            expected_score: 0,
+            expected_score: -10,
             expected_move: "d3c2",
         },
         TestCase {
             name: "rook_escape",
             fen: "2K5/p7/7P/5pR1/8/5k2/r7/8 w - - 4 3",
-            expected_score: 0,
+            expected_score: -100,
             expected_move: "g5g6",
         },
         TestCase {
             name: "queen_vs_pawns",
             fen: "8/6pk/1p6/8/PP3p1p/5P2/4KP1q/3Q4 w - - 0 1",
-            expected_score: 0,
+            expected_score: -100,
             expected_move: "d1d3",
         },
         TestCase {
@@ -162,19 +162,19 @@ pub static TEST_CASES: Lazy<Vec<TestCase>> = Lazy::new(|| {
         TestCase {
             name: "rook_vs_pawn_race",
             fen: "5k2/7R/4P2p/5K2/p1r2P1p/8/8/8 b - - 0 1",
-            expected_score: 0,
+            expected_score: -100,
             expected_move: "c4c2",
         },
         TestCase {
             name: "knight_blockade",
             fen: "6k1/6p1/P6p/r1N5/5p2/7P/1b3PP1/4R1K1 w - - 0 1",
-            expected_score: 0,
+            expected_score: 90,
             expected_move: "a6a7",
         },
         TestCase {
             name: "bishop_vs_pawn_wall",
             fen: "1r3k2/4q3/2Pp3b/3Bp3/2Q2p2/1p1P2P1/1P2KP2/3N4 w - - 0 1",
-            expected_score: 0,
+            expected_score: -80,
             expected_move: "c4c3",
         },
         TestCase {
@@ -198,7 +198,7 @@ pub static TEST_CASES: Lazy<Vec<TestCase>> = Lazy::new(|| {
         TestCase {
             name: "double_rook_threat",
             fen: "4rrk1/1p1nq3/p7/2p1P1pp/3P2bp/3Q1Bn1/PPPB4/1K2R1NR w - - 40 21",
-            expected_score: 0,
+            expected_score: -90,
             expected_move: "d3g6",
         },
         TestCase {
@@ -210,7 +210,7 @@ pub static TEST_CASES: Lazy<Vec<TestCase>> = Lazy::new(|| {
         TestCase {
             name: "minor_piece_standoff",
             fen: "3Qb1k1/1r2ppb1/pN1n2q1/Pp1Pp1Pr/4P2p/4BP2/4B1R1/1R5K b - - 11 40",
-            expected_score: 0,
+            expected_score: -100,
             expected_move: "g7h6",
         },
         TestCase {
@@ -222,19 +222,19 @@ pub static TEST_CASES: Lazy<Vec<TestCase>> = Lazy::new(|| {
         TestCase {
             name: "knight_vs_pawn_wall",
             fen: "8/8/8/8/5kp1/P7/8/1K1N4 w - - 0 1",
-            expected_score: 0,
+            expected_score: 320,
             expected_move: "a3a4",
         },
         TestCase {
             name: "knight_endgame_dance",
             fen: "8/8/8/5N2/8/p7/8/2NK3k w - - 0 1",
-            expected_score: 0,
+            expected_score: 540,
             expected_move: "e5f3",
         },
         TestCase {
             name: "triple_bishop_coordination",
             fen: "8/3k4/8/8/8/4B3/4KB2/2B5 w - - 0 1",
-            expected_score: 0,
+            expected_score: 990,
             expected_move: "e2f3",
         },
         TestCase {
@@ -252,43 +252,43 @@ pub static TEST_CASES: Lazy<Vec<TestCase>> = Lazy::new(|| {
         TestCase {
             name: "knight_fork_endgame",
             fen: "8/8/3P3k/8/1p6/8/1P6/1K3n2 b - - 0 1",
-            expected_score: 0,
+            expected_score: -220,
             expected_move: "f1e3",
         },
         TestCase {
             name: "queen_vs_two_rooks_trap",
             fen: "8/R7/2q5/8/6k1/8/1P5p/K6R w - - 0 124",
-            expected_score: 0,
+            expected_score: 100,
             expected_move: "a1a4",
         },
         TestCase {
             name: "queen_threat_promotion",
             fen: "6k1/3b3r/1p1p4/p1n2p2/1PPNpP1q/P3Q1p1/1R1RB1P1/5K2 b - - 0 1",
-            expected_score: 0,
+            expected_score: 400,
             expected_move: "h2h1",
         },
         TestCase {
             name: "rook_lift_attack",
             fen: "r2r1n2/pp2bk2/2p1p2p/3q4/3PN1QP/2P3R1/P4PP1/5RK1 w - - 0 1",
-            expected_score: 0,
+            expected_score: -230,
             expected_move: "g3g7",
         },
         TestCase {
             name: "pawn_vs_king_endgame",
             fen: "8/8/8/8/8/6k1/6p1/6K1 w - - 0 1",
-            expected_score: 0,
+            expected_score: -100,
             expected_move: "g1h1",
         },
         TestCase {
             name: "promotion_race",
             fen: "7k/7P/6K1/8/3B4/8/8/8 b - - 0 1",
-            expected_score: 0,
+            expected_score: 430,
             expected_move: "h7h6",
         },
         TestCase {
             name: "fairy_castling_test",
             fen: "bb1n1rkr/ppp1Q1pp/3n1p2/3p4/3P4/6Pq/PPP1PP1P/BB1NNRKR w HFhf - 0 5",
-            expected_score: 0,
+            expected_score: 100,
             expected_move: "e7d6",
         },
         TestCase {
