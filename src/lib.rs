@@ -1,3 +1,5 @@
+// src/lib.rs
+
 pub mod core;
 pub mod search;
 pub mod test_data;

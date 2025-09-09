@@ -1,3 +1,5 @@
+// src/search/engine.rs
+
 use crate::core::mov::Move;
 use crate::core::{arena::Arena, position::Position};
 use crate::search::evaluator::Evaluator;
@@ -84,10 +86,8 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
             if self.movegen.in_check(pos) {
                 // Checkmate: losing sooner is worse
                 return -MATE_SCORE + ply as i32;
-            } else {
-                // Stalemate
-                return 0;
             }
+            return 0;
         }
 
         let mut best_score = i32::MIN;

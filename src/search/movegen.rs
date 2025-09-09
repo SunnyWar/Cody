@@ -4,11 +4,14 @@ use crate::core::bitboard::{
     ANTIDIAGONAL_MASKS, BISHOP_ATTACKS, BISHOP_MASKS, DIAGONAL_MASKS, DOUBLE_NORTH, DOUBLE_SOUTH,
     FILE_A, FILE_H, FILE_MASKS, KING_ATTACKS, KNIGHT_ATTACKS, NORTH, NORTH_EAST, NORTH_WEST,
     PAWN_ATTACKS, RANK_4_MASK, RANK_5_MASK, RANK_MASKS, ROOK_ATTACKS, ROOK_MASKS, SOUTH,
-    SOUTH_EAST, SOUTH_WEST, SQUARE_COLOR_MASK, bit_iter, occ_to_index,
+    SOUTH_EAST, SOUTH_WEST, SQUARE_COLOR_MASK, occ_to_index,
+};
+use crate::core::bitboardmask::{
+    BitBoardMask, bishop_attacks_mask, king_attacks_mask, knight_attacks_mask, rook_attacks_mask,
 };
 use crate::core::mov::Move;
-use crate::core::piece::{Color, PieceType, piece_index};
-use crate::core::position::Position;
+use crate::core::piece::{Color, Piece, PieceKind};
+use crate::core::position::{OccupancyKind, Position};
 
 pub struct SimpleMoveGen;
 
@@ -19,8 +22,8 @@ pub trait MoveGenerator {
 
 struct MoveGenContext {
     us: Color,
-    occ: u64,
-    not_ours: u64,
+    occ: BitBoardMask,
+    not_ours: BitBoardMask,
 }
 
 impl MoveGenerator for SimpleMoveGen {
@@ -46,54 +49,73 @@ impl MoveGenerator for SimpleMoveGen {
         let us = pos.side_to_move;
         let them = us.opposite();
 
-        let king_bb = pos.pieces[piece_index(us, PieceType::King)];
-        if king_bb == 0 {
+        // Get our king bitboard
+        let king_bb = pos.pieces.get(Piece::from_parts(us, Some(PieceKind::King)));
+        if king_bb.is_empty() {
             return false;
         }
 
-        let king_sq = king_bb.trailing_zeros() as usize;
-        let occ = pos.occupancy[2];
-        let king_color_mask = SQUARE_COLOR_MASK[king_sq];
+        let king_sq = king_bb.0.trailing_zeros() as usize;
+        let occ = pos.occupancy[OccupancyKind::Both as usize]; // could enum-wrap this too
+        let king_color_mask = BitBoardMask(SQUARE_COLOR_MASK[king_sq]);
 
         // 1. Knights (opposite color only)
-        let knight_like = pos.pieces[piece_index(them, PieceType::Knight)] & !king_color_mask;
-        if knight_like != 0 && (KNIGHT_ATTACKS[king_sq] & knight_like) != 0 {
+        let knight_like = pos
+            .pieces
+            .get(Piece::from_parts(them, Some(PieceKind::Knight)))
+            & !king_color_mask;
+        if !knight_like.is_empty()
+            && !(BitBoardMask(KNIGHT_ATTACKS[king_sq]) & knight_like).is_empty()
+        {
             return true;
         }
 
         // 2. Pawns (same color only)
-        let pawn_like = pos.pieces[piece_index(them, PieceType::Pawn)] & king_color_mask;
-        if pawn_like != 0 && (PAWN_ATTACKS[them as usize][king_sq] & pawn_like) != 0 {
+        let pawn_like = pos
+            .pieces
+            .get(Piece::from_parts(them, Some(PieceKind::Pawn)))
+            & king_color_mask;
+        if !pawn_like.is_empty() && (PAWN_ATTACKS[them as usize][king_sq] & pawn_like.0) != 0 {
             return true;
         }
 
         // 3. Opponent king
-        let opp_king = pos.pieces[piece_index(them, PieceType::King)];
-        if opp_king != 0 && (KING_ATTACKS[king_sq] & opp_king) != 0 {
+        let opp_king = pos
+            .pieces
+            .get(Piece::from_parts(them, Some(PieceKind::King)));
+        if !opp_king.is_empty() && (KING_ATTACKS[king_sq] & opp_king.0) != 0 {
             return true;
         }
 
         // 4. Rook/Queen (same rank/file only)
-        let rook_like = (pos.pieces[piece_index(them, PieceType::Rook)]
-            | pos.pieces[piece_index(them, PieceType::Queen)])
-            & (RANK_MASKS[king_sq] | FILE_MASKS[king_sq]);
-        if rook_like != 0 {
+        let rook_like = (pos
+            .pieces
+            .get(Piece::from_parts(them, Some(PieceKind::Rook)))
+            | pos
+                .pieces
+                .get(Piece::from_parts(them, Some(PieceKind::Queen))))
+            & BitBoardMask(RANK_MASKS[king_sq] | FILE_MASKS[king_sq]);
+        if !rook_like.is_empty() {
             let rmask = ROOK_MASKS[king_sq];
             let rindex = occ_to_index(occ & rmask, rmask);
-            if (ROOK_ATTACKS[king_sq][rindex] & rook_like) != 0 {
+            if (ROOK_ATTACKS[king_sq][rindex] & rook_like.0) != 0 {
                 return true;
             }
         }
 
         // 5. Bishop/Queen (same color + same diagonal/antidiagonal)
-        let bishop_like = (pos.pieces[piece_index(them, PieceType::Bishop)]
-            | pos.pieces[piece_index(them, PieceType::Queen)])
+        let bishop_like = (pos
+            .pieces
+            .get(Piece::from_parts(them, Some(PieceKind::Bishop)))
+            | pos
+                .pieces
+                .get(Piece::from_parts(them, Some(PieceKind::Queen))))
             & king_color_mask
-            & (DIAGONAL_MASKS[king_sq] | ANTIDIAGONAL_MASKS[king_sq]);
-        if bishop_like != 0 {
+            & BitBoardMask(DIAGONAL_MASKS[king_sq] | ANTIDIAGONAL_MASKS[king_sq]);
+        if !bishop_like.is_empty() {
             let bmask = BISHOP_MASKS[king_sq];
             let bindex = occ_to_index(occ & bmask, bmask);
-            if (BISHOP_ATTACKS[king_sq][bindex] & bishop_like) != 0 {
+            if (BISHOP_ATTACKS[king_sq][bindex] & bishop_like.0) != 0 {
                 return true;
             }
         }
@@ -104,73 +126,59 @@ impl MoveGenerator for SimpleMoveGen {
 
 impl SimpleMoveGen {
     fn generate_all_pawn_moves(&self, pos: &Position, ctx: &MoveGenContext, moves: &mut Vec<Move>) {
-        let pawns = pos.pieces[piece_index(ctx.us, PieceType::Pawn)];
-        if pawns == 0 {
+        let pawns = pos
+            .pieces
+            .get(Piece::from_parts(ctx.us, Some(PieceKind::Pawn)));
+        if pawns.is_empty() {
             return;
         }
 
         let empty = !ctx.occ;
-        let their_pieces = pos.their_pieces(ctx.us);
+        let their_pieces = pos.their_pieces(ctx.us); // BitBoardMask
 
         if ctx.us == Color::White {
             let single_push = (pawns << NORTH) & empty;
-            if single_push != 0 {
-                for to in bit_iter(single_push) {
-                    moves.push(Move::new((to as i32 - NORTH) as u8, to));
-                }
+            for to in single_push.squares() {
+                moves.push(Move::new((to as i8 - NORTH) as u8, to));
             }
 
-            let double_push = ((single_push << NORTH) & empty) & RANK_4_MASK;
-            if double_push != 0 {
-                for to in bit_iter(double_push) {
-                    moves.push(Move::new((to as i32 - DOUBLE_NORTH) as u8, to));
-                }
+            let double_push = ((single_push << NORTH) & empty) & BitBoardMask(RANK_4_MASK);
+            for to in double_push.squares() {
+                moves.push(Move::new((to as i8 - DOUBLE_NORTH) as u8, to));
             }
 
-            let left_caps = (pawns << NORTH_WEST) & their_pieces & !FILE_H;
-            if left_caps != 0 {
-                for to in bit_iter(left_caps) {
-                    moves.push(Move::new((to as i32 - NORTH_WEST) as u8, to));
-                }
+            let left_caps = (pawns << NORTH_WEST) & their_pieces & !BitBoardMask(FILE_H);
+            for to in left_caps.squares() {
+                moves.push(Move::new((to as i8 - NORTH_WEST) as u8, to));
             }
 
-            let right_caps = (pawns << NORTH_EAST) & their_pieces & !FILE_A;
-            if right_caps != 0 {
-                for to in bit_iter(right_caps) {
-                    moves.push(Move::new((to as i32 - NORTH_EAST) as u8, to));
-                }
+            let right_caps = (pawns << NORTH_EAST) & their_pieces & !BitBoardMask(FILE_A);
+            for to in right_caps.squares() {
+                moves.push(Move::new((to as i8 - NORTH_EAST) as u8, to));
             }
         } else {
             let single_push = (pawns >> -SOUTH) & empty;
-            if single_push != 0 {
-                for to in bit_iter(single_push) {
-                    moves.push(Move::new((to as i32 - SOUTH) as u8, to));
-                }
+            for to in single_push.squares() {
+                moves.push(Move::new((to as i8 - SOUTH) as u8, to));
             }
 
-            let double_push = ((single_push >> -SOUTH) & empty) & RANK_5_MASK;
-            if double_push != 0 {
-                for to in bit_iter(double_push) {
-                    moves.push(Move::new((to as i32 - DOUBLE_SOUTH) as u8, to));
-                }
+            let double_push = ((single_push >> -SOUTH) & empty) & BitBoardMask(RANK_5_MASK);
+            for to in double_push.squares() {
+                moves.push(Move::new((to as i8 - DOUBLE_SOUTH) as u8, to));
             }
 
-            let left_caps = (pawns >> -SOUTH_EAST) & their_pieces & !FILE_H;
-            if left_caps != 0 {
-                for to in bit_iter(left_caps) {
-                    moves.push(Move::new((to as i32 - SOUTH_EAST) as u8, to));
-                }
+            let left_caps = (pawns >> -SOUTH_EAST) & their_pieces & !BitBoardMask(FILE_H);
+            for to in left_caps.squares() {
+                moves.push(Move::new((to as i8 - SOUTH_EAST) as u8, to));
             }
 
-            let right_caps = (pawns >> -SOUTH_WEST) & their_pieces & !FILE_A;
-            if right_caps != 0 {
-                for to in bit_iter(right_caps) {
-                    moves.push(Move::new((to as i32 - SOUTH_WEST) as u8, to));
-                }
+            let right_caps = (pawns >> -SOUTH_WEST) & their_pieces & !BitBoardMask(FILE_A);
+            for to in right_caps.squares() {
+                moves.push(Move::new((to as i8 - SOUTH_WEST) as u8, to));
             }
         }
 
-        // TODO - en passant and promotions
+        // TODO: en passant and promotions
     }
 
     fn generate_all_knight_moves(
@@ -179,25 +187,30 @@ impl SimpleMoveGen {
         ctx: &MoveGenContext,
         moves: &mut Vec<Move>,
     ) {
-        let knights = pos.pieces[piece_index(ctx.us, PieceType::Knight)];
-        if knights == 0 {
+        // Get all knights for the side to move
+        let knights = pos
+            .pieces
+            .get(Piece::from_parts(ctx.us, Some(PieceKind::Knight)));
+        if knights.is_empty() {
             return; // early bail
         }
 
-        for from in bit_iter(knights) {
-            let attacks = KNIGHT_ATTACKS[from as usize] & ctx.not_ours;
-            if attacks == 0 {
+        for from in knights.squares() {
+            // Precomputed knight moves, masked to exclude our own pieces
+            let attacks = knight_attacks_mask(from) & ctx.not_ours;
+            if attacks.is_empty() {
                 continue; // cheap zero-check
             }
 
-            for to in bit_iter(attacks) {
+            for to in attacks.squares() {
                 moves.push(Move::new(from, to));
             }
 
             // Debug: knights never land on same color as origin
-            debug_assert_eq!(
-                KNIGHT_ATTACKS[from as usize] & SQUARE_COLOR_MASK[from as usize],
-                0
+            debug_assert!(
+                (knight_attacks_mask(from) & BitBoardMask(SQUARE_COLOR_MASK[from as usize]))
+                    .is_empty(),
+                "Knight attack set contains illegal squares"
             );
         }
     }
@@ -208,63 +221,71 @@ impl SimpleMoveGen {
         ctx: &MoveGenContext,
         moves: &mut Vec<Move>,
     ) {
-        let bishops = pos.pieces[piece_index(ctx.us, PieceType::Bishop)];
-        if bishops == 0 {
+        // Get all bishops for the side to move
+        let bishops = pos
+            .pieces
+            .get(Piece::from_parts(ctx.us, Some(PieceKind::Bishop)));
+        if bishops.is_empty() {
             return; // early bail
         }
 
-        for from in bit_iter(bishops) {
+        for from in bishops.squares() {
             // Prefilter: same color complex + diagonals
             let reachable = ctx.not_ours
-                & SQUARE_COLOR_MASK[from as usize]
-                & (DIAGONAL_MASKS[from as usize] | ANTIDIAGONAL_MASKS[from as usize]);
-            if reachable == 0 {
+                & BitBoardMask(SQUARE_COLOR_MASK[from as usize])
+                & BitBoardMask(DIAGONAL_MASKS[from as usize] | ANTIDIAGONAL_MASKS[from as usize]);
+            if reachable.is_empty() {
                 continue; // cheap skip
             }
 
-            let mask = BISHOP_MASKS[from as usize];
-            let index = occ_to_index(ctx.occ & mask, mask);
-            let attacks = BISHOP_ATTACKS[from as usize][index] & ctx.not_ours;
-            if attacks == 0 {
+            // Lookup bishop attacks from precomputed table
+            let attacks = bishop_attacks_mask(from, ctx.occ) & ctx.not_ours;
+            if attacks.is_empty() {
                 continue; // cheap zero-check
             }
 
-            for to in bit_iter(attacks) {
+            for to in attacks.squares() {
                 moves.push(Move::new(from, to));
             }
 
             // Debug: bishop attacks never cross color complexes
-            debug_assert_eq!(attacks & !SQUARE_COLOR_MASK[from as usize], 0);
+            debug_assert_eq!(
+                (attacks & !BitBoardMask(SQUARE_COLOR_MASK[from as usize])).0,
+                0
+            );
         }
     }
 
     fn generate_all_rook_moves(&self, pos: &Position, ctx: &MoveGenContext, moves: &mut Vec<Move>) {
-        let rooks = pos.pieces[piece_index(ctx.us, PieceType::Rook)];
-        if rooks == 0 {
+        // Get all rooks for the side to move
+        let rooks = pos
+            .pieces
+            .get(Piece::from_parts(ctx.us, Some(PieceKind::Rook)));
+        if rooks.is_empty() {
             return; // early bail
         }
 
-        for from in bit_iter(rooks) {
+        for from in rooks.squares() {
             // Prefilter: only rank/file from 'from'
-            let reachable = ctx.not_ours & (RANK_MASKS[from as usize] | FILE_MASKS[from as usize]);
-            if reachable == 0 {
-                continue; // no possible moves along rank/file
+            let reachable =
+                ctx.not_ours & BitBoardMask(RANK_MASKS[from as usize] | FILE_MASKS[from as usize]);
+            if reachable.is_empty() {
+                continue;
             }
 
-            let mask = ROOK_MASKS[from as usize];
-            let index = occ_to_index(ctx.occ & mask, mask);
-            let attacks = ROOK_ATTACKS[from as usize][index] & ctx.not_ours;
-            if attacks == 0 {
-                continue; // cheap zero-check
+            // Lookup rook attacks from precomputed table
+            let attacks = rook_attacks_mask(from, ctx.occ) & ctx.not_ours;
+            if attacks.is_empty() {
+                continue;
             }
 
-            for to in bit_iter(attacks) {
+            for to in attacks.squares() {
                 moves.push(Move::new(from, to));
             }
 
             // Debug: rook attacks should be confined to same rank/file
             debug_assert_eq!(
-                attacks & !(RANK_MASKS[from as usize] | FILE_MASKS[from as usize]),
+                (attacks & !BitBoardMask(RANK_MASKS[from as usize] | FILE_MASKS[from as usize])).0,
                 0
             );
         }
@@ -276,71 +297,83 @@ impl SimpleMoveGen {
         ctx: &MoveGenContext,
         moves: &mut Vec<Move>,
     ) {
-        let queens = pos.pieces[piece_index(ctx.us, PieceType::Queen)];
-        if queens == 0 {
+        let queens = pos
+            .pieces
+            .get(Piece::from_parts(ctx.us, Some(PieceKind::Queen)));
+        if queens.is_empty() {
             return; // early bail
         }
 
-        for from in bit_iter(queens) {
+        for from in queens.squares() {
             // Prefilter: queens can only move along rank/file/diagonals
             let reachable = ctx.not_ours
-                & (RANK_MASKS[from as usize]
-                    | FILE_MASKS[from as usize]
-                    | DIAGONAL_MASKS[from as usize]
-                    | ANTIDIAGONAL_MASKS[from as usize]);
-            if reachable == 0 {
+                & BitBoardMask(
+                    RANK_MASKS[from as usize]
+                        | FILE_MASKS[from as usize]
+                        | DIAGONAL_MASKS[from as usize]
+                        | ANTIDIAGONAL_MASKS[from as usize],
+                );
+            if reachable.is_empty() {
                 continue; // no possible moves along queen lines
             }
 
             // Rook-like component
-            let rmask = ROOK_MASKS[from as usize];
-            let rindex = occ_to_index(ctx.occ & rmask, rmask);
-            let rook_attacks = ROOK_ATTACKS[from as usize][rindex];
+            let rook_attacks = rook_attacks_mask(from, ctx.occ);
 
             // Bishop-like component
-            let bmask = BISHOP_MASKS[from as usize];
-            let bindex = occ_to_index(ctx.occ & bmask, bmask);
-            let bishop_attacks = BISHOP_ATTACKS[from as usize][bindex];
+            let bishop_attacks = bishop_attacks_mask(from, ctx.occ);
 
             // Combine and mask with not_ours
             let attacks = (rook_attacks | bishop_attacks) & ctx.not_ours;
-            if attacks == 0 {
+            if attacks.is_empty() {
                 continue; // cheap zero-check
             }
 
-            for to in bit_iter(attacks) {
+            for to in attacks.squares() {
                 moves.push(Move::new(from, to));
             }
 
             // Debug geometry validation
             debug_assert_eq!(
-                rook_attacks & !(RANK_MASKS[from as usize] | FILE_MASKS[from as usize]),
+                (rook_attacks
+                    & !BitBoardMask(RANK_MASKS[from as usize] | FILE_MASKS[from as usize]))
+                .0,
                 0
             );
             debug_assert_eq!(
-                bishop_attacks
-                    & !(DIAGONAL_MASKS[from as usize] | ANTIDIAGONAL_MASKS[from as usize]),
+                (bishop_attacks
+                    & !BitBoardMask(
+                        DIAGONAL_MASKS[from as usize] | ANTIDIAGONAL_MASKS[from as usize]
+                    ))
+                .0,
                 0
             );
         }
     }
 
     fn generate_all_king_moves(&self, pos: &Position, ctx: &MoveGenContext, moves: &mut Vec<Move>) {
-        let king = pos.pieces[piece_index(ctx.us, PieceType::King)];
+        // Get the king bitboard for the side to move
+        let king_bb = pos
+            .pieces
+            .get(Piece::from_parts(ctx.us, Some(PieceKind::King)));
+        if king_bb.is_empty() {
+            return; // no king found — should never happen in a legal position
+        }
 
-        for from in bit_iter(king) {
-            let attacks = KING_ATTACKS[from as usize] & ctx.not_ours;
-            if attacks == 0 {
+        for from in king_bb.squares() {
+            // Precomputed king moves, masked to exclude our own pieces
+            let attacks = king_attacks_mask(from) & ctx.not_ours;
+            if attacks.is_empty() {
                 continue; // cheap zero-check
             }
 
-            for to in bit_iter(attacks) {
+            for to in attacks.squares() {
                 moves.push(Move::new(from, to));
             }
 
             // Debug: king attacks must be within one square in any direction
             debug_assert!(
-                attacks & !KING_ATTACKS[from as usize] == 0,
+                (attacks & !king_attacks_mask(from)).is_empty(),
                 "King attack set contains illegal squares"
             );
         }

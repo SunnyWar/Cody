@@ -1,13 +1,14 @@
-use std::fmt;
+// src/core/mov.rs
 
-use crate::core::{piece::PieceType, square::Square};
+use crate::core::{piece::PieceKind, square::Square};
+use std::fmt;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Move {
-    pub from: u8,      // 0..63
-    pub to: u8,        // 0..63
-    pub promotion: u8, // 0..5 for piece type, 255 = none
-    pub flags: u8,     // bit flags for special moves
+    pub from: u8, // 0..63
+    pub to: u8,   // 0..63
+    pub promotion: Option<PieceKind>,
+    pub flags: u8, // bit flags for special moves
 }
 
 impl Move {
@@ -15,8 +16,8 @@ impl Move {
         Move {
             from,
             to,
-            promotion: 255, // 255 = none
-            flags: 0,       // no special flags
+            promotion: None,
+            flags: 0,
         }
     }
 
@@ -24,7 +25,7 @@ impl Move {
         Move {
             from: 0,
             to: 0,
-            promotion: 255, // none
+            promotion: None,
             flags: 0,
         }
     }
@@ -37,7 +38,7 @@ impl Move {
         Square::A1
     }
 
-    pub(crate) fn promotion(&self) -> Option<PieceType> {
+    pub(crate) fn promotion(&self) -> Option<PieceKind> {
         None
     }
 }
