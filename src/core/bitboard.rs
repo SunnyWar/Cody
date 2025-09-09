@@ -11,51 +11,33 @@ pub const FILE_F: u64 = 0x2020202020202020;
 pub const FILE_G: u64 = 0x4040404040404040;
 pub const FILE_H: u64 = 0x8080808080808080;
 
-pub const RANK_1_MASK: u64 = 0x00000000000000FF;
-pub const RANK_2_MASK: u64 = 0x000000000000FF00;
-pub const RANK_3_MASK: u64 = 0x0000000000FF0000;
-pub const RANK_4_MASK: u64 = 0x00000000FF000000;
-pub const RANK_5_MASK: u64 = 0x000000FF00000000;
-pub const RANK_6_MASK: u64 = 0x0000FF0000000000;
-pub const RANK_7_MASK: u64 = 0x00FF000000000000;
-pub const RANK_8_MASK: u64 = 0xFF00000000000000;
-
-pub const NORTH: i8 = 8;
-pub const SOUTH: i8 = -8;
-pub const NORTH_EAST: i8 = 9;
-pub const NORTH_WEST: i8 = 7;
-pub const SOUTH_EAST: i8 = -7;
-pub const SOUTH_WEST: i8 = -9;
-pub const DOUBLE_NORTH: i8 = 16;
-pub const DOUBLE_SOUTH: i8 = -16;
-
 // File masks to prevent wrap-around when shifting
-pub const NOT_FILE_A: u64 = 0xfefefefefefefefe;
-pub const NOT_FILE_AB: u64 = 0xfcfcfcfcfcfcfcfc;
-pub const NOT_FILE_H: u64 = 0x7f7f7f7f7f7f7f7f;
-pub const NOT_FILE_GH: u64 = 0x3f3f3f3f3f3f3f3f;
+const NOT_FILE_A: u64 = 0xfefefefefefefefe;
+const NOT_FILE_AB: u64 = 0xfcfcfcfcfcfcfcfc;
+const NOT_FILE_H: u64 = 0x7f7f7f7f7f7f7f7f;
+const NOT_FILE_GH: u64 = 0x3f3f3f3f3f3f3f3f;
 
-pub const BOARD_SIZE: usize = 8;
-pub const NUM_SQUARES: usize = BOARD_SIZE * BOARD_SIZE;
-pub const EMPTY: u64 = 0;
+const BOARD_SIZE: usize = 8;
+const NUM_SQUARES: usize = BOARD_SIZE * BOARD_SIZE;
+const EMPTY: u64 = 0;
 
-pub const RANK_0: i8 = 0;
-pub const FILE_0: i8 = 0;
-pub const RANK_MAX: i8 = BOARD_SIZE as i8 - 1;
-pub const FILE_MAX: i8 = BOARD_SIZE as i8 - 1;
+const RANK_0: i8 = 0;
+const FILE_0: i8 = 0;
+const RANK_MAX: i8 = BOARD_SIZE as i8 - 1;
+const FILE_MAX: i8 = BOARD_SIZE as i8 - 1;
 
-pub const KING_MOVE_RANGE: i8 = 1;
-pub const MAX_ROOK_OCC_VARIATIONS: usize = 1 << 12;
+const KING_MOVE_RANGE: i8 = 1;
+const MAX_ROOK_OCC_VARIATIONS: usize = 1 << 12;
 
 // For rook masks, we stop one square before the edge (exclude outer rank/file)
-pub const INNER_MIN: i8 = 1;
-pub const INNER_MAX: i8 = BOARD_SIZE as i8 - 2;
+const INNER_MIN: i8 = 1;
+const INNER_MAX: i8 = BOARD_SIZE as i8 - 2;
 
 // For rook attacks, we can go all the way to the edge
-pub const EDGE_MIN: i8 = 0;
-pub const EDGE_MAX: i8 = BOARD_SIZE as i8 - 1;
+const EDGE_MIN: i8 = 0;
+const EDGE_MAX: i8 = BOARD_SIZE as i8 - 1;
 
-pub const LIGHT_SQUARES: u64 = {
+const LIGHT_SQUARES: u64 = {
     let mut mask = EMPTY;
     let mut sq: usize = 0;
     while sq < NUM_SQUARES {
@@ -69,7 +51,7 @@ pub const LIGHT_SQUARES: u64 = {
     mask
 };
 
-pub const DARK_SQUARES: u64 = !LIGHT_SQUARES;
+const DARK_SQUARES: u64 = !LIGHT_SQUARES;
 
 pub const SQUARE_COLOR_MASK: [u64; NUM_SQUARES] = {
     let mut arr = [0u64; NUM_SQUARES];
@@ -86,7 +68,7 @@ pub const SQUARE_COLOR_MASK: [u64; NUM_SQUARES] = {
 };
 
 #[inline]
-pub const fn bit(sq: u8) -> u64 {
+const fn bit(sq: u8) -> u64 {
     1u64 << sq
 }
 
@@ -105,11 +87,6 @@ impl Iterator for BitIter {
     }
 }
 
-#[inline(always)]
-pub fn bit_iter(bb: u64) -> BitIter {
-    BitIter(bb)
-}
-
 pub const fn occ_to_index(occ: u64, mut mask: u64) -> usize {
     let mut index = 0usize;
     let mut bit_index = 0;
@@ -124,7 +101,7 @@ pub const fn occ_to_index(occ: u64, mut mask: u64) -> usize {
     index
 }
 
-pub const fn gen_king_attacks(square: usize) -> u64 {
+const fn gen_king_attacks(square: usize) -> u64 {
     let mut attacks = EMPTY;
 
     // Work in i8 for rank/file math
@@ -158,9 +135,10 @@ const fn init_king_attacks() -> [u64; NUM_SQUARES] {
     }
     table
 }
+
 pub const KING_ATTACKS: [u64; 64] = init_king_attacks();
 
-pub const fn knight_attacks_for(sq: u8) -> u64 {
+const fn knight_attacks_for(sq: u8) -> u64 {
     let b = bit(sq);
 
     // One file left/right
@@ -232,7 +210,7 @@ pub const ROOK_MASKS: [u64; NUM_SQUARES] = {
     table
 };
 
-pub const fn rook_attacks_from(sq: u8, occ: u64) -> u64 {
+const fn rook_attacks_from(sq: u8, occ: u64) -> u64 {
     let mut attacks = EMPTY;
 
     // Work in i8 for rank/file math

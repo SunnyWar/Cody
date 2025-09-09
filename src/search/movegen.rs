@@ -1,10 +1,9 @@
 // src/search/movegen.rs
 
 use crate::core::bitboard::{
-    ANTIDIAGONAL_MASKS, BISHOP_ATTACKS, BISHOP_MASKS, DIAGONAL_MASKS, DOUBLE_NORTH, DOUBLE_SOUTH,
-    FILE_A, FILE_H, FILE_MASKS, KING_ATTACKS, KNIGHT_ATTACKS, NORTH, NORTH_EAST, NORTH_WEST,
-    PAWN_ATTACKS, RANK_4_MASK, RANK_5_MASK, RANK_MASKS, ROOK_ATTACKS, ROOK_MASKS, SOUTH,
-    SOUTH_EAST, SOUTH_WEST, SQUARE_COLOR_MASK, occ_to_index,
+    ANTIDIAGONAL_MASKS, BISHOP_ATTACKS, BISHOP_MASKS, DIAGONAL_MASKS, FILE_A, FILE_H, FILE_MASKS,
+    KING_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS, RANK_MASKS, ROOK_ATTACKS, ROOK_MASKS,
+    SQUARE_COLOR_MASK, occ_to_index,
 };
 use crate::core::bitboardmask::{
     BitBoardMask, bishop_attacks_mask, king_attacks_mask, knight_attacks_mask, rook_attacks_mask,
@@ -12,6 +11,24 @@ use crate::core::bitboardmask::{
 use crate::core::mov::Move;
 use crate::core::piece::{Color, Piece, PieceKind};
 use crate::core::position::{OccupancyKind, Position};
+
+const NORTH: i8 = 8;
+const SOUTH: i8 = -8;
+const NORTH_EAST: i8 = 9;
+const NORTH_WEST: i8 = 7;
+const SOUTH_EAST: i8 = -7;
+const SOUTH_WEST: i8 = -9;
+const DOUBLE_NORTH: i8 = 16;
+const DOUBLE_SOUTH: i8 = -16;
+
+//const RANK_1_MASK: u64 = 0x00000000000000FF;
+//const RANK_2_MASK: u64 = 0x000000000000FF00;
+//const RANK_3_MASK: u64 = 0x0000000000FF0000;
+const RANK_4_MASK: u64 = 0x00000000FF000000;
+const RANK_5_MASK: u64 = 0x000000FF00000000;
+//const RANK_6_MASK: u64 = 0x0000FF0000000000;
+//const RANK_7_MASK: u64 = 0x00FF000000000000;
+//const RANK_8_MASK: u64 = 0xFF00000000000000;
 
 pub struct SimpleMoveGen;
 
