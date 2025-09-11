@@ -169,5 +169,3 @@ impl PieceKind {
         }
     }
 }
-
-

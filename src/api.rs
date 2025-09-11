@@ -146,6 +146,9 @@ impl CodyApi {
             total_nodes += nodes;
             let nps = (nodes as f64 / elapsed) as u64;
 
+            writeln!(out, "-----------------------------------------------").unwrap();
+            writeln!(out, "{}", pos.fen).unwrap();
+            writeln!(out, "Best move: {}", _score.0).unwrap();
             writeln!(
                 out,
                 "{:<width$}  nodes {:>10}  time {:>5}  nps {:>10}",
@@ -156,6 +159,7 @@ impl CodyApi {
                 width = name_width
             )
             .unwrap();
+
             out.flush().unwrap();
         }
 
