@@ -1,5 +1,7 @@
 // src/core/piece.rs
 
+use crate::core::square::Square;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum PieceKind {
     Pawn = 0,
@@ -165,5 +167,17 @@ impl PieceKind {
             'n' => Some(PieceKind::Knight),
             _ => None,
         }
+    }
+}
+
+#[inline]
+pub fn is_pawn_double_push(piece: Piece, from: Square, to: Square, side: Color) -> bool {
+    if piece.kind() != PieceKind::Pawn {
+        return false;
+    }
+
+    match side {
+        Color::White => from.rank() == 1 && from.forward(2).map_or(false, |target| target == to),
+        Color::Black => from.rank() == 6 && from.backward(2).map_or(false, |target| target == to),
     }
 }

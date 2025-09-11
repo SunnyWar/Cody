@@ -1,41 +1,58 @@
 // src/core/bitboard.rs
 
-use crate::core::piece::Color;
+use crate::core::{bitboardmask::BitBoardMask, piece::Color, square::Square};
 
-pub const FILE_A: u64 = 0x0101010101010101;
-pub const FILE_B: u64 = 0x0202020202020202;
-pub const FILE_C: u64 = 0x0404040404040404;
-pub const FILE_D: u64 = 0x0808080808080808;
-pub const FILE_E: u64 = 0x1010101010101010;
-pub const FILE_F: u64 = 0x2020202020202020;
-pub const FILE_G: u64 = 0x4040404040404040;
-pub const FILE_H: u64 = 0x8080808080808080;
+pub const FILE_A: BitBoardMask = BitBoardMask(0x0101010101010101);
+pub const FILE_B: BitBoardMask = BitBoardMask(0x0202020202020202);
+pub const FILE_C: BitBoardMask = BitBoardMask(0x0404040404040404);
+pub const FILE_D: BitBoardMask = BitBoardMask(0x0808080808080808);
+pub const FILE_E: BitBoardMask = BitBoardMask(0x1010101010101010);
+pub const FILE_F: BitBoardMask = BitBoardMask(0x2020202020202020);
+pub const FILE_G: BitBoardMask = BitBoardMask(0x4040404040404040);
+pub const FILE_H: BitBoardMask = BitBoardMask(0x8080808080808080);
+
+pub const RANK_1: BitBoardMask = BitBoardMask(0x00000000000000FF);
+pub const RANK_2: BitBoardMask = BitBoardMask(0x000000000000FF00);
+pub const RANK_3: BitBoardMask = BitBoardMask(0x0000000000FF0000);
+pub const RANK_4: BitBoardMask = BitBoardMask(0x00000000FF000000);
+pub const RANK_5: BitBoardMask = BitBoardMask(0x000000FF00000000);
+pub const RANK_6: BitBoardMask = BitBoardMask(0x0000FF0000000000);
+pub const RANK_7: BitBoardMask = BitBoardMask(0x00FF000000000000);
+pub const RANK_8: BitBoardMask = BitBoardMask(0xFF00000000000000);
+
+pub const FILE_MASKS: [BitBoardMask; BOARD_SIZE] = [
+    FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H,
+];
+
+pub const RANK_MASKS: [BitBoardMask; BOARD_SIZE] = [
+    RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8,
+];
 
 // File masks to prevent wrap-around when shifting
-const NOT_FILE_A: u64 = 0xfefefefefefefefe;
-const NOT_FILE_AB: u64 = 0xfcfcfcfcfcfcfcfc;
-const NOT_FILE_H: u64 = 0x7f7f7f7f7f7f7f7f;
-const NOT_FILE_GH: u64 = 0x3f3f3f3f3f3f3f3f;
+pub const NOT_FILE_A: BitBoardMask = BitBoardMask(0xfefefefefefefefe);
+pub const NOT_FILE_AB: BitBoardMask = BitBoardMask(0xfcfcfcfcfcfcfcfc);
+pub const NOT_FILE_H: BitBoardMask = BitBoardMask(0x7f7f7f7f7f7f7f7f);
+pub const NOT_FILE_GH: BitBoardMask = BitBoardMask(0x3f3f3f3f3f3f3f3f);
 
-const BOARD_SIZE: usize = 8;
-const NUM_SQUARES: usize = BOARD_SIZE * BOARD_SIZE;
+pub const BOARD_SIZE: usize = 8;
+pub const NUM_SQUARES: usize = BOARD_SIZE * BOARD_SIZE;
 const EMPTY: u64 = 0;
 
-const RANK_0: i8 = 0;
-const FILE_0: i8 = 0;
-const RANK_MAX: i8 = BOARD_SIZE as i8 - 1;
-const FILE_MAX: i8 = BOARD_SIZE as i8 - 1;
+//const RANK_0: i8 = 0;
+//const FILE_0: i8 = 0;
+//const RANK_MAX: i8 = BOARD_SIZE as i8 - 1;
+//const FILE_MAX: i8 = BOARD_SIZE as i8 - 1;
 
-const KING_MOVE_RANGE: i8 = 1;
-const MAX_ROOK_OCC_VARIATIONS: usize = 1 << 12;
+//const KING_MOVE_RANGE: i8 = 1;
+const MAX_ROOK_OCCUPANCY_VARIATIONS: usize = 1 << 12;
 
 // For rook masks, we stop one square before the edge (exclude outer rank/file)
-const INNER_MIN: i8 = 1;
-const INNER_MAX: i8 = BOARD_SIZE as i8 - 2;
+//const INNER_MIN: i8 = 1;
+//const INNER_MAX: i8 = BOARD_SIZE as i8 - 2;
 
 // For rook attacks, we can go all the way to the edge
-const EDGE_MIN: i8 = 0;
-const EDGE_MAX: i8 = BOARD_SIZE as i8 - 1;
+//const EDGE_MIN: i8 = 0;
+//const EDGE_MAX: i8 = BOARD_SIZE as i8 - 1;
 
 const LIGHT_SQUARES: u64 = {
     let mut mask = EMPTY;
@@ -53,6 +70,7 @@ const LIGHT_SQUARES: u64 = {
 
 const DARK_SQUARES: u64 = !LIGHT_SQUARES;
 
+// TODO: Change to use enum instead of index
 pub const SQUARE_COLOR_MASK: [u64; NUM_SQUARES] = {
     let mut arr = [0u64; NUM_SQUARES];
     let mut sq = 0;
@@ -66,11 +84,6 @@ pub const SQUARE_COLOR_MASK: [u64; NUM_SQUARES] = {
     }
     arr
 };
-
-#[inline]
-const fn bit(sq: u8) -> u64 {
-    1u64 << sq
-}
 
 pub struct BitIter(u64);
 
@@ -87,424 +100,363 @@ impl Iterator for BitIter {
     }
 }
 
-pub const fn occ_to_index(occ: u64, mut mask: u64) -> usize {
+#[inline]
+pub const fn occupancy_to_index(occupancy: BitBoardMask, mask: BitBoardMask) -> usize {
     let mut index = 0usize;
     let mut bit_index = 0;
-    while mask != 0 {
-        let lsb = mask & mask.wrapping_neg();
-        if occ & lsb != 0 {
+
+    // Unwrap the inner u64s for the loop, but only inside this function
+    let occupancy_val = occupancy.0;
+    let mut mask_val = mask.0;
+
+    while mask_val != 0 {
+        let lsb = mask_val & mask_val.wrapping_neg();
+        if occupancy_val & lsb != 0 {
             index |= 1 << bit_index;
         }
-        mask &= mask - 1;
+        mask_val &= mask_val - 1;
         bit_index += 1;
     }
+
     index
 }
 
-const fn gen_king_attacks(square: usize) -> u64 {
-    let mut attacks = EMPTY;
-
-    // Work in i8 for rank/file math
-    let rank: i8 = (square / BOARD_SIZE) as i8;
-    let file: i8 = (square % BOARD_SIZE) as i8;
-
-    let mut r = rank - KING_MOVE_RANGE;
-    while r <= rank + KING_MOVE_RANGE {
-        let mut f = file - KING_MOVE_RANGE;
-        while f <= file + KING_MOVE_RANGE {
-            if r >= RANK_0 && r <= RANK_MAX && f >= FILE_0 && f <= FILE_MAX {
-                let sq: usize = (r as usize) * BOARD_SIZE + (f as usize);
-                if sq != square {
-                    attacks |= 1u64 << sq;
-                }
-            }
-            f += 1;
-        }
-        r += 1;
-    }
-
-    attacks
+const fn square_index(rank: i8, file: i8) -> usize {
+    debug_assert!(rank >= 0 && rank < BOARD_SIZE as i8);
+    debug_assert!(file >= 0 && file < BOARD_SIZE as i8);
+    rank as usize * BOARD_SIZE + file as usize
 }
 
-const fn init_king_attacks() -> [u64; NUM_SQUARES] {
-    let mut table = [EMPTY; NUM_SQUARES];
-    let mut sq = 0;
-    while sq < NUM_SQUARES {
-        table[sq] = gen_king_attacks(sq);
-        sq += 1;
+#[inline]
+pub const fn gen_king_attacks(square: Square) -> BitBoardMask {
+    let mut attack_mask: u64 = 0;
+    let rank = square.rank();
+    let file = square.file();
+
+    const KING_OFFSETS: [(i8, i8); 8] = [
+        (1, 0),
+        (1, 1),
+        (0, 1),
+        (-1, 1),
+        (-1, 0),
+        (-1, -1),
+        (0, -1),
+        (1, -1),
+    ];
+
+    let mut offset_index = 0;
+    while offset_index < KING_OFFSETS.len() {
+        let (rank_offset, file_offset) = KING_OFFSETS[offset_index];
+        let target_rank = rank as i8 + rank_offset;
+        let target_file = file as i8 + file_offset;
+
+        if target_rank >= 0
+            && target_rank < BOARD_SIZE as i8
+            && target_file >= 0
+            && target_file < BOARD_SIZE as i8
+        {
+            let target_index = square_index(target_rank, target_file);
+            attack_mask |= 1u64 << target_index;
+        }
+
+        offset_index += 1;
+    }
+
+    BitBoardMask(attack_mask)
+}
+
+pub const KING_ATTACKS: [BitBoardMask; NUM_SQUARES] = {
+    let mut table = [BitBoardMask(0); NUM_SQUARES];
+    let squares = Square::all_array();
+    let mut i = 0;
+    while i < NUM_SQUARES {
+        let sq = squares[i];
+        table[i] = gen_king_attacks(sq);
+        i += 1;
     }
     table
-}
+};
 
-pub const KING_ATTACKS: [u64; 64] = init_king_attacks();
+#[inline]
+pub const fn knight_attacks_for(square: Square) -> BitBoardMask {
+    let origin = square.bit();
 
-const fn knight_attacks_for(sq: u8) -> u64 {
-    let b = bit(sq);
+    // Horizontal shifts with file exclusions
+    let h1 = origin
+        .shift_right(1)
+        .and(NOT_FILE_H)
+        .or(origin.shift_left(1).and(NOT_FILE_A));
 
-    // One file left/right
-    let left1 = (b >> 1) & NOT_FILE_H;
-    let right1 = (b << 1) & NOT_FILE_A;
-
-    // Two files left/right
-    let left2 = (b >> 2) & NOT_FILE_GH;
-    let right2 = (b << 2) & NOT_FILE_AB;
-
-    // Horizontal moves
-    let h1 = left1 | right1;
-    let h2 = left2 | right2;
+    let h2 = origin
+        .shift_right(2)
+        .and(NOT_FILE_GH)
+        .or(origin.shift_left(2).and(NOT_FILE_AB));
 
     // Vertical shifts to complete the L-shape
-    (h1 << 16) | (h1 >> 16) | (h2 << 8) | (h2 >> 8)
+    let v1 = h1.shift_left(16).or(h1.shift_right(16));
+    let v2 = h2.shift_left(8).or(h2.shift_right(8));
+
+    v1.or(v2)
 }
 
-pub const KNIGHT_ATTACKS: [u64; NUM_SQUARES] = {
-    let mut table = [EMPTY; NUM_SQUARES];
-    let mut sq = 0;
-    while sq < NUM_SQUARES {
-        table[sq] = knight_attacks_for(sq as u8);
-        sq += 1;
+// TODO - put all attacks in attack tables struct
+/* pub struct AttackTables;
+
+impl AttackTables {
+    pub fn knight(sq: Square) -> BitBoardMask {
+        KNIGHT_ATTACKS[sq as usize]
+    }
+}
+ */
+
+pub const KNIGHT_ATTACKS: [BitBoardMask; NUM_SQUARES] = {
+    let mut table = [BitBoardMask(0); NUM_SQUARES];
+    let squares = Square::all_array();
+    let mut i = 0;
+    while i < NUM_SQUARES {
+        table[i] = knight_attacks_for(squares[i]);
+        i += 1;
     }
     table
 };
 
-const fn rook_mask(sq: u8) -> u64 {
-    let mut mask = EMPTY;
-    let rank = (sq / BOARD_SIZE as u8) as i8;
-    let file = (sq % BOARD_SIZE as u8) as i8;
+#[inline]
+pub const fn rook_mask(square: Square) -> BitBoardMask {
+    let rank_mask = square.rank_mask();
+    let file_mask = square.file_mask();
+    let origin = square.bit();
 
-    // North
-    let mut r = rank + 1;
-    while r <= INNER_MAX {
-        mask |= 1u64 << (r * BOARD_SIZE as i8 + file);
-        r += 1;
-    }
-    // South
-    r = rank - 1;
-    while r >= INNER_MIN {
-        mask |= 1u64 << (r * BOARD_SIZE as i8 + file);
-        r -= 1;
-    }
-    // East
-    let mut f = file + 1;
-    while f <= INNER_MAX {
-        mask |= 1u64 << (rank * BOARD_SIZE as i8 + f);
-        f += 1;
-    }
-    // West
-    f = file - 1;
-    while f >= INNER_MIN {
-        mask |= 1u64 << (rank * BOARD_SIZE as i8 + f);
-        f -= 1;
-    }
-
-    mask
+    rank_mask.or(file_mask).and(origin.not())
 }
 
-pub const ROOK_MASKS: [u64; NUM_SQUARES] = {
-    let mut table = [EMPTY; NUM_SQUARES];
-    let mut sq = 0;
-    while sq < NUM_SQUARES {
-        table[sq] = rook_mask(sq as u8);
-        sq += 1;
+pub const ROOK_MASKS: [BitBoardMask; NUM_SQUARES] = {
+    let mut table = [BitBoardMask::empty(); NUM_SQUARES];
+    let squares = Square::all_array();
+    let mut i = 0;
+    while i < NUM_SQUARES {
+        let sq = squares[i];
+        table[i] = rook_mask(sq);
+        i += 1;
     }
     table
 };
 
-const fn rook_attacks_from(sq: u8, occ: u64) -> u64 {
-    let mut attacks = EMPTY;
+#[inline]
+#[allow(long_running_const_eval)]
+pub const fn rook_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
+    let origin = square.bit();
 
-    // Work in i8 for rank/file math
-    let rank: i8 = (sq as usize / BOARD_SIZE) as i8;
-    let file: i8 = (sq as usize % BOARD_SIZE) as i8;
+    // Horizontal (rank) attacks
+    let rank_mask = square.rank_mask();
+    let blockers = occupancy.and(rank_mask);
+    let left = blockers.subray_left(origin);
+    let right = blockers.subray_right(origin);
+    let rank_attacks = left.or(right);
 
-    // North
-    let mut r = rank + 1;
-    while r <= EDGE_MAX {
-        let sq_idx: usize = (r as usize) * BOARD_SIZE + (file as usize);
-        attacks |= 1u64 << sq_idx;
-        if occ & (1u64 << sq_idx) != 0 {
-            break;
-        }
-        r += 1;
-    }
+    // Vertical (file) attacks
+    let file_mask = square.file_mask();
+    let blockers = occupancy.and(file_mask);
+    let up = blockers.subray_up(origin);
+    let down = blockers.subray_down(origin);
+    let file_attacks = up.or(down);
 
-    // South
-    r = rank - 1;
-    while r >= EDGE_MIN {
-        let sq_idx: usize = (r as usize) * BOARD_SIZE + (file as usize);
-        attacks |= 1u64 << sq_idx;
-        if occ & (1u64 << sq_idx) != 0 {
-            break;
-        }
-        r -= 1;
-    }
-
-    // East
-    let mut f = file + 1;
-    while f <= EDGE_MAX {
-        let sq_idx: usize = (rank as usize) * BOARD_SIZE + (f as usize);
-        attacks |= 1u64 << sq_idx;
-        if occ & (1u64 << sq_idx) != 0 {
-            break;
-        }
-        f += 1;
-    }
-
-    // West
-    f = file - 1;
-    while f >= EDGE_MIN {
-        let sq_idx: usize = (rank as usize) * BOARD_SIZE + (f as usize);
-        attacks |= 1u64 << sq_idx;
-        if occ & (1u64 << sq_idx) != 0 {
-            break;
-        }
-        f -= 1;
-    }
-
-    attacks
+    rank_attacks.or(file_attacks)
 }
 
 #[allow(long_running_const_eval)]
-pub static ROOK_ATTACKS: [[u64; MAX_ROOK_OCC_VARIATIONS]; NUM_SQUARES] = {
-    let mut table = [[EMPTY; MAX_ROOK_OCC_VARIATIONS]; NUM_SQUARES];
-    let mut sq = 0;
-    while sq < NUM_SQUARES {
-        let mask = ROOK_MASKS[sq];
-        let occ_variations = 1usize << mask.count_ones();
+pub static ROOK_ATTACKS: [[BitBoardMask; MAX_ROOK_OCCUPANCY_VARIATIONS]; NUM_SQUARES] = {
+    let mut table = [[BitBoardMask::empty(); MAX_ROOK_OCCUPANCY_VARIATIONS]; NUM_SQUARES];
+    let squares = Square::all_array();
+    let mut sq_idx = 0;
+
+    while sq_idx < NUM_SQUARES {
+        let square = squares[sq_idx];
+        let mask = ROOK_MASKS[sq_idx];
+        let mask_val = mask.0;
+        let occupancy_variations = 1usize << mask_val.count_ones();
+        let max_variations = if occupancy_variations > MAX_ROOK_OCCUPANCY_VARIATIONS {
+            MAX_ROOK_OCCUPANCY_VARIATIONS
+        } else {
+            occupancy_variations
+        };
+
         let mut index = 0;
-        while index < occ_variations {
-            let mut occ = EMPTY;
-            let mut bits = mask;
+        while index < max_variations {
+            let mut occupancy_val = 0u64;
+            let mut bits = mask_val;
             let subset = index;
             let mut bit_index = 0;
+
             while bits != 0 {
                 let lsb = bits & bits.wrapping_neg();
                 if (subset >> bit_index) & 1 != 0 {
-                    occ |= lsb;
+                    occupancy_val |= lsb;
                 }
                 bits &= bits - 1;
                 bit_index += 1;
             }
-            table[sq][index] = rook_attacks_from(sq as u8, occ);
+
+            let occupancy = BitBoardMask(occupancy_val);
+            table[sq_idx][index] = rook_attacks_from(square, occupancy);
+
             index += 1;
         }
-        sq += 1;
+
+        sq_idx += 1;
     }
+
     table
 };
 
-pub const BISHOP_MASKS: [u64; NUM_SQUARES] = {
-    let mut masks = [EMPTY; NUM_SQUARES];
-    let mut sq = 0;
-    while sq < NUM_SQUARES {
-        masks[sq] = bishop_mask(sq as u8);
-        sq += 1;
+pub const BISHOP_MASKS: [BitBoardMask; NUM_SQUARES] = {
+    let mut masks = [BitBoardMask::empty(); NUM_SQUARES];
+    let squares = Square::all_array();
+    let mut i = 0;
+
+    while i < NUM_SQUARES {
+        let sq = squares[i];
+        masks[i] = bishop_mask(sq);
+        i += 1;
     }
+
     masks
 };
 
-const fn bishop_mask(sq: u8) -> u64 {
-    let mut mask = EMPTY;
-    let rank: i8 = (sq as usize / BOARD_SIZE) as i8;
-    let file: i8 = (sq as usize % BOARD_SIZE) as i8;
-
-    // NE
-    let mut r = rank + 1;
-    let mut f = file + 1;
-    while r <= INNER_MAX && f <= INNER_MAX {
-        mask |= bit(((r as usize) * BOARD_SIZE + f as usize) as u8);
-        r += 1;
-        f += 1;
-    }
-    // NW
-    r = rank + 1;
-    f = file - 1;
-    while r <= INNER_MAX && f >= INNER_MIN {
-        mask |= bit(((r as usize) * BOARD_SIZE + f as usize) as u8);
-        r += 1;
-        f -= 1;
-    }
-    // SE
-    r = rank - 1;
-    f = file + 1;
-    while r >= INNER_MIN && f <= INNER_MAX {
-        mask |= bit(((r as usize) * BOARD_SIZE + f as usize) as u8);
-        r -= 1;
-        f += 1;
-    }
-    // SW
-    r = rank - 1;
-    f = file - 1;
-    while r >= INNER_MIN && f >= INNER_MIN {
-        mask |= bit(((r as usize) * BOARD_SIZE + f as usize) as u8);
-        r -= 1;
-        f -= 1;
+impl BitBoardMask {
+    pub const fn diagonal_for(square: Square) -> BitBoardMask {
+        DIAGONAL_MASKS[square.idx() as usize]
     }
 
-    mask
+    pub const fn antidiagonal_for(square: Square) -> BitBoardMask {
+        ANTIDIAGONAL_MASKS[square.idx() as usize]
+    }
 }
 
-const fn bishop_attacks_from(sq: u8, occ: u64) -> u64 {
-    let mut attacks = EMPTY;
-    let rank: i8 = (sq as usize / BOARD_SIZE) as i8;
-    let file: i8 = (sq as usize % BOARD_SIZE) as i8;
-
-    // NE
-    let mut r = rank + 1;
-    let mut f = file + 1;
-    while r <= EDGE_MAX && f <= EDGE_MAX {
-        let sq_idx = (r as usize) * BOARD_SIZE + (f as usize);
-        attacks |= bit(sq_idx as u8);
-        if occ & bit(sq_idx as u8) != 0 {
-            break;
-        }
-        r += 1;
-        f += 1;
-    }
-    // NW
-    r = rank + 1;
-    f = file - 1;
-    while r <= EDGE_MAX && f >= EDGE_MIN {
-        let sq_idx = (r as usize) * BOARD_SIZE + (f as usize);
-        attacks |= bit(sq_idx as u8);
-        if occ & bit(sq_idx as u8) != 0 {
-            break;
-        }
-        r += 1;
-        f -= 1;
-    }
-    // SE
-    r = rank - 1;
-    f = file + 1;
-    while r >= EDGE_MIN && f <= EDGE_MAX {
-        let sq_idx = (r as usize) * BOARD_SIZE + (f as usize);
-        attacks |= bit(sq_idx as u8);
-        if occ & bit(sq_idx as u8) != 0 {
-            break;
-        }
-        r -= 1;
-        f += 1;
-    }
-    // SW
-    r = rank - 1;
-    f = file - 1;
-    while r >= EDGE_MIN && f >= EDGE_MIN {
-        let sq_idx = (r as usize) * BOARD_SIZE + (f as usize);
-        attacks |= bit(sq_idx as u8);
-        if occ & bit(sq_idx as u8) != 0 {
-            break;
-        }
-        r -= 1;
-        f -= 1;
-    }
-
-    attacks
+#[inline]
+pub const fn bishop_mask(square: Square) -> BitBoardMask {
+    BitBoardMask::diagonal_for(square).or(BitBoardMask::antidiagonal_for(square))
 }
 
-pub static BISHOP_ATTACKS: [[u64; 512]; NUM_SQUARES] = {
-    let mut table = [[EMPTY; 512]; NUM_SQUARES];
-    let mut sq = 0;
-    while sq < NUM_SQUARES {
-        let mask = bishop_mask(sq as u8);
-        let occ_variations = 1usize << mask.count_ones();
+#[inline]
+pub const fn bishop_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
+    let origin = square.bit();
+
+    // Diagonal directions
+    let diag_mask = DIAGONAL_MASKS[square.idx()];
+    let diag_blockers = occupancy.and(diag_mask);
+    let ne = diag_blockers.subray_up_right(origin);
+    let sw = diag_blockers.subray_down_left(origin);
+    let diag_attacks = ne.or(sw);
+
+    // Anti-diagonal directions
+    let anti_mask = ANTIDIAGONAL_MASKS[square.idx()];
+    let anti_blockers = occupancy.and(anti_mask);
+    let nw = anti_blockers.subray_up_left(origin);
+    let se = anti_blockers.subray_down_right(origin);
+    let anti_attacks = nw.or(se);
+
+    diag_attacks.or(anti_attacks)
+}
+
+pub static BISHOP_ATTACKS: [[BitBoardMask; 512]; NUM_SQUARES] = {
+    let mut table = [[BitBoardMask::empty(); 512]; NUM_SQUARES];
+    let squares = Square::all_array();
+    let mut sq_idx = 0;
+
+    while sq_idx < NUM_SQUARES {
+        let square = squares[sq_idx];
+        let mask = BISHOP_MASKS[sq_idx];
+        let mask_val = mask.0;
+        let occupancy_variations = 1usize << mask_val.count_ones();
+        let max_variations = if occupancy_variations > 512 {
+            512
+        } else {
+            occupancy_variations
+        };
+
         let mut index = 0;
-        while index < occ_variations {
-            // Map index bits into actual occupancy bits
-            let mut occ = EMPTY;
-            let mut bits = mask;
+        while index < max_variations {
+            let mut occupancy_val = 0u64;
+            let mut bits = mask_val;
             let subset = index;
             let mut bit_index = 0;
+
             while bits != 0 {
                 let lsb = bits & bits.wrapping_neg();
                 if (subset >> bit_index) & 1 != 0 {
-                    occ |= lsb;
+                    occupancy_val |= lsb;
                 }
                 bits &= bits - 1;
                 bit_index += 1;
             }
-            table[sq][index] = bishop_attacks_from(sq as u8, occ);
+
+            let occupancy = BitBoardMask(occupancy_val);
+            table[sq_idx][index] = bishop_attacks_from(square, occupancy);
+
             index += 1;
         }
-        sq += 1;
-    }
-    table
-};
 
-pub const PAWN_ATTACKS: [[u64; 64]; 2] = {
-    let mut table = [[0u64; 64]; 2];
-
-    // White pawn attacks
-    let mut sq = 0;
-    while sq < 64 {
-        let bb = 1u64 << sq;
-        table[Color::White as usize][sq] = ((bb >> 7) & !FILE_A) | ((bb >> 9) & !FILE_H);
-        sq += 1;
-    }
-
-    // Black pawn attacks
-    let mut sq = 0;
-    while sq < 64 {
-        let bb = 1u64 << sq;
-        table[Color::Black as usize][sq] = ((bb << 7) & !FILE_H) | ((bb << 9) & !FILE_A);
-        sq += 1;
+        sq_idx += 1;
     }
 
     table
 };
 
-pub const RANK_MASKS: [u64; NUM_SQUARES] = {
-    let mut table = [EMPTY; NUM_SQUARES];
-    let mut sq = 0;
-    while sq < NUM_SQUARES {
-        let rank = sq / BOARD_SIZE;
-        let mut mask = EMPTY;
-        let mut f = 0;
-        while f < BOARD_SIZE {
-            mask |= 1u64 << (rank * BOARD_SIZE + f);
-            f += 1;
+#[inline]
+pub const fn pawn_attacks_from(square: Square, color: Color) -> BitBoardMask {
+    let bb = square.bit();
+
+    match color {
+        Color::White => {
+            let nw_attack = bb.shift_left(7).and(NOT_FILE_H);
+            let ne_attack = bb.shift_left(9).and(NOT_FILE_A);
+            nw_attack.or(ne_attack)
         }
-        table[sq] = mask;
-        sq += 1;
-    }
-    table
-};
-
-pub const FILE_MASKS: [u64; NUM_SQUARES] = {
-    let mut table = [EMPTY; NUM_SQUARES];
-    let mut sq = 0;
-    while sq < NUM_SQUARES {
-        let file = sq % BOARD_SIZE;
-        let mut mask = EMPTY;
-        let mut r = 0;
-        while r < BOARD_SIZE {
-            mask |= 1u64 << (r * BOARD_SIZE + file);
-            r += 1;
+        Color::Black => {
+            let sw_attack = bb.shift_right(9).and(NOT_FILE_H);
+            let se_attack = bb.shift_right(7).and(NOT_FILE_A);
+            sw_attack.or(se_attack)
         }
-        table[sq] = mask;
-        sq += 1;
     }
-    table
-};
+}
 
-pub const DIAGONAL_MASKS: [u64; NUM_SQUARES] = {
-    let mut table = [EMPTY; NUM_SQUARES];
+const fn generate_attacks_for_color(color: Color) -> [BitBoardMask; NUM_SQUARES] {
+    let mut attacks = [BitBoardMask::empty(); NUM_SQUARES];
+    let squares = Square::all_array();
+
+    let mut i = 0;
+    while i < NUM_SQUARES {
+        attacks[i] = pawn_attacks_from(squares[i], color);
+        i += 1;
+    }
+    attacks
+}
+
+pub const PAWN_ATTACKS: [[BitBoardMask; NUM_SQUARES]; 2] = [
+    generate_attacks_for_color(Color::White),
+    generate_attacks_for_color(Color::Black),
+];
+
+pub const DIAGONAL_MASKS: [BitBoardMask; NUM_SQUARES] = {
+    let mut table = [BitBoardMask::empty(); NUM_SQUARES];
     let mut sq = 0;
     while sq < NUM_SQUARES {
         let rank = sq / BOARD_SIZE;
         let file = sq % BOARD_SIZE;
-        let mut mask = EMPTY;
+        let mut mask: u64 = 0;
 
-        // Walk NE
-        let mut r = rank;
-        let mut f = file;
+        // Walk NE (exclude origin)
+        let mut r = rank + 1;
+        let mut f = file + 1;
         while r < BOARD_SIZE && f < BOARD_SIZE {
             mask |= 1u64 << (r * BOARD_SIZE + f);
             r += 1;
             f += 1;
         }
-        // Walk SW
-        let mut r = rank;
-        let mut f = file;
+
+        // Walk SW (exclude origin)
+        let mut r = rank.wrapping_sub(1);
+        let mut f = file.wrapping_sub(1);
         while r < BOARD_SIZE && f < BOARD_SIZE {
             mask |= 1u64 << (r * BOARD_SIZE + f);
             if r == 0 || f == 0 {
@@ -514,44 +466,45 @@ pub const DIAGONAL_MASKS: [u64; NUM_SQUARES] = {
             f -= 1;
         }
 
-        table[sq] = mask;
+        table[sq] = BitBoardMask(mask);
         sq += 1;
     }
     table
 };
 
-pub const ANTIDIAGONAL_MASKS: [u64; NUM_SQUARES] = {
-    let mut table = [EMPTY; NUM_SQUARES];
+pub const ANTIDIAGONAL_MASKS: [BitBoardMask; NUM_SQUARES] = {
+    let mut table = [BitBoardMask::empty(); NUM_SQUARES];
     let mut sq = 0;
     while sq < NUM_SQUARES {
         let rank = sq / BOARD_SIZE;
         let file = sq % BOARD_SIZE;
-        let mut mask = EMPTY;
+        let mut mask: u64 = 0;
 
-        // Walk NW
-        let mut r = rank;
-        let mut f = file;
+        // Walk NW (exclude origin)
+        let mut r = rank.wrapping_add(1);
+        let mut f = file.wrapping_sub(1);
         while r < BOARD_SIZE && f < BOARD_SIZE {
             mask |= 1u64 << (r * BOARD_SIZE + f);
-            if r == BOARD_SIZE - 1 || f == 0 {
+            r += 1;
+            if f == 0 {
                 break;
             }
-            r += 1;
             f -= 1;
         }
-        // Walk SE
-        let mut r = rank;
-        let mut f = file;
+
+        // Walk SE (exclude origin)
+        let mut r = rank.wrapping_sub(1);
+        let mut f = file.wrapping_add(1);
         while r < BOARD_SIZE && f < BOARD_SIZE {
             mask |= 1u64 << (r * BOARD_SIZE + f);
-            if r == 0 || f == BOARD_SIZE - 1 {
+            if r == 0 {
                 break;
             }
             r -= 1;
             f += 1;
         }
 
-        table[sq] = mask;
+        table[sq] = BitBoardMask(mask);
         sq += 1;
     }
     table

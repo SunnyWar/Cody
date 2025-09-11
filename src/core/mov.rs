@@ -5,14 +5,14 @@ use std::fmt;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Move {
-    pub from: u8, // 0..63
-    pub to: u8,   // 0..63
+    pub from: Square, // 0..63
+    pub to: Square,   // 0..63
     pub promotion: Option<PieceKind>,
     pub flags: u8, // bit flags for special moves
 }
 
 impl Move {
-    pub fn new(from: u8, to: u8) -> Self {
+    pub fn new(from: Square, to: Square) -> Self {
         Move {
             from,
             to,
@@ -23,15 +23,15 @@ impl Move {
 
     pub fn null() -> Self {
         Move {
-            from: 0,
-            to: 0,
+            from: Square::A1,
+            to: Square::A1,
             promotion: None,
             flags: 0,
         }
     }
 
     pub(crate) fn from(&self) -> Square {
-        Square::A1 // or whatever the first/zero square is in your enum
+        Square::A1
     }
 
     pub(crate) fn to(&self) -> Square {
@@ -53,12 +53,8 @@ impl Move {
     }
 }
 
-fn square_to_string(sq: u8) -> String {
-    let file = sq % 8;
-    let rank = sq / 8;
-    let file_char = (b'a' + file) as char;
-    let rank_char = (b'1' + rank) as char;
-    format!("{}{}", file_char, rank_char)
+fn square_to_string(sq: Square) -> String {
+    format!("{}{}", sq.file_char(), sq.rank_char())
 }
 
 impl fmt::Display for Move {

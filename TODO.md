@@ -1,14 +1,6 @@
 # Cody Chess Engine — MVP TODO Roadmap
 
 ## 0. Handle UCI Commands (Minimum for Arena Tournament)
-- [x] **uci**
-  - Output `id name Cody`
-  - Output `id author David`
-  - Output `uciok`
-- [x] **isready**
-  - Output `readyok`
-- [x] **ucinewgame**
-  - Reset internal state (TT, history, etc.)
 - [ ] **position**
   - Parse `startpos` or `fen`
   - Apply move list if present

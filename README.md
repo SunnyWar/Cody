@@ -19,7 +19,7 @@ The first milestone is not to create the strongest chess engine, but to establis
 ### **Optimised Pseudo‑Legal Move Generation**
 - Per‑piece generators for pawns, knights, bishops, rooks, queens, and kings.
 - Generates **all possible moves** (captures + quiet moves) without legality filtering.
-- Uses a shared **`MoveGenContext`** to avoid recomputing `occ` and `not_ours` in each generator.
+- Uses a shared **`MoveGenContext`** to avoid recomputing `occupancy` and `not_ours` in each generator.
 - Employs **geometry pre‑masking**, **early‑bail**, and **zero‑check** patterns for speed.
 - Includes **debug geometry assertions** to validate attack tables in development builds.
 - Fully type‑safe with explicit `u8` casts for `Move::new`.
