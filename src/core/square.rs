@@ -55,8 +55,12 @@ impl Square {
         self as u8 as usize
     }
 
-    pub const fn from_index(idx: u8) -> Self {
-        unsafe { std::mem::transmute::<u8, Square>(idx) }
+    pub const fn try_from_index(idx: u8) -> Option<Self> {
+        if idx < 64 {
+            Some(unsafe { std::mem::transmute::<u8, Square>(idx) })
+        } else {
+            None
+        }
     }
 
     #[rustfmt::skip]
@@ -138,5 +142,97 @@ impl Square {
 
     pub const fn rank_mask(self) -> BitBoardMask {
         RANK_MASKS[self.rank() as usize]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_from_coords_valid() {
+        assert_eq!(Square::from_coords('a', '1'), Some(Square::A1));
+        assert_eq!(Square::from_coords('h', '8'), Some(Square::H8));
+        assert_eq!(Square::from_coords('e', '4'), Some(Square::E4));
+    }
+
+    #[test]
+    fn test_from_coords_invalid() {
+        assert_eq!(Square::from_coords('i', '1'), None);
+        assert_eq!(Square::from_coords('a', '9'), None);
+        assert_eq!(Square::from_coords('z', '0'), None);
+    }
+
+    #[test]
+    fn test_file_and_rank() {
+        assert_eq!(Square::C3.file(), 2);
+        assert_eq!(Square::C3.rank(), 2);
+        assert_eq!(Square::H8.file(), 7);
+        assert_eq!(Square::H8.rank(), 7);
+    }
+
+    #[test]
+    fn test_to_uci() {
+        assert_eq!(Square::A1.to_uci(), "a1");
+        assert_eq!(Square::E4.to_uci(), "e4");
+        assert_eq!(Square::H8.to_uci(), "h8");
+    }
+
+    #[test]
+    fn test_try_from_index_valid() {
+        for i in 0..64 {
+            let sq = Square::try_from_index(i);
+            assert!(sq.is_some(), "Expected Some(Square) for index {}", i);
+            assert_eq!(sq.unwrap().idx(), i as usize);
+        }
+    }
+
+    #[test]
+    fn test_try_from_index_invalid_returns_none() {
+        assert_eq!(Square::try_from_index(64), None);
+        assert_eq!(Square::try_from_index(255), None);
+    }
+
+    #[test]
+    fn test_from_rank_file_valid() {
+        assert_eq!(Square::from_rank_file(0, 0), Some(Square::A1));
+        assert_eq!(Square::from_rank_file(7, 7), Some(Square::H8));
+    }
+
+    #[test]
+    fn test_from_rank_file_invalid() {
+        assert_eq!(Square::from_rank_file(8, 0), None);
+        assert_eq!(Square::from_rank_file(0, 8), None);
+    }
+
+    #[test]
+    fn test_forward_and_backward() {
+        assert_eq!(Square::A2.forward(1), Some(Square::A3));
+        assert_eq!(Square::A3.backward(1), Some(Square::A2));
+        assert_eq!(Square::A1.backward(1), None);
+        assert_eq!(Square::H8.forward(1), None);
+    }
+
+    #[test]
+    fn test_advance() {
+        assert_eq!(Square::A1.advance(8), Some(Square::A2));
+        assert_eq!(Square::A2.advance(-8), Some(Square::A1));
+        assert_eq!(Square::A1.advance(-1), None);
+        assert_eq!(Square::H8.advance(1), None);
+    }
+
+    #[test]
+    fn test_to_string_and_chars() {
+        assert_eq!(Square::E4.to_string(), "e4");
+        assert_eq!(Square::E4.file_char(), 'e');
+        assert_eq!(Square::E4.rank_char(), '4');
+    }
+
+    #[test]
+    fn test_all_array_contains_all_squares() {
+        let all = Square::all_array();
+        assert_eq!(all.len(), 64);
+        assert!(all.contains(&Square::A1));
+        assert!(all.contains(&Square::H8));
     }
 }
