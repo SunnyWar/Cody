@@ -2,8 +2,6 @@
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 use std::ops::{Shl, Shr};
 
-use crate::core::piece::{Color, Piece, PieceKind};
-use crate::core::piecebitboards::PieceBitboards;
 use crate::core::square::Square;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

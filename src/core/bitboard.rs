@@ -251,7 +251,7 @@ pub const fn rook_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBo
     let blockers = occupancy.and(rank_mask);
     let left = blockers.subray_left(origin);
     let right = blockers.subray_right(origin);
-    let rank_attacks = left.or(right);
+    let rank_attacks = BitBoardMask(left.0 | right.0);
 
     // Vertical (file) attacks
     let file_mask = square.file_mask();
@@ -323,11 +323,11 @@ pub const BISHOP_MASKS: [BitBoardMask; NUM_SQUARES] = {
 
 impl BitBoardMask {
     pub const fn diagonal_for(square: Square) -> BitBoardMask {
-        DIAGONAL_MASKS[square.idx() as usize]
+        DIAGONAL_MASKS[square.idx()]
     }
 
     pub const fn antidiagonal_for(square: Square) -> BitBoardMask {
-        ANTIDIAGONAL_MASKS[square.idx() as usize]
+        ANTIDIAGONAL_MASKS[square.idx()]
     }
 }
 
