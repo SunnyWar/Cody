@@ -44,11 +44,11 @@ impl Move {
 }
 
 impl Move {
-    pub fn from_square(&self) -> String {
+    fn from_square(&self) -> String {
         square_to_string(self.from)
     }
 
-    pub fn to_square(&self) -> String {
+    fn to_square(&self) -> String {
         square_to_string(self.to)
     }
 }

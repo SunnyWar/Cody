@@ -62,7 +62,7 @@ impl Piece {
         }
     }
 
-    pub const fn from_index(idx: u8) -> Self {
+    const fn from_index(idx: u8) -> Self {
         match idx {
             0 => Self::WhitePawn,
             1 => Self::WhiteKnight,
@@ -82,7 +82,7 @@ impl Piece {
     }
 
     #[inline]
-    pub const fn piece_index(color: Color, kind: PieceKind) -> usize {
+    const fn piece_index(color: Color, kind: PieceKind) -> usize {
         match (color, kind) {
             (Color::White, PieceKind::Pawn) => 0,
             (Color::White, PieceKind::Knight) => 1,
@@ -170,14 +170,4 @@ impl PieceKind {
     }
 }
 
-#[inline]
-pub fn is_pawn_double_push(piece: Piece, from: Square, to: Square, side: Color) -> bool {
-    if piece.kind() != PieceKind::Pawn {
-        return false;
-    }
 
-    match side {
-        Color::White => from.rank() == 1 && from.forward(2).map_or(false, |target| target == to),
-        Color::Black => from.rank() == 6 && from.backward(2).map_or(false, |target| target == to),
-    }
-}

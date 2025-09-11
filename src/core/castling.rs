@@ -56,7 +56,7 @@ impl CastlingRights {
         s
     }
 
-    pub fn to_bits(&self) -> u8 {
+    fn to_bits(&self) -> u8 {
         (self.white_kingside as u8)
             | ((self.white_queenside as u8) << 1)
             | ((self.black_kingside as u8) << 2)
@@ -73,7 +73,7 @@ impl CastlingRights {
     }
 }
 
-pub struct CastlingMeta {
+struct CastlingMeta {
     pub king_from: Square,
     pub kingside_to: Square,
     pub queenside_to: Square,
@@ -81,7 +81,7 @@ pub struct CastlingMeta {
     pub queenside_mask: BitBoardMask,
 }
 
-pub const WHITE_CASTLING: CastlingMeta = CastlingMeta {
+const WHITE_CASTLING: CastlingMeta = CastlingMeta {
     king_from: Square::E1,
     kingside_to: Square::G1,
     queenside_to: Square::C1,
@@ -89,7 +89,7 @@ pub const WHITE_CASTLING: CastlingMeta = CastlingMeta {
     queenside_mask: BitBoardMask::from_squares(&[Square::B1, Square::C1, Square::D1]),
 };
 
-pub const BLACK_CASTLING: CastlingMeta = CastlingMeta {
+const BLACK_CASTLING: CastlingMeta = CastlingMeta {
     king_from: Square::E8,
     kingside_to: Square::G8,
     queenside_to: Square::C8,

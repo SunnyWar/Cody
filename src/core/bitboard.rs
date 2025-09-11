@@ -1,24 +1,25 @@
 // src/core/bitboard.rs
+#![allow(long_running_const_eval)]
 
 use crate::core::{bitboardmask::BitBoardMask, piece::Color, square::Square};
 
 pub const FILE_A: BitBoardMask = BitBoardMask(0x0101010101010101);
-pub const FILE_B: BitBoardMask = BitBoardMask(0x0202020202020202);
-pub const FILE_C: BitBoardMask = BitBoardMask(0x0404040404040404);
-pub const FILE_D: BitBoardMask = BitBoardMask(0x0808080808080808);
-pub const FILE_E: BitBoardMask = BitBoardMask(0x1010101010101010);
-pub const FILE_F: BitBoardMask = BitBoardMask(0x2020202020202020);
-pub const FILE_G: BitBoardMask = BitBoardMask(0x4040404040404040);
+const FILE_B: BitBoardMask = BitBoardMask(0x0202020202020202);
+const FILE_C: BitBoardMask = BitBoardMask(0x0404040404040404);
+const FILE_D: BitBoardMask = BitBoardMask(0x0808080808080808);
+const FILE_E: BitBoardMask = BitBoardMask(0x1010101010101010);
+const FILE_F: BitBoardMask = BitBoardMask(0x2020202020202020);
+const FILE_G: BitBoardMask = BitBoardMask(0x4040404040404040);
 pub const FILE_H: BitBoardMask = BitBoardMask(0x8080808080808080);
 
-pub const RANK_1: BitBoardMask = BitBoardMask(0x00000000000000FF);
-pub const RANK_2: BitBoardMask = BitBoardMask(0x000000000000FF00);
-pub const RANK_3: BitBoardMask = BitBoardMask(0x0000000000FF0000);
-pub const RANK_4: BitBoardMask = BitBoardMask(0x00000000FF000000);
-pub const RANK_5: BitBoardMask = BitBoardMask(0x000000FF00000000);
-pub const RANK_6: BitBoardMask = BitBoardMask(0x0000FF0000000000);
-pub const RANK_7: BitBoardMask = BitBoardMask(0x00FF000000000000);
-pub const RANK_8: BitBoardMask = BitBoardMask(0xFF00000000000000);
+const RANK_1: BitBoardMask = BitBoardMask(0x00000000000000FF);
+const RANK_2: BitBoardMask = BitBoardMask(0x000000000000FF00);
+const RANK_3: BitBoardMask = BitBoardMask(0x0000000000FF0000);
+const RANK_4: BitBoardMask = BitBoardMask(0x00000000FF000000);
+const RANK_5: BitBoardMask = BitBoardMask(0x000000FF00000000);
+const RANK_6: BitBoardMask = BitBoardMask(0x0000FF0000000000);
+const RANK_7: BitBoardMask = BitBoardMask(0x00FF000000000000);
+const RANK_8: BitBoardMask = BitBoardMask(0xFF00000000000000);
 
 pub const FILE_MASKS: [BitBoardMask; BOARD_SIZE] = [
     FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H,
@@ -29,13 +30,13 @@ pub const RANK_MASKS: [BitBoardMask; BOARD_SIZE] = [
 ];
 
 // File masks to prevent wrap-around when shifting
-pub const NOT_FILE_A: BitBoardMask = BitBoardMask(0xfefefefefefefefe);
-pub const NOT_FILE_AB: BitBoardMask = BitBoardMask(0xfcfcfcfcfcfcfcfc);
-pub const NOT_FILE_H: BitBoardMask = BitBoardMask(0x7f7f7f7f7f7f7f7f);
-pub const NOT_FILE_GH: BitBoardMask = BitBoardMask(0x3f3f3f3f3f3f3f3f);
+const NOT_FILE_A: BitBoardMask = BitBoardMask(0xfefefefefefefefe);
+const NOT_FILE_AB: BitBoardMask = BitBoardMask(0xfcfcfcfcfcfcfcfc);
+const NOT_FILE_H: BitBoardMask = BitBoardMask(0x7f7f7f7f7f7f7f7f);
+const NOT_FILE_GH: BitBoardMask = BitBoardMask(0x3f3f3f3f3f3f3f3f);
 
-pub const BOARD_SIZE: usize = 8;
-pub const NUM_SQUARES: usize = BOARD_SIZE * BOARD_SIZE;
+const BOARD_SIZE: usize = 8;
+const NUM_SQUARES: usize = BOARD_SIZE * BOARD_SIZE;
 const EMPTY: u64 = 0;
 
 //const RANK_0: i8 = 0;
@@ -221,7 +222,7 @@ pub const KNIGHT_ATTACKS: [BitBoardMask; NUM_SQUARES] = {
 };
 
 #[inline]
-pub const fn rook_mask(square: Square) -> BitBoardMask {
+const fn rook_mask(square: Square) -> BitBoardMask {
     let rank_mask = square.rank_mask();
     let file_mask = square.file_mask();
     let origin = square.bit();
@@ -262,7 +263,6 @@ pub const fn rook_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBo
     rank_attacks.or(file_attacks)
 }
 
-#[allow(long_running_const_eval)]
 pub static ROOK_ATTACKS: [[BitBoardMask; MAX_ROOK_OCCUPANCY_VARIATIONS]; NUM_SQUARES] = {
     let mut table = [[BitBoardMask::empty(); MAX_ROOK_OCCUPANCY_VARIATIONS]; NUM_SQUARES];
     let squares = Square::all_array();
@@ -332,7 +332,7 @@ impl BitBoardMask {
 }
 
 #[inline]
-pub const fn bishop_mask(square: Square) -> BitBoardMask {
+const fn bishop_mask(square: Square) -> BitBoardMask {
     BitBoardMask::diagonal_for(square).or(BitBoardMask::antidiagonal_for(square))
 }
 
@@ -402,7 +402,7 @@ pub static BISHOP_ATTACKS: [[BitBoardMask; 512]; NUM_SQUARES] = {
 };
 
 #[inline]
-pub const fn pawn_attacks_from(square: Square, color: Color) -> BitBoardMask {
+const fn pawn_attacks_from(square: Square, color: Color) -> BitBoardMask {
     let bb = square.bit();
 
     match color {

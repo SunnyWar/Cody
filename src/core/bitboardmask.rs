@@ -206,12 +206,16 @@ impl BitBoardMask {
     pub const fn subray_right(self, origin: BitBoardMask) -> BitBoardMask {
         let mut ray = BitBoardMask::empty();
         let mut probe = origin.shift_left(1);
-        while probe.0 != 0 {
+
+        let mut count = 0;
+        while probe.0 != 0 && count < 64 {
             ray = ray.or(probe);
             if self.and(probe).is_nonempty() {
                 break;
             }
             probe = probe.shift_left(1);
+
+            count += 1;
         }
         ray
     }
@@ -295,14 +299,4 @@ impl BitBoardMask {
     }
 }
 
-#[inline]
-pub fn or_color(pieces: &PieceBitboards, c: Color) -> BitBoardMask {
-    let mut acc = BitBoardMask::empty();
-    acc |= pieces.get(Piece::from_parts(c, Some(PieceKind::Pawn)));
-    acc |= pieces.get(Piece::from_parts(c, Some(PieceKind::Knight)));
-    acc |= pieces.get(Piece::from_parts(c, Some(PieceKind::Bishop)));
-    acc |= pieces.get(Piece::from_parts(c, Some(PieceKind::Rook)));
-    acc |= pieces.get(Piece::from_parts(c, Some(PieceKind::Queen)));
-    acc |= pieces.get(Piece::from_parts(c, Some(PieceKind::King)));
-    acc
-}
+

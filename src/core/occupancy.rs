@@ -24,12 +24,12 @@ impl OccupancyMap {
     }
 
     #[inline]
-    pub fn get(&self, kind: OccupancyKind) -> BitBoardMask {
+    fn get(&self, kind: OccupancyKind) -> BitBoardMask {
         self.inner[kind as usize]
     }
 
     #[inline]
-    pub fn set(&mut self, kind: OccupancyKind, value: BitBoardMask) {
+    fn set(&mut self, kind: OccupancyKind, value: BitBoardMask) {
         self.inner[kind as usize] = value;
     }
 
@@ -39,7 +39,7 @@ impl OccupancyMap {
     }
 
     #[inline]
-    pub fn clear(&mut self, kind: OccupancyKind) {
+    fn clear(&mut self, kind: OccupancyKind) {
         self.inner[kind as usize] = BitBoardMask::empty();
     }
 }
