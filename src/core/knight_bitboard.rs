@@ -1,9 +1,13 @@
 /// Offsets a knight can move: (rank_delta, file_delta)
 const KNIGHT_DELTAS: [(i8, i8); 8] = [
-    ( 2,  1), ( 2, -1),
-    (-2,  1), (-2, -1),
-    ( 1,  2), ( 1, -2),
-    (-1,  2), (-1, -2),
+    (2, 1),
+    (2, -1),
+    (-2, 1),
+    (-2, -1),
+    (1, 2),
+    (1, -2),
+    (-1, 2),
+    (-1, -2),
 ];
 
 /// 64‐bit bitboard wrapper
@@ -54,7 +58,6 @@ const KNIGHT_ATTACKS: [Bitboard; 64] = {
     }
     table
 };
-
 
 /* fn generate_all_knight_moves(
     pos: &Position,

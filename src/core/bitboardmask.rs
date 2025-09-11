@@ -298,5 +298,3 @@ impl BitBoardMask {
         ray
     }
 }
-
-

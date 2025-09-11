@@ -1,6 +1,6 @@
 // src/core/position.rs
 
-use crate::core::bitboardmask::{BitBoardMask};
+use crate::core::bitboardmask::BitBoardMask;
 use crate::core::castling::CastlingRights;
 use crate::core::mov::Move;
 use crate::core::occupancy::{OccupancyKind, OccupancyMap};
@@ -442,8 +442,6 @@ impl Position {
             .into_iter()
             .find(|m| m.from() == from_sq && m.to() == to_sq && m.promotion() == promo)
     }
-
-    
 }
 
 #[inline]
