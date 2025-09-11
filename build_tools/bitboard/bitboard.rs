@@ -35,7 +35,7 @@ const NOT_FILE_AB: BitBoardMask = BitBoardMask(0xfcfcfcfcfcfcfcfc);
 const NOT_FILE_H: BitBoardMask = BitBoardMask(0x7f7f7f7f7f7f7f7f);
 const NOT_FILE_GH: BitBoardMask = BitBoardMask(0x3f3f3f3f3f3f3f3f);
 
-pub const BOARD_SIZE: usize = 8;
+const BOARD_SIZE: usize = 8;
 const NUM_SQUARES: usize = BOARD_SIZE * BOARD_SIZE;
 const EMPTY: u64 = 0;
 

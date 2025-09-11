@@ -1,4 +1,7 @@
 // src/core/square.rs
+//use crate::generated::FILE_A;
+//use crate::generated::FILE_A;
+//use crate::generated::FILE_MASKS;
 use std::fmt;
 
 use crate::core::{
