@@ -68,7 +68,7 @@ impl BitBoardMask {
             } else {
                 let sq = bb.trailing_zeros() as u8;
                 bb &= bb - 1; // clear the lowest set bit
-                Some(Square::from_index(sq))
+                Square::try_from_index(sq)
             }
         })
     }
@@ -79,7 +79,7 @@ impl BitBoardMask {
             None
         } else {
             let idx = self.0.trailing_zeros() as u8;
-            Some(Square::from_index(idx))
+            Square::try_from_index(idx)
         }
     }
 
