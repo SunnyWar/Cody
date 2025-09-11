@@ -1,7 +1,5 @@
 // src/core/piece.rs
 
-use crate::core::square::Square;
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum PieceKind {
     Pawn = 0,
@@ -12,7 +10,7 @@ pub enum PieceKind {
     King = 5,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Color {
     White = 0,
     Black = 1,
@@ -167,5 +165,72 @@ impl PieceKind {
             'n' => Some(PieceKind::Knight),
             _ => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_color_opposite() {
+        assert_eq!(Color::White.opposite(), Color::Black);
+        assert_eq!(Color::Black.opposite(), Color::White);
+    }
+
+    #[test]
+    fn test_piece_from_parts() {
+        assert_eq!(
+            Piece::from_parts(Color::White, Some(PieceKind::Queen)),
+            Piece::WhiteQueen
+        );
+        assert_eq!(
+            Piece::from_parts(Color::Black, Some(PieceKind::Knight)),
+            Piece::BlackKnight
+        );
+        assert_eq!(Piece::from_parts(Color::White, None), Piece::None);
+    }
+
+    #[test]
+    fn test_piece_color_and_kind() {
+        assert_eq!(Piece::WhiteBishop.color(), Color::White);
+        assert_eq!(Piece::BlackRook.color(), Color::Black);
+        assert_eq!(Piece::WhiteKnight.kind(), PieceKind::Knight);
+        assert_eq!(Piece::BlackQueen.kind(), PieceKind::Queen);
+    }
+
+    #[test]
+    fn test_piece_to_char() {
+        assert_eq!(Piece::WhitePawn.to_char(), 'P');
+        assert_eq!(Piece::BlackKnight.to_char(), 'n');
+        assert_eq!(Piece::None.to_char(), ' ');
+    }
+
+    #[test]
+    fn test_piece_from_char() {
+        assert_eq!(Piece::from_char('Q'), Some(Piece::WhiteQueen));
+        assert_eq!(Piece::from_char('k'), Some(Piece::BlackKing));
+        assert_eq!(Piece::from_char('x'), Some(Piece::None)); // Possibly unexpected
+    }
+
+    #[test]
+    fn test_piece_index_consistency() {
+        for i in 0..=11 {
+            let piece = unsafe { std::mem::transmute::<u8, Piece>(i) };
+            assert_eq!(piece.index(), i as usize);
+        }
+    }
+
+    #[test]
+    fn test_piecekind_from_uci() {
+        assert_eq!(PieceKind::from_uci('q'), Some(PieceKind::Queen));
+        assert_eq!(PieceKind::from_uci('n'), Some(PieceKind::Knight));
+        assert_eq!(PieceKind::from_uci('x'), None);
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid piece index")]
+    fn test_invalid_piece_index_panics() {
+        let _ = Piece::from_index(13);
     }
 }
