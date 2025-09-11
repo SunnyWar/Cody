@@ -11,6 +11,8 @@ use crate::core::mov::Move;
 use crate::core::occupancy::OccupancyKind;
 use crate::core::piece::{Color, Piece, PieceKind};
 use crate::core::position::{MoveGenContext, Position};
+//use crate::generated::FILE_A;
+//use crate::generated::FILE_MASKS;
 
 const NORTH: i8 = 8;
 const SOUTH: i8 = -8;
