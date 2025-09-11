@@ -2,7 +2,7 @@
 
 use crate::core::bitboard::{
     ANTIDIAGONAL_MASKS, BISHOP_ATTACKS, BISHOP_MASKS, DIAGONAL_MASKS, 
-    KING_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS, RANK_MASKS, ROOK_ATTACKS, ROOK_MASKS,
+    KING_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS, ROOK_ATTACKS, ROOK_MASKS,
     SQUARE_COLOR_MASK, bishop_attacks_from, gen_king_attacks, knight_attacks_for,
     occupancy_to_index, rook_attacks_from,
 };
@@ -11,7 +11,7 @@ use crate::core::mov::Move;
 use crate::core::occupancy::OccupancyKind;
 use crate::core::piece::{Color, Piece, PieceKind};
 use crate::core::position::{MoveGenContext, Position};
-use crate::generated::{FILE_A, FILE_H, FILE_MASKS};
+use crate::generated::{FILE_A, FILE_H, FILE_MASKS, RANK_MASKS};
 
 
 const NORTH: i8 = 8;
