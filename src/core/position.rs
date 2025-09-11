@@ -1,20 +1,20 @@
 // src/core/position.rs
 
-use crate::core::bitboardmask::{BitBoardMask, or_color};
+use crate::core::bitboardmask::{BitBoardMask};
 use crate::core::castling::CastlingRights;
 use crate::core::mov::Move;
 use crate::core::occupancy::{OccupancyKind, OccupancyMap};
-use crate::core::piece::{Color, Piece, PieceKind, is_pawn_double_push};
+use crate::core::piece::{Color, Piece, PieceKind};
 use crate::core::piecebitboards::PieceBitboards;
 use crate::core::square::Square;
 use crate::search::movegen::generate_moves;
 
 // Flags
-pub const FLAG_CAPTURE: u8 = 1 << 0;
-pub const FLAG_KINGSIDE_CASTLE: u8 = 1 << 1;
-pub const FLAG_QUEENSIDE_CASTLE: u8 = 1 << 2;
-pub const FLAG_EN_PASSANT: u8 = 1 << 3;
-pub const FLAG_PROMOTION: u8 = 1 << 4;
+const FLAG_CAPTURE: u8 = 1 << 0;
+const FLAG_KINGSIDE_CASTLE: u8 = 1 << 1;
+const FLAG_QUEENSIDE_CASTLE: u8 = 1 << 2;
+const FLAG_EN_PASSANT: u8 = 1 << 3;
+const FLAG_PROMOTION: u8 = 1 << 4;
 
 pub struct MoveGenContext {
     pub us: Color,
@@ -77,7 +77,7 @@ impl Position {
     }
 
     #[inline]
-    pub fn set_piece(&mut self, sq: Square, piece: Piece) {
+    fn set_piece(&mut self, sq: Square, piece: Piece) {
         let bit = BitBoardMask::from_square(sq);
         *self.pieces.get_mut(piece) |= bit;
 
@@ -90,7 +90,7 @@ impl Position {
         self.occupancyupancy.or_in(OccupancyKind::Both, bit);
     }
 
-    pub fn empty() -> Self {
+    fn empty() -> Self {
         Self {
             pieces: PieceBitboards::new(),
             occupancyupancy: OccupancyMap::new(),
@@ -349,7 +349,7 @@ impl Position {
         }
     }
 
-    pub fn to_fen(&self) -> String {
+    fn to_fen(&self) -> String {
         let mut fen = String::new();
 
         for rank in (0..8).rev() {
@@ -446,3 +446,26 @@ impl Position {
     
 }
 
+#[inline]
+fn or_color(pieces: &PieceBitboards, c: Color) -> BitBoardMask {
+    let mut acc = BitBoardMask::empty();
+    acc |= pieces.get(Piece::from_parts(c, Some(PieceKind::Pawn)));
+    acc |= pieces.get(Piece::from_parts(c, Some(PieceKind::Knight)));
+    acc |= pieces.get(Piece::from_parts(c, Some(PieceKind::Bishop)));
+    acc |= pieces.get(Piece::from_parts(c, Some(PieceKind::Rook)));
+    acc |= pieces.get(Piece::from_parts(c, Some(PieceKind::Queen)));
+    acc |= pieces.get(Piece::from_parts(c, Some(PieceKind::King)));
+    acc
+}
+
+#[inline]
+fn is_pawn_double_push(piece: Piece, from: Square, to: Square, side: Color) -> bool {
+    if piece.kind() != PieceKind::Pawn {
+        return false;
+    }
+
+    match side {
+        Color::White => from.rank() == 1 && from.forward(2).map_or(false, |target| target == to),
+        Color::Black => from.rank() == 6 && from.backward(2).map_or(false, |target| target == to),
+    }
+}

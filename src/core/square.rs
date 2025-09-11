@@ -83,7 +83,7 @@ impl Square {
         }
     }
 
-    pub fn iter_all() -> impl Iterator<Item = Square> {
+    fn iter_all() -> impl Iterator<Item = Square> {
         (0u8..64).map(|v| unsafe { std::mem::transmute::<u8, Square>(v) })
     }
 
@@ -131,9 +131,7 @@ impl Square {
             None
         }
     }
-}
 
-impl Square {
     pub const fn file_mask(self) -> BitBoardMask {
         FILE_MASKS[self.file() as usize]
     }

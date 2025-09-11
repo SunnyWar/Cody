@@ -21,7 +21,7 @@ impl PieceBitboards {
     }
 
     #[inline]
-    pub fn set(&mut self, piece: Piece, bb: BitBoardMask) {
+    fn set(&mut self, piece: Piece, bb: BitBoardMask) {
         self.inner[piece.index()] = bb;
     }
 
