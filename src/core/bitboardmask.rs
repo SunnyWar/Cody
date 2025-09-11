@@ -2,13 +2,9 @@
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 use std::ops::{Shl, Shr};
 
-use crate::core::{
-    bitboard::{
-        BISHOP_ATTACKS, BISHOP_MASKS, KING_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS, ROOK_ATTACKS,
-        ROOK_MASKS, occ_to_index,
-    },
-    piece::Color,
-};
+use crate::core::piece::{Color, Piece, PieceKind};
+use crate::core::piecebitboards::PieceBitboards;
+use crate::core::square::Square;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BitBoardMask(pub u64);
@@ -20,18 +16,16 @@ impl BitBoardMask {
     }
 
     #[inline]
-    pub const fn from_square(sq: u8) -> Self {
-        Self(1u64 << sq)
+    pub const fn from_square(sq: Square) -> Self {
+        Self(1u64 << (sq as u8))
     }
 
-    #[inline]
-    pub fn set(&mut self, sq: u8) {
-        self.0 |= 1u64 << sq;
+    pub fn set(&mut self, sq: Square) {
+        self.0 |= 1u64 << sq.idx();
     }
 
-    #[inline]
-    pub fn clear(&mut self, sq: u8) {
-        self.0 &= !(1u64 << sq);
+    pub fn clear(&mut self, sq: Square) {
+        self.0 &= !(1u64 << sq.idx());
     }
 
     #[inline]
@@ -45,23 +39,28 @@ impl BitBoardMask {
     }
 
     #[inline]
-    pub fn is_empty_bb(bb: u64) -> bool {
-        bb == 0
+    pub const fn count_ones(self) -> u32 {
+        self.0.count_ones()
     }
 
     #[inline]
-    pub fn is_nonempty(self) -> bool {
+    pub const fn is_singleton(self) -> bool {
+        self.count_ones() == 1
+    }
+
+    #[inline]
+    pub const fn is_nonempty(self) -> bool {
         self.0 != 0
     }
 
     #[inline]
-    pub fn contains_square(self, sq: u8) -> bool {
-        (self.0 >> sq) & 1 != 0
+    pub fn contains_square(self, sq: Square) -> bool {
+        (self.0 >> sq.idx()) & 1 != 0
     }
 
     /// Returns an iterator over all set squares in this bitboard.
     #[inline]
-    pub fn squares(self) -> impl Iterator<Item = u8> {
+    pub fn squares(self) -> impl Iterator<Item = Square> {
         let mut bb = self.0;
         std::iter::from_fn(move || {
             if bb == 0 {
@@ -69,18 +68,57 @@ impl BitBoardMask {
             } else {
                 let sq = bb.trailing_zeros() as u8;
                 bb &= bb - 1; // clear the lowest set bit
-                Some(sq)
+                Some(Square::from_index(sq))
             }
         })
     }
 
     #[inline]
-    pub fn first_square(self) -> Option<u8> {
+    pub fn first_square(self) -> Option<Square> {
         if self.0 == 0 {
             None
         } else {
-            Some(self.0.trailing_zeros() as u8)
+            let idx = self.0.trailing_zeros() as u8;
+            Some(Square::from_index(idx))
         }
+    }
+
+    pub fn contains(&self, sq: Square) -> bool {
+        self.0 & (1u64 << (sq as u8)) != 0
+    }
+
+    pub const fn shift_left(self, n: u32) -> Self {
+        BitBoardMask(self.0 << n)
+    }
+
+    pub const fn shift_right(self, n: u32) -> Self {
+        BitBoardMask(self.0 >> n)
+    }
+
+    pub const fn or(self, other: Self) -> Self {
+        BitBoardMask(self.0 | other.0)
+    }
+
+    pub const fn and(self, other: Self) -> Self {
+        BitBoardMask(self.0 & other.0)
+    }
+
+    pub const fn xor(self, other: Self) -> Self {
+        BitBoardMask(self.0 ^ other.0)
+    }
+
+    pub const fn not(self) -> Self {
+        BitBoardMask(!self.0)
+    }
+
+    pub const fn from_squares(squares: &[Square]) -> Self {
+        let mut mask = 0u64;
+        let mut i = 0;
+        while i < squares.len() {
+            mask |= 1u64 << (squares[i] as u8);
+            i += 1;
+        }
+        BitBoardMask(mask)
     }
 }
 
@@ -139,38 +177,132 @@ impl Not for BitBoardMask {
     }
 }
 
-#[inline]
-pub fn rook_attacks_mask(from: u8, occ: BitBoardMask) -> BitBoardMask {
-    let from = from as usize;
-    let mask = ROOK_MASKS[from];
-    let index = occ_to_index(occ.0 & mask, mask);
-    BitBoardMask(ROOK_ATTACKS[from][index])
+impl From<Square> for BitBoardMask {
+    fn from(sq: Square) -> Self {
+        BitBoardMask::from_square(sq)
+    }
+}
+
+impl From<u64> for BitBoardMask {
+    fn from(bits: u64) -> Self {
+        BitBoardMask(bits)
+    }
+}
+
+impl BitBoardMask {
+    pub const fn subray_left(self, origin: BitBoardMask) -> BitBoardMask {
+        let mut ray = BitBoardMask::empty();
+        let mut probe = origin.shift_right(1);
+        while probe.0 != 0 {
+            ray = ray.or(probe);
+            if self.and(probe).is_nonempty() {
+                break;
+            }
+            probe = probe.shift_right(1);
+        }
+        ray
+    }
+
+    pub const fn subray_right(self, origin: BitBoardMask) -> BitBoardMask {
+        let mut ray = BitBoardMask::empty();
+        let mut probe = origin.shift_left(1);
+        while probe.0 != 0 {
+            ray = ray.or(probe);
+            if self.and(probe).is_nonempty() {
+                break;
+            }
+            probe = probe.shift_left(1);
+        }
+        ray
+    }
+
+    pub const fn subray_up(self, origin: BitBoardMask) -> BitBoardMask {
+        let mut ray = BitBoardMask::empty();
+        let mut probe = origin.shift_left(8);
+        while probe.0 != 0 {
+            ray = ray.or(probe);
+            if self.and(probe).is_nonempty() {
+                break;
+            }
+            probe = probe.shift_left(8);
+        }
+        ray
+    }
+
+    pub const fn subray_down(self, origin: BitBoardMask) -> BitBoardMask {
+        let mut ray = BitBoardMask::empty();
+        let mut probe = origin.shift_right(8);
+        while probe.0 != 0 {
+            ray = ray.or(probe);
+            if self.and(probe).is_nonempty() {
+                break;
+            }
+            probe = probe.shift_right(8);
+        }
+        ray
+    }
+
+    pub const fn subray_up_right(self, origin: BitBoardMask) -> BitBoardMask {
+        let mut ray = BitBoardMask::empty();
+        let mut probe = origin.shift_left(9);
+        while probe.0 != 0 {
+            ray = ray.or(probe);
+            if self.and(probe).is_nonempty() {
+                break;
+            }
+            probe = probe.shift_left(9);
+        }
+        ray
+    }
+
+    pub const fn subray_down_left(self, origin: BitBoardMask) -> BitBoardMask {
+        let mut ray = BitBoardMask::empty();
+        let mut probe = origin.shift_right(9);
+        while probe.0 != 0 {
+            ray = ray.or(probe);
+            if self.and(probe).is_nonempty() {
+                break;
+            }
+            probe = probe.shift_right(9);
+        }
+        ray
+    }
+
+    pub const fn subray_up_left(self, origin: BitBoardMask) -> BitBoardMask {
+        let mut ray = BitBoardMask::empty();
+        let mut probe = origin.shift_left(7);
+        while probe.0 != 0 {
+            ray = ray.or(probe);
+            if self.and(probe).is_nonempty() {
+                break;
+            }
+            probe = probe.shift_left(7);
+        }
+        ray
+    }
+
+    pub const fn subray_down_right(self, origin: BitBoardMask) -> BitBoardMask {
+        let mut ray = BitBoardMask::empty();
+        let mut probe = origin.shift_right(7);
+        while probe.0 != 0 {
+            ray = ray.or(probe);
+            if self.and(probe).is_nonempty() {
+                break;
+            }
+            probe = probe.shift_right(7);
+        }
+        ray
+    }
 }
 
 #[inline]
-pub fn bishop_attacks_mask(from: u8, occ: BitBoardMask) -> BitBoardMask {
-    let from = from as usize;
-    let mask = BISHOP_MASKS[from];
-    let index = occ_to_index(occ.0 & mask, mask);
-    BitBoardMask(BISHOP_ATTACKS[from][index])
-}
-
-#[inline]
-pub fn queen_attacks_mask(from: u8, occ: BitBoardMask) -> BitBoardMask {
-    rook_attacks_mask(from, occ) | bishop_attacks_mask(from, occ)
-}
-
-#[inline]
-pub fn knight_attacks_mask(from: u8) -> BitBoardMask {
-    BitBoardMask(KNIGHT_ATTACKS[from as usize])
-}
-
-#[inline]
-pub fn king_attacks_mask(from: u8) -> BitBoardMask {
-    BitBoardMask(KING_ATTACKS[from as usize])
-}
-
-#[inline]
-pub fn pawn_attacks_mask(from: u8, color: Color) -> BitBoardMask {
-    BitBoardMask(PAWN_ATTACKS[color as usize][from as usize])
+pub fn or_color(pieces: &PieceBitboards, c: Color) -> BitBoardMask {
+    let mut acc = BitBoardMask::empty();
+    acc |= pieces.get(Piece::from_parts(c, Some(PieceKind::Pawn)));
+    acc |= pieces.get(Piece::from_parts(c, Some(PieceKind::Knight)));
+    acc |= pieces.get(Piece::from_parts(c, Some(PieceKind::Bishop)));
+    acc |= pieces.get(Piece::from_parts(c, Some(PieceKind::Rook)));
+    acc |= pieces.get(Piece::from_parts(c, Some(PieceKind::Queen)));
+    acc |= pieces.get(Piece::from_parts(c, Some(PieceKind::King)));
+    acc
 }

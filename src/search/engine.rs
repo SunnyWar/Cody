@@ -3,7 +3,7 @@
 use crate::core::mov::Move;
 use crate::core::{arena::Arena, position::Position};
 use crate::search::evaluator::Evaluator;
-use crate::search::movegen::MoveGenerator;
+use crate::search::movegen::{MoveGenerator, generate_moves};
 use rand::prelude::IndexedRandom;
 use std::sync::atomic::{AtomicU64, Ordering};
 pub static NODE_COUNT: AtomicU64 = AtomicU64::new(0);
@@ -32,7 +32,7 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
 
         let moves = {
             let (parent, _) = self.arena.get_pair_mut(0, 1);
-            self.movegen.generate_moves(&parent.position)
+            generate_moves(&parent.position)
         };
 
         if moves.is_empty() {
@@ -78,7 +78,7 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
 
         let moves = {
             let (parent, _) = self.arena.get_pair_mut(ply, ply + 1);
-            self.movegen.generate_moves(&parent.position)
+            generate_moves(&parent.position)
         };
 
         if moves.is_empty() {
