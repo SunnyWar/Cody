@@ -242,7 +242,6 @@ pub const ROOK_MASKS: [BitBoardMask; NUM_SQUARES] = {
 };
 
 #[inline]
-#[allow(long_running_const_eval)]
 pub const fn rook_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
     let origin = square.bit();
 
