@@ -4,10 +4,10 @@
 //use crate::generated::FILE_MASKS;
 use std::fmt;
 
-use crate::core::{
-    bitboard::{FILE_MASKS, RANK_MASKS},
+use crate::{core::{
+    bitboard::RANK_MASKS,
     bitboardmask::BitBoardMask,
-};
+}, generated::FILE_MASKS};
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

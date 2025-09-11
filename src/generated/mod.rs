@@ -3,3 +3,4 @@ use crate::core::bitboard::BOARD_SIZE;
 use crate::core::bitboardmask::BitBoardMask;
 
 include!("generated_files.rs");
+ 

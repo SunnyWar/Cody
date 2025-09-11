@@ -4,7 +4,6 @@ pub mod arena;
 pub mod bitboard;
 pub mod bitboardmask;
 pub mod castling;
-pub mod knight_bitboard;
 pub mod mov;
 pub mod node;
 pub mod occupancy;
