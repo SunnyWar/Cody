@@ -12,3 +12,4 @@ pub mod piecebitboards;
 pub mod position;
 pub mod rank;
 pub mod square;
+pub mod knight_bitboard;
