@@ -1,9 +1,5 @@
 // src/core/position.rs
 
-use crate::core::bitboard::{
-    BISHOP_ATTACKS, BISHOP_MASKS, KING_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS, ROOK_ATTACKS,
-    ROOK_MASKS, occupancy_to_index,
-};
 use crate::core::bitboardmask::{BitBoardMask, or_color};
 use crate::core::castling::CastlingRights;
 use crate::core::mov::Move;
@@ -447,82 +443,6 @@ impl Position {
             .find(|m| m.from() == from_sq && m.to() == to_sq && m.promotion() == promo)
     }
 
-    fn is_in_check(&self, side: Color) -> bool {
-        let king_square = self
-            .pieces
-            .get(Piece::from_parts(side, Some(PieceKind::King)))
-            .first_square()
-            .expect("King not found");
-        let attackers = self.attacks_to(king_square, side.opposite());
-        !attackers.is_empty()
-    }
-
-    fn attacks_to(&self, square: Square, attacker: Color) -> BitBoardMask {
-        let mut attacks = BitBoardMask::empty();
-
-        // Pawns — note: pawn attack direction is from the *opposite* color
-        let pawns = PAWN_ATTACKS[attacker.opposite() as usize][square as usize];
-        attacks |= pawns
-            & self
-                .pieces
-                .get(Piece::from_parts(attacker, Some(PieceKind::Pawn)));
-
-        // Knights
-        let knights = KNIGHT_ATTACKS[square as usize];
-        attacks |= knights
-            & self
-                .pieces
-                .get(Piece::from_parts(attacker, Some(PieceKind::Knight)));
-
-        // Bishops
-        let occupancy = self.occupancyupancy[OccupancyKind::Both];
-        let bmask = BISHOP_MASKS[square.idx()];
-        let bindex = occupancy_to_index(occupancy & bmask, bmask);
-        let bishops = BISHOP_ATTACKS[square.idx()][bindex];
-
-        attacks |= bishops
-            & self
-                .pieces
-                .get(Piece::from_parts(attacker, Some(PieceKind::Bishop)));
-
-        // Rooks
-        let rmask = ROOK_MASKS[square as usize];
-        let rindex = occupancy_to_index(occupancy & rmask, rmask);
-        let rooks = ROOK_ATTACKS[square as usize][rindex];
-        attacks |= rooks
-            & self
-                .pieces
-                .get(Piece::from_parts(attacker, Some(PieceKind::Rook)));
-
-        // Queens = bishop + rook attacks
-        let queens = bishops | rooks;
-        attacks |= queens
-            & self
-                .pieces
-                .get(Piece::from_parts(attacker, Some(PieceKind::Queen)));
-
-        // Kings
-        let kings = KING_ATTACKS[square as usize];
-        attacks |= kings
-            & self
-                .pieces
-                .get(Piece::from_parts(attacker, Some(PieceKind::King)));
-
-        attacks
-    }
+    
 }
 
-fn add_move(
-    moves: &mut Vec<Move>,
-    from: Square,
-    to: Square,
-    promotion: Option<PieceKind>,
-    flags: u8,
-) {
-    moves.push(Move {
-        from,
-        to,
-        promotion,
-        flags,
-    });
-}
