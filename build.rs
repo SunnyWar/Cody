@@ -5,6 +5,7 @@ use std::path::Path;
 mod build_tools;
 
 use crate::build_tools::bitboard::files::generate_file_bitboards;
+use crate::build_tools::bitboard::ranks::generate_rank_bitboards;
 
 fn main() {
     println!("cargo:rerun-if-changed=src/test_data.rs");
@@ -20,6 +21,10 @@ fn main() {
     println!("Generating file bitboards");
     generate_file_bitboards(generated_dir);
     println!("Generated files saved to {:?}", generated_dir);
+
+    println!("Generating ranks bitboards");
+    generate_rank_bitboards(generated_dir);
+    println!("Generated ranks saved to {:?}", generated_dir);
 }
 
 fn generate_test_cases(out_path: &Path) {

@@ -3,19 +3,6 @@
 
 use crate::core::{bitboardmask::BitBoardMask, piece::Color, square::Square};
 
-const RANK_1: BitBoardMask = BitBoardMask(0x00000000000000FF);
-const RANK_2: BitBoardMask = BitBoardMask(0x000000000000FF00);
-const RANK_3: BitBoardMask = BitBoardMask(0x0000000000FF0000);
-const RANK_4: BitBoardMask = BitBoardMask(0x00000000FF000000);
-const RANK_5: BitBoardMask = BitBoardMask(0x000000FF00000000);
-const RANK_6: BitBoardMask = BitBoardMask(0x0000FF0000000000);
-const RANK_7: BitBoardMask = BitBoardMask(0x00FF000000000000);
-const RANK_8: BitBoardMask = BitBoardMask(0xFF00000000000000);
-
-pub const RANK_MASKS: [BitBoardMask; BOARD_SIZE] = [
-    RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8,
-];
-
 // File masks to prevent wrap-around when shifting
 const NOT_FILE_A: BitBoardMask = BitBoardMask(0xfefefefefefefefe);
 const NOT_FILE_AB: BitBoardMask = BitBoardMask(0xfcfcfcfcfcfcfcfc);
@@ -26,21 +13,7 @@ pub const BOARD_SIZE: usize = 8;
 const NUM_SQUARES: usize = BOARD_SIZE * BOARD_SIZE;
 const EMPTY: u64 = 0;
 
-//const RANK_0: i8 = 0;
-//const FILE_0: i8 = 0;
-//const RANK_MAX: i8 = BOARD_SIZE as i8 - 1;
-//const FILE_MAX: i8 = BOARD_SIZE as i8 - 1;
-
-//const KING_MOVE_RANGE: i8 = 1;
 const MAX_ROOK_OCCUPANCY_VARIATIONS: usize = 1 << 12;
-
-// For rook masks, we stop one square before the edge (exclude outer rank/file)
-//const INNER_MIN: i8 = 1;
-//const INNER_MAX: i8 = BOARD_SIZE as i8 - 2;
-
-// For rook attacks, we can go all the way to the edge
-//const EDGE_MIN: i8 = 0;
-//const EDGE_MAX: i8 = BOARD_SIZE as i8 - 1;
 
 const LIGHT_SQUARES: u64 = {
     let mut mask = EMPTY;

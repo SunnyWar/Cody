@@ -11,14 +11,9 @@ pub fn generate_file_bitboards(out_path: &Path) {
 
     for file in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] {
         let const_name = format!("FILE_{}", file);
-        let visibility = if file == 'A' || file == 'H' {
-            "pub "
-        } else {
-            ""
-        };
         output.push_str(&format!(
-            "{}const {}: BitBoardMask = BitBoardMask(0x{:016X});\n",
-            visibility, const_name, value
+            "pub const {}: BitBoardMask = BitBoardMask(0x{:016X});\n",
+            const_name, value
         ));
         file_names.push(const_name);
         value <<= 1;
