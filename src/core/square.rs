@@ -1,4 +1,5 @@
 // src/core/square.rs
+use std::fmt;
 
 use crate::core::{
     bitboard::{FILE_MASKS, RANK_MASKS},
@@ -87,10 +88,6 @@ impl Square {
         }
     }
 
-    fn iter_all() -> impl Iterator<Item = Square> {
-        (0u8..64).map(|v| unsafe { std::mem::transmute::<u8, Square>(v) })
-    }
-
     pub const fn all_array() -> [Square; 64] {
         let mut squares = [Square::A1; 64];
         let mut i = 0;
@@ -109,10 +106,6 @@ impl Square {
         (b'1' + self.rank()) as char
     }
 
-    pub fn to_string(self) -> String {
-        format!("{}{}", self.file_char(), self.rank_char())
-    }
-
     pub fn forward(self, n: u8) -> Option<Self> {
         let rank = self.rank();
         let file = self.file();
@@ -129,7 +122,7 @@ impl Square {
 
     pub fn advance(self, offset: i8) -> Option<Self> {
         let idx = self as i8 + offset;
-        if idx >= 0 && idx < 64 {
+        if (0..64).contains(&idx) {
             Some(unsafe { std::mem::transmute::<u8, Square>(idx as u8) })
         } else {
             None
@@ -142,6 +135,12 @@ impl Square {
 
     pub const fn rank_mask(self) -> BitBoardMask {
         RANK_MASKS[self.rank() as usize]
+    }
+}
+
+impl fmt::Display for Square {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}{}", self.file_char(), self.rank_char())
     }
 }
 
