@@ -25,6 +25,30 @@ pub fn generate_file_bitboards(out_path: &Path) {
         output.push_str(&format!("    {},\n", name));
     }
     output.push_str("];\n");
+    output.push('\n');
+    output.push_str("// Masks excluding specific files\n");
+
+    let not_file_a: u64 = 0xFEFEFEFEFEFEFEFE;
+    let not_file_ab: u64 = 0xFCFCFCFCFCFCFCFC;
+    let not_file_h: u64 = 0x7F7F7F7F7F7F7F7F;
+    let not_file_gh: u64 = 0x3F3F3F3F3F3F3F3F;
+
+    output.push_str(&format!(
+        "pub const NOT_FILE_A: BitBoardMask = BitBoardMask(0x{:016X});\n",
+        not_file_a
+    ));
+    output.push_str(&format!(
+        "pub const NOT_FILE_AB: BitBoardMask = BitBoardMask(0x{:016X});\n",
+        not_file_ab
+    ));
+    output.push_str(&format!(
+        "pub const NOT_FILE_H: BitBoardMask = BitBoardMask(0x{:016X});\n",
+        not_file_h
+    ));
+    output.push_str(&format!(
+        "pub const NOT_FILE_GH: BitBoardMask = BitBoardMask(0x{:016X});\n",
+        not_file_gh
+    ));
 
     let dest_path = out_path.join("generated_files.rs");
     fs::write(dest_path, output).expect("Failed to write generated_files.rs");

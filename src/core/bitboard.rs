@@ -1,13 +1,10 @@
 // src/core/bitboard.rs
 #![allow(long_running_const_eval)]
 
-use crate::core::{bitboardmask::BitBoardMask, piece::Color, square::Square};
-
-// File masks to prevent wrap-around when shifting
-const NOT_FILE_A: BitBoardMask = BitBoardMask(0xfefefefefefefefe);
-const NOT_FILE_AB: BitBoardMask = BitBoardMask(0xfcfcfcfcfcfcfcfc);
-const NOT_FILE_H: BitBoardMask = BitBoardMask(0x7f7f7f7f7f7f7f7f);
-const NOT_FILE_GH: BitBoardMask = BitBoardMask(0x3f3f3f3f3f3f3f3f);
+use crate::{
+    core::{bitboardmask::BitBoardMask, piece::Color, square::Square},
+    generated::{NOT_FILE_A, NOT_FILE_AB, NOT_FILE_GH, NOT_FILE_H},
+};
 
 pub const BOARD_SIZE: usize = 8;
 const NUM_SQUARES: usize = BOARD_SIZE * BOARD_SIZE;

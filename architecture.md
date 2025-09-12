@@ -111,6 +111,8 @@ impl Arena {
 
 - **Single-thread bootstrap**: Can use `&Node`/`&mut Node` directly.
 - **Multi-thread**: Uses `NodeId` to pass work between threads safely.
+- Use Rayon for parallelizing move generation and evaluation functions.
+- Use Crossbeam for search tree coordination.
 
 ---
 

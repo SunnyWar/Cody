@@ -19,3 +19,9 @@ pub const FILE_MASKS: [BitBoardMask; BOARD_SIZE] = [
     FILE_G,
     FILE_H,
 ];
+
+// Masks excluding specific files
+pub const NOT_FILE_A: BitBoardMask = BitBoardMask(0xFEFEFEFEFEFEFEFE);
+pub const NOT_FILE_AB: BitBoardMask = BitBoardMask(0xFCFCFCFCFCFCFCFC);
+pub const NOT_FILE_H: BitBoardMask = BitBoardMask(0x7F7F7F7F7F7F7F7F);
+pub const NOT_FILE_GH: BitBoardMask = BitBoardMask(0x3F3F3F3F3F3F3F3F);
