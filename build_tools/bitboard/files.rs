@@ -7,6 +7,7 @@ pub fn generate_file_bitboards(out_path: &Path) {
     output.push_str("// Auto-generated file bitboards\n\n");
 
     let mut value: u64 = 0x0101010101010101;
+    let mut file_masks = Vec::new();
     let mut file_names = Vec::new();
 
     for file in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] {
@@ -15,7 +16,8 @@ pub fn generate_file_bitboards(out_path: &Path) {
             "pub const {}: BitBoardMask = BitBoardMask(0x{:016X});\n",
             const_name, value
         ));
-        file_names.push(const_name);
+        file_names.push(const_name.clone());
+        file_masks.push(value);
         value <<= 1;
     }
 
@@ -25,13 +27,14 @@ pub fn generate_file_bitboards(out_path: &Path) {
         output.push_str(&format!("    {},\n", name));
     }
     output.push_str("];\n");
+
     output.push('\n');
     output.push_str("// Masks excluding specific files\n");
 
-    let not_file_a: u64 = 0xFEFEFEFEFEFEFEFE;
-    let not_file_ab: u64 = 0xFCFCFCFCFCFCFCFC;
-    let not_file_h: u64 = 0x7F7F7F7F7F7F7F7F;
-    let not_file_gh: u64 = 0x3F3F3F3F3F3F3F3F;
+    let not_file_a = !file_masks[0];
+    let not_file_ab = !(file_masks[0] | file_masks[1]);
+    let not_file_h = !file_masks[7];
+    let not_file_gh = !(file_masks[6] | file_masks[7]);
 
     output.push_str(&format!(
         "pub const NOT_FILE_A: BitBoardMask = BitBoardMask(0x{:016X});\n",
