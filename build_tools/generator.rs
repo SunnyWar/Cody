@@ -5,6 +5,7 @@ use std::path::Path;
 
 use crate::build_tools::bitboard::files::FileBitboards;
 use crate::build_tools::bitboard::ranks::RankBitboards;
+use crate::build_tools::bitboard::rook_attack_table::RookAttackTable;
 use crate::build_tools::bitboard::square_color_mask::SquareColorMask;
 
 pub trait CodeGenerator {
@@ -22,6 +23,7 @@ pub fn run_generators(out_path: &Path) {
         Box::new(RankBitboards),
         Box::new(FileBitboards),
         Box::new(SquareColorMask),
+        Box::new(RookAttackTable),
     ];
 
     for generator in generators {

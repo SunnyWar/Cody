@@ -17,7 +17,7 @@ impl CodeGenerator for SquareColorMask {
         for sq in 0..NUM_SQUARES {
             let rank = sq / BOARD_SIZE;
             let file = sq % BOARD_SIZE;
-            if (rank + file) % 2 == 0 {
+            if (rank + file).is_multiple_of(2) {
                 light_squares |= 1u64 << sq;
             }
         }
@@ -29,7 +29,7 @@ impl CodeGenerator for SquareColorMask {
         for sq in 0..NUM_SQUARES {
             let rank = sq / BOARD_SIZE;
             let file = sq % BOARD_SIZE;
-            let mask = if (rank + file) % 2 == 0 {
+            let mask = if (rank + file).is_multiple_of(2) {
                 light_squares
             } else {
                 dark_squares
