@@ -6,3 +6,5 @@ include!("generated_files.rs");
 include!("generated_ranks.rs");
 include!("generated_square_color.rs");
 include!("generated_rook_attacks.rs");
+include!("generated_king_attacks.rs");
+include!("generated_knight_attacks.rs");

@@ -3,7 +3,7 @@
 
 use crate::{
     core::{bitboardmask::BitBoardMask, piece::Color, square::Square},
-    generated::{NOT_FILE_A, NOT_FILE_AB, NOT_FILE_GH, NOT_FILE_H, ROOK_ATTACKS},
+    generated::{KING_ATTACKS, KNIGHT_ATTACKS, NOT_FILE_A, NOT_FILE_H, ROOK_ATTACKS},
 };
 
 pub const BOARD_SIZE: usize = 8;
@@ -44,104 +44,15 @@ pub const fn occupancy_to_index(occupancy: BitBoardMask, mask: BitBoardMask) -> 
     index
 }
 
-const fn square_index(rank: i8, file: i8) -> usize {
-    debug_assert!(rank >= 0 && rank < BOARD_SIZE as i8);
-    debug_assert!(file >= 0 && file < BOARD_SIZE as i8);
-    rank as usize * BOARD_SIZE + file as usize
+#[inline]
+pub fn king_attacks(square: Square) -> BitBoardMask {
+    BitBoardMask(KING_ATTACKS[square.index()]) // assuming Square is a tuple struct
 }
 
 #[inline]
-pub const fn gen_king_attacks(square: Square) -> BitBoardMask {
-    let mut attack_mask: u64 = 0;
-    let rank = square.rank();
-    let file = square.file();
-
-    const KING_OFFSETS: [(i8, i8); 8] = [
-        (1, 0),
-        (1, 1),
-        (0, 1),
-        (-1, 1),
-        (-1, 0),
-        (-1, -1),
-        (0, -1),
-        (1, -1),
-    ];
-
-    let mut offset_index = 0;
-    while offset_index < KING_OFFSETS.len() {
-        let (rank_offset, file_offset) = KING_OFFSETS[offset_index];
-        let target_rank = rank as i8 + rank_offset;
-        let target_file = file as i8 + file_offset;
-
-        if target_rank >= 0
-            && target_rank < BOARD_SIZE as i8
-            && target_file >= 0
-            && target_file < BOARD_SIZE as i8
-        {
-            let target_index = square_index(target_rank, target_file);
-            attack_mask |= 1u64 << target_index;
-        }
-
-        offset_index += 1;
-    }
-
-    BitBoardMask(attack_mask)
+pub fn knight_attacks(square: Square) -> BitBoardMask {
+    KNIGHT_ATTACKS[square.index()]
 }
-
-pub const KING_ATTACKS: [BitBoardMask; NUM_SQUARES] = {
-    let mut table = [BitBoardMask(0); NUM_SQUARES];
-    let squares = Square::all_array();
-    let mut i = 0;
-    while i < NUM_SQUARES {
-        let sq = squares[i];
-        table[i] = gen_king_attacks(sq);
-        i += 1;
-    }
-    table
-};
-
-#[inline]
-pub const fn knight_attacks_for(square: Square) -> BitBoardMask {
-    let origin = square.bit();
-
-    // Horizontal shifts with file exclusions
-    let h1 = origin
-        .shift_right(1)
-        .and(NOT_FILE_H)
-        .or(origin.shift_left(1).and(NOT_FILE_A));
-
-    let h2 = origin
-        .shift_right(2)
-        .and(NOT_FILE_GH)
-        .or(origin.shift_left(2).and(NOT_FILE_AB));
-
-    // Vertical shifts to complete the L-shape
-    let v1 = h1.shift_left(16).or(h1.shift_right(16));
-    let v2 = h2.shift_left(8).or(h2.shift_right(8));
-
-    v1.or(v2)
-}
-
-// TODO - put all attacks in attack tables struct
-/* pub struct AttackTables;
-
-impl AttackTables {
-    pub fn knight(sq: Square) -> BitBoardMask {
-        KNIGHT_ATTACKS[sq as usize]
-    }
-}
- */
-
-pub const KNIGHT_ATTACKS: [BitBoardMask; NUM_SQUARES] = {
-    let mut table = [BitBoardMask(0); NUM_SQUARES];
-    let squares = Square::all_array();
-    let mut i = 0;
-    while i < NUM_SQUARES {
-        table[i] = knight_attacks_for(squares[i]);
-        i += 1;
-    }
-    table
-};
 
 #[inline]
 const fn rook_mask(square: Square) -> BitBoardMask {

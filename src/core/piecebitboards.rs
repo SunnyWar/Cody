@@ -21,11 +21,6 @@ impl PieceBitboards {
     }
 
     #[inline]
-    fn set(&mut self, piece: Piece, bb: BitBoardMask) {
-        self.inner[piece.index()] = bb;
-    }
-
-    #[inline]
     pub fn all(&self) -> BitBoardMask {
         BitBoardMask(self.inner.iter().fold(0u64, |acc, bb| acc | bb.0))
     }

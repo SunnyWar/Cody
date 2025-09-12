@@ -80,24 +80,6 @@ impl Piece {
     }
 
     #[inline]
-    const fn piece_index(color: Color, kind: PieceKind) -> usize {
-        match (color, kind) {
-            (Color::White, PieceKind::Pawn) => 0,
-            (Color::White, PieceKind::Knight) => 1,
-            (Color::White, PieceKind::Bishop) => 2,
-            (Color::White, PieceKind::Rook) => 3,
-            (Color::White, PieceKind::Queen) => 4,
-            (Color::White, PieceKind::King) => 5,
-            (Color::Black, PieceKind::Pawn) => 6,
-            (Color::Black, PieceKind::Knight) => 7,
-            (Color::Black, PieceKind::Bishop) => 8,
-            (Color::Black, PieceKind::Rook) => 9,
-            (Color::Black, PieceKind::Queen) => 10,
-            (Color::Black, PieceKind::King) => 11,
-        }
-    }
-
-    #[inline]
     pub const fn color(self) -> Color {
         if (self as u8) < 6 {
             Color::White

@@ -1,5 +1,5 @@
 // src/core/castling.rs
-use crate::core::{bitboardmask::BitBoardMask, piece::Color, square::Square};
+use crate::core::piece::Color;
 
 #[derive(Clone, Copy)]
 pub struct CastlingRights {
@@ -56,13 +56,6 @@ impl CastlingRights {
         s
     }
 
-    fn to_bits(&self) -> u8 {
-        (self.white_kingside as u8)
-            | ((self.white_queenside as u8) << 1)
-            | ((self.black_kingside as u8) << 2)
-            | ((self.black_queenside as u8) << 3)
-    }
-
     pub fn clear(&mut self, color: Color, side: bool) {
         match (color, side) {
             (Color::White, true) => self.white_kingside = false,
@@ -72,27 +65,3 @@ impl CastlingRights {
         }
     }
 }
-
-struct CastlingMeta {
-    pub king_from: Square,
-    pub kingside_to: Square,
-    pub queenside_to: Square,
-    pub kingside_mask: BitBoardMask,
-    pub queenside_mask: BitBoardMask,
-}
-
-const WHITE_CASTLING: CastlingMeta = CastlingMeta {
-    king_from: Square::E1,
-    kingside_to: Square::G1,
-    queenside_to: Square::C1,
-    kingside_mask: BitBoardMask::from_squares(&[Square::F1, Square::G1]),
-    queenside_mask: BitBoardMask::from_squares(&[Square::B1, Square::C1, Square::D1]),
-};
-
-const BLACK_CASTLING: CastlingMeta = CastlingMeta {
-    king_from: Square::E8,
-    kingside_to: Square::G8,
-    queenside_to: Square::C8,
-    kingside_mask: BitBoardMask::from_squares(&[Square::F8, Square::G8]),
-    queenside_mask: BitBoardMask::from_squares(&[Square::B8, Square::C8, Square::D8]),
-};
