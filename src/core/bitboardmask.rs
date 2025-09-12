@@ -19,11 +19,11 @@ impl BitBoardMask {
     }
 
     pub fn set(&mut self, sq: Square) {
-        self.0 |= 1u64 << sq.idx();
+        self.0 |= 1u64 << sq.index();
     }
 
     pub fn clear(&mut self, sq: Square) {
-        self.0 &= !(1u64 << sq.idx());
+        self.0 &= !(1u64 << sq.index());
     }
 
     #[inline]
@@ -53,7 +53,7 @@ impl BitBoardMask {
 
     #[inline]
     pub fn contains_square(self, sq: Square) -> bool {
-        (self.0 >> sq.idx()) & 1 != 0
+        (self.0 >> sq.index()) & 1 != 0
     }
 
     /// Returns an iterator over all set squares in this bitboard.

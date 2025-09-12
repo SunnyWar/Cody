@@ -3,7 +3,7 @@
 
 use crate::{
     core::{bitboardmask::BitBoardMask, piece::Color, square::Square},
-    generated::{NOT_FILE_A, NOT_FILE_AB, NOT_FILE_GH, NOT_FILE_H},
+    generated::{NOT_FILE_A, NOT_FILE_AB, NOT_FILE_GH, NOT_FILE_H, ROOK_ATTACKS},
 };
 
 pub const BOARD_SIZE: usize = 8;
@@ -166,69 +166,11 @@ pub const ROOK_MASKS: [BitBoardMask; NUM_SQUARES] = {
 };
 
 #[inline]
-pub const fn rook_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
-    let origin = square.bit();
-
-    // Horizontal (rank) attacks
-    let rank_mask = square.rank_mask();
-    let blockers = occupancy.and(rank_mask);
-    let left = blockers.subray_left(origin);
-    let right = blockers.subray_right(origin);
-    let rank_attacks = BitBoardMask(left.0 | right.0);
-
-    // Vertical (file) attacks
-    let file_mask = square.file_mask();
-    let blockers = occupancy.and(file_mask);
-    let up = blockers.subray_up(origin);
-    let down = blockers.subray_down(origin);
-    let file_attacks = up.or(down);
-
-    rank_attacks.or(file_attacks)
+pub fn rook_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
+    let mask = ROOK_MASKS[square.index()];
+    let index = occupancy_to_index(occupancy, mask);
+    ROOK_ATTACKS[square.index()][index]
 }
-
-pub static ROOK_ATTACKS: [[BitBoardMask; MAX_ROOK_OCCUPANCY_VARIATIONS]; NUM_SQUARES] = {
-    let mut table = [[BitBoardMask::empty(); MAX_ROOK_OCCUPANCY_VARIATIONS]; NUM_SQUARES];
-    let squares = Square::all_array();
-    let mut sq_idx = 0;
-
-    while sq_idx < NUM_SQUARES {
-        let square = squares[sq_idx];
-        let mask = ROOK_MASKS[sq_idx];
-        let mask_val = mask.0;
-        let occupancy_variations = 1usize << mask_val.count_ones();
-        let max_variations = if occupancy_variations > MAX_ROOK_OCCUPANCY_VARIATIONS {
-            MAX_ROOK_OCCUPANCY_VARIATIONS
-        } else {
-            occupancy_variations
-        };
-
-        let mut index = 0;
-        while index < max_variations {
-            let mut occupancy_val = 0u64;
-            let mut bits = mask_val;
-            let subset = index;
-            let mut bit_index = 0;
-
-            while bits != 0 {
-                let lsb = bits & bits.wrapping_neg();
-                if (subset >> bit_index) & 1 != 0 {
-                    occupancy_val |= lsb;
-                }
-                bits &= bits - 1;
-                bit_index += 1;
-            }
-
-            let occupancy = BitBoardMask(occupancy_val);
-            table[sq_idx][index] = rook_attacks_from(square, occupancy);
-
-            index += 1;
-        }
-
-        sq_idx += 1;
-    }
-
-    table
-};
 
 pub const BISHOP_MASKS: [BitBoardMask; NUM_SQUARES] = {
     let mut masks = [BitBoardMask::empty(); NUM_SQUARES];
@@ -246,11 +188,11 @@ pub const BISHOP_MASKS: [BitBoardMask; NUM_SQUARES] = {
 
 impl BitBoardMask {
     pub const fn diagonal_for(square: Square) -> BitBoardMask {
-        DIAGONAL_MASKS[square.idx()]
+        DIAGONAL_MASKS[square.index()]
     }
 
     pub const fn antidiagonal_for(square: Square) -> BitBoardMask {
-        ANTIDIAGONAL_MASKS[square.idx()]
+        ANTIDIAGONAL_MASKS[square.index()]
     }
 }
 
@@ -264,14 +206,14 @@ pub const fn bishop_attacks_from(square: Square, occupancy: BitBoardMask) -> Bit
     let origin = square.bit();
 
     // Diagonal directions
-    let diag_mask = DIAGONAL_MASKS[square.idx()];
+    let diag_mask = DIAGONAL_MASKS[square.index()];
     let diag_blockers = occupancy.and(diag_mask);
     let ne = diag_blockers.subray_up_right(origin);
     let sw = diag_blockers.subray_down_left(origin);
     let diag_attacks = ne.or(sw);
 
     // Anti-diagonal directions
-    let anti_mask = ANTIDIAGONAL_MASKS[square.idx()];
+    let anti_mask = ANTIDIAGONAL_MASKS[square.index()];
     let anti_blockers = occupancy.and(anti_mask);
     let nw = anti_blockers.subray_up_left(origin);
     let se = anti_blockers.subray_down_right(origin);

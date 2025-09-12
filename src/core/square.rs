@@ -53,7 +53,7 @@ impl Square {
     }
 
     #[inline]
-    pub const fn idx(self) -> usize {
+    pub const fn index(self) -> usize {
         self as u8 as usize
     }
 
@@ -183,7 +183,7 @@ mod tests {
         for i in 0..64 {
             let sq = Square::try_from_index(i);
             assert!(sq.is_some(), "Expected Some(Square) for index {}", i);
-            assert_eq!(sq.unwrap().idx(), i as usize);
+            assert_eq!(sq.unwrap().index(), i as usize);
         }
     }
 

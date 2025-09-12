@@ -1,3 +1,5 @@
+// build_tools/bitboard/knight_bitboard.rs
+
 /// Offsets a knight can move: (rank_delta, file_delta)
 const KNIGHT_DELTAS: [(i8, i8); 8] = [
     (2, 1),
