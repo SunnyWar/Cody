@@ -12,37 +12,6 @@ const EMPTY: u64 = 0;
 
 const MAX_ROOK_OCCUPANCY_VARIATIONS: usize = 1 << 12;
 
-const LIGHT_SQUARES: u64 = {
-    let mut mask = EMPTY;
-    let mut sq: usize = 0;
-    while sq < NUM_SQUARES {
-        let rank: i8 = (sq / BOARD_SIZE) as i8;
-        let file: i8 = (sq % BOARD_SIZE) as i8;
-        if (rank + file) % 2 == 0 {
-            mask |= 1u64 << sq;
-        }
-        sq += 1;
-    }
-    mask
-};
-
-const DARK_SQUARES: u64 = !LIGHT_SQUARES;
-
-// TODO: Change to use enum instead of index
-pub const SQUARE_COLOR_MASK: [u64; NUM_SQUARES] = {
-    let mut arr = [0u64; NUM_SQUARES];
-    let mut sq = 0;
-    while sq < NUM_SQUARES {
-        arr[sq] = if (sq / BOARD_SIZE + sq % BOARD_SIZE).is_multiple_of(2) {
-            LIGHT_SQUARES
-        } else {
-            DARK_SQUARES
-        };
-        sq += 1;
-    }
-    arr
-};
-
 pub struct BitIter(u64);
 
 impl Iterator for BitIter {

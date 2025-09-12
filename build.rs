@@ -6,6 +6,7 @@ mod build_tools;
 
 use crate::build_tools::bitboard::files::generate_file_bitboards;
 use crate::build_tools::bitboard::ranks::generate_rank_bitboards;
+use crate::build_tools::bitboard::square_color_mask::generate_square_color_mask;
 
 fn main() {
     println!("cargo:rerun-if-changed=src/test_data.rs");
@@ -25,6 +26,10 @@ fn main() {
     println!("Generating ranks bitboards");
     generate_rank_bitboards(generated_dir);
     println!("Generated ranks saved to {:?}", generated_dir);
+
+    println!("Generating square color mask");
+    generate_square_color_mask(generated_dir);
+    println!("Generated square color mask saved to {:?}", generated_dir);
 }
 
 fn generate_test_cases(out_path: &Path) {
