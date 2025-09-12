@@ -1,0 +1,3 @@
+src/generated/*
+tests/generated_*.rs
+target/*

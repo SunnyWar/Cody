@@ -32,7 +32,7 @@
 - [ ] Add ponder support
 - [ ] Time management improvements
 - [ ] UCI `stop` command handling
-
+- [ ] Optimize with PGO
 ---
 
 ## 5. Search Core (Negamax + Alpha‑Beta)
