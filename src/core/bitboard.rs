@@ -8,8 +8,6 @@ use crate::{
 
 pub const BOARD_SIZE: usize = 8;
 const NUM_SQUARES: usize = BOARD_SIZE * BOARD_SIZE;
-const EMPTY: u64 = 0;
-
 const MAX_ROOK_OCCUPANCY_VARIATIONS: usize = 1 << 12;
 
 pub struct BitIter(u64);
@@ -32,7 +30,6 @@ pub const fn occupancy_to_index(occupancy: BitBoardMask, mask: BitBoardMask) -> 
     let mut index = 0usize;
     let mut bit_index = 0;
 
-    // Unwrap the inner u64s for the loop, but only inside this function
     let occupancy_val = occupancy.0;
     let mut mask_val = mask.0;
 
