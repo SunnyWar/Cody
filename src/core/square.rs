@@ -2,7 +2,10 @@
 
 use std::fmt;
 
-use crate::{core::bitboardmask::BitBoardMask, generated::{FILE_MASKS, RANK_MASKS}};
+use crate::{
+    core::bitboardmask::BitBoardMask,
+    generated::{FILE_MASKS, RANK_MASKS},
+};
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
