@@ -1,16 +1,18 @@
 // src/search/movegen.rs
 
 use crate::core::bitboard::{
-    ANTIDIAGONAL_MASKS, BISHOP_ATTACKS, BISHOP_MASKS, DIAGONAL_MASKS, KING_ATTACKS, KNIGHT_ATTACKS,
-    PAWN_ATTACKS, ROOK_MASKS, bishop_attacks_from, gen_king_attacks, knight_attacks_for,
-    occupancy_to_index, rook_attacks_from,
+    ANTIDIAGONAL_MASKS, BISHOP_ATTACKS, BISHOP_MASKS, DIAGONAL_MASKS, PAWN_ATTACKS, ROOK_MASKS,
+    bishop_attacks_from, king_attacks, knight_attacks, occupancy_to_index, rook_attacks_from,
 };
 use crate::core::bitboardmask::BitBoardMask;
 use crate::core::mov::Move;
 use crate::core::occupancy::OccupancyKind;
 use crate::core::piece::{Color, Piece, PieceKind};
 use crate::core::position::{MoveGenContext, Position};
-use crate::generated::{FILE_A, FILE_H, FILE_MASKS, RANK_MASKS, ROOK_ATTACKS, SQUARE_COLOR_MASK};
+use crate::generated::{
+    FILE_A, FILE_H, FILE_MASKS, KING_ATTACKS, KNIGHT_ATTACKS, RANK_MASKS, ROOK_ATTACKS,
+    SQUARE_COLOR_MASK,
+};
 
 const NORTH: i8 = 8;
 const SOUTH: i8 = -8;
@@ -73,7 +75,7 @@ impl MoveGenerator for SimpleMoveGen {
         let opp_king = pos
             .pieces
             .get(Piece::from_parts(them, Some(PieceKind::King)));
-        if !opp_king.is_empty() && (KING_ATTACKS[king_sq] & opp_king).is_nonempty() {
+        if !opp_king.is_empty() && (BitBoardMask(KING_ATTACKS[king_sq]) & opp_king).is_nonempty() {
             return true;
         }
 
@@ -215,7 +217,7 @@ fn generate_all_knight_moves(pos: &Position, context: &MoveGenContext, moves: &m
     for from in knights.squares() {
         // Calculate all squares this knight can move to, filtered by squares
         // not occupancyupied by our own pieces.
-        let valid_moves = knight_attacks_for(from).and(context.not_ours);
+        let valid_moves = knight_attacks(from).and(context.not_ours);
 
         // For each valid destination square, create and record the move.
         for to in valid_moves.squares() {
@@ -295,7 +297,7 @@ fn generate_all_king_moves(pos: &Position, context: &MoveGenContext, moves: &mut
     if let Some(from) = king_bb.squares().next() {
         // Calculate all squares this king can move to, filtered by squares
         // not occupancyupied by our own pieces.
-        let valid_moves = gen_king_attacks(from).and(context.not_ours);
+        let valid_moves = king_attacks(from).and(context.not_ours);
 
         // For each valid destination square, create and record the move.
         for to in valid_moves.squares() {

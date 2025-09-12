@@ -24,23 +24,8 @@ impl OccupancyMap {
     }
 
     #[inline]
-    fn get(&self, kind: OccupancyKind) -> BitBoardMask {
-        self.inner[kind as usize]
-    }
-
-    #[inline]
-    fn set(&mut self, kind: OccupancyKind, value: BitBoardMask) {
-        self.inner[kind as usize] = value;
-    }
-
-    #[inline]
     pub fn or_in(&mut self, kind: OccupancyKind, mask: BitBoardMask) {
         self.inner[kind as usize] |= mask;
-    }
-
-    #[inline]
-    fn clear(&mut self, kind: OccupancyKind) {
-        self.inner[kind as usize] = BitBoardMask::empty();
     }
 }
 
