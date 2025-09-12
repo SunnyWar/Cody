@@ -10,5 +10,4 @@ pub mod occupancy;
 pub mod piece;
 pub mod piecebitboards;
 pub mod position;
-pub mod rank;
 pub mod square;
