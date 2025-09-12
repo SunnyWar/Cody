@@ -463,7 +463,7 @@ fn is_pawn_double_push(piece: Piece, from: Square, to: Square, side: Color) -> b
     }
 
     match side {
-        Color::White => from.rank() == 1 && from.forward(2).map_or(false, |target| target == to),
-        Color::Black => from.rank() == 6 && from.backward(2).map_or(false, |target| target == to),
+        Color::White => from.rank() == 1 && (from.forward(2) == Some(to)),
+        Color::Black => from.rank() == 6 && (from.backward(2) == Some(to)),
     }
 }

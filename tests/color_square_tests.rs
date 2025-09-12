@@ -18,11 +18,10 @@ fn test_square_color_mask_values() {
     }
 
     let dark_squares = !light_squares;
-
-    for sq in 0..NUM_SQUARES {
+    for (sq, square) in expected.iter_mut().enumerate().take(NUM_SQUARES) {
         let rank = sq / BOARD_SIZE;
         let file = sq % BOARD_SIZE;
-        expected[sq] = if (rank + file).is_multiple_of(2) {
+        *square = if (rank + file).is_multiple_of(2) {
             light_squares
         } else {
             dark_squares

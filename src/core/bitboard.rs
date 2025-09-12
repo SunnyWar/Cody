@@ -8,7 +8,6 @@ use crate::{
 
 pub const BOARD_SIZE: usize = 8;
 const NUM_SQUARES: usize = BOARD_SIZE * BOARD_SIZE;
-const MAX_ROOK_OCCUPANCY_VARIATIONS: usize = 1 << 12;
 
 pub struct BitIter(u64);
 
