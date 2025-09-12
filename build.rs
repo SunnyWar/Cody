@@ -4,34 +4,24 @@ use std::fs;
 use std::path::Path;
 mod build_tools;
 
-use crate::build_tools::bitboard::files::generate_file_bitboards;
-use crate::build_tools::bitboard::ranks::generate_rank_bitboards;
-use crate::build_tools::bitboard::square_color_mask::generate_square_color_mask;
+use build_tools::generator::run_generators;
 
 fn main() {
+    println!("cargo:rerun-if-changed=build_tools/bitboard");
     println!("cargo:rerun-if-changed=src/test_data.rs");
     println!("cargo:rerun-if-changed=build_tools/bitboard");
 
-    let generated_dir = Path::new("src/generated");
     let generated_test_dir = Path::new("tests");
 
     println!("Generating test cases");
     generate_test_cases(generated_test_dir);
     println!("Generated tests saved to {:?}", generated_test_dir);
 
-    println!("Generating file bitboards");
-    generate_file_bitboards(generated_dir);
-    println!("Generated files saved to {:?}", generated_dir);
-
-    println!("Generating ranks bitboards");
-    generate_rank_bitboards(generated_dir);
-    println!("Generated ranks saved to {:?}", generated_dir);
-
-    println!("Generating square color mask");
-    generate_square_color_mask(generated_dir);
-    println!("Generated square color mask saved to {:?}", generated_dir);
+    let generated_dir = Path::new("src/generated");
+    run_generators(generated_dir);
 }
 
+// TODO - move this to \build_tools\tests
 fn generate_test_cases(out_path: &Path) {
     let test_data = fs::read_to_string("src/test_data.rs").expect("Failed to read test_data.rs");
     let re = Regex::new(r#"name:\s*"([^"]+)""#).expect("Failed to compile regex");
