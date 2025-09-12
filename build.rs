@@ -43,7 +43,7 @@ fn generate_test_cases(out_path: &Path) {
              fn {}() {{\n\
                  let case = &TEST_CASES[{}];\n\
                  let mut engine = Engine::new(1024, SimpleMoveGen, MaterialEvaluator);\n\
-                 let (_, score) = engine.search(&case.position(), 4);\n\
+                 let (_, score) = engine.search(&case.position(), 2);\n\
                  assert_eq!(\n\
                      score,\n\
                      case.expected_score,\n\

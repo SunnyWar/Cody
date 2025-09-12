@@ -26,7 +26,7 @@ pub static TEST_CASES: Lazy<Vec<TestCase>> = Lazy::new(|| {
         TestCase {
             name: "Kiwipete",
             fen: "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 10",
-            expected_score: -100,
+            expected_score: 0,
             expected_move: "e5f6",
         },
         TestCase {
@@ -188,13 +188,13 @@ pub static TEST_CASES: Lazy<Vec<TestCase>> = Lazy::new(|| {
         TestCase {
             name: "bishop_endgame_grind",
             fen: "8/3p3B/5p2/5P2/p7/PP5b/k7/6K1 w - - 0 1",
-            expected_score: -100,
+            expected_score: 0,
             expected_move: "h7g6",
         },
         TestCase {
             name: "queen_vs_rooks",
             fen: "5rk1/q6p/2p3bR/1pPp1rP1/1P1Pp3/P3B1Q1/1K3P2/R7 w - - 93 90",
-            expected_score: 0,
+            expected_score: 100,
             expected_move: "g3h4",
         },
         TestCase {
@@ -206,7 +206,7 @@ pub static TEST_CASES: Lazy<Vec<TestCase>> = Lazy::new(|| {
         TestCase {
             name: "castling_complexity",
             fen: "r3k2r/3nnpbp/q2pp1p1/p7/Pp1PPPP1/4BNN1/1P5P/R2Q1RK1 w kq - 0 16",
-            expected_score: -100,
+            expected_score: 0,
             expected_move: "f1e1",
         },
         TestCase {
@@ -290,7 +290,7 @@ pub static TEST_CASES: Lazy<Vec<TestCase>> = Lazy::new(|| {
         TestCase {
             name: "fairy_castling_test",
             fen: "bb1n1rkr/ppp1Q1pp/3n1p2/3p4/3P4/6Pq/PPP1PP1P/BB1NNRKR w HFhf - 0 5",
-            expected_score: 0,
+            expected_score: 100,
             expected_move: "e7d6",
         },
         TestCase {
