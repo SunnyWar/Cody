@@ -7,6 +7,19 @@ mod build_tools;
 use build_tools::generator::run_generators;
 
 fn main() {
+    if std::env::var("CARGO_CFG_TARGET_OS").unwrap() == "windows" {
+        let mut res = winresource::WindowsResource::new();
+        res.set("FileDescription", "UCI Chess Engine");
+        res.set("ProductName", "Cody");
+        res.set("CompanyName", "Strong Noodle LLC");
+        res.set("LegalCopyright", "© 2025 Strong Noodle LLC");
+        res.set("FileVersion", "1.0.0.0");
+        res.set("ProductVersion", "1.0.0.0");
+        res.set("Copyright", "© 2025 Strong Noodle LLC");
+        //res.set_icon("icon.ico"); // Optional: must be a valid .ico file
+        res.compile().unwrap();
+    }
+
     println!("cargo:rerun-if-changed=build_tools/bitboard");
     println!("cargo:rerun-if-changed=src/test_data.rs");
     println!("cargo:rerun-if-changed=build_tools/bitboard");

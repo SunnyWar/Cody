@@ -13,7 +13,7 @@ impl CodeGenerator for KingAttackTable {
 
         let mut output = String::new();
         output.push_str("// Auto-generated king attack table\n\n");
-        output.push_str("pub const KING_ATTACKS: [u64; 64] = [\n");
+        output.push_str("pub const KING_ATTACKS: [BitBoardMask; 64] = [\n");
 
         for square in 0..NUM_SQUARES {
             let rank = square / BOARD_SIZE;
@@ -38,7 +38,7 @@ impl CodeGenerator for KingAttackTable {
                 }
             }
 
-            output.push_str(&format!("    0x{:016X},\n", attack_mask));
+            output.push_str(&format!("    BitBoardMask(0x{:016X}),\n", attack_mask));
         }
 
         output.push_str("];\n");

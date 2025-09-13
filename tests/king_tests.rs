@@ -7,7 +7,7 @@ use cody::{
 fn test_king_attack_table_correctness() {
     for square in Square::all_array() {
         let expected = king_attacks(square);
-        let actual = BitBoardMask(KING_ATTACKS[square.index()]);
+        let actual = KING_ATTACKS[square.index()];
 
         assert_eq!(
             actual.0, expected.0,
@@ -31,7 +31,7 @@ fn test_king_attack_table_specific_positions() {
     ];
 
     for (square, expected_mask) in test_cases {
-        let actual = BitBoardMask(KING_ATTACKS[square.index()]);
+        let actual = KING_ATTACKS[square.index()];
         assert_eq!(
             actual.0, expected_mask,
             "Incorrect king attack mask for {:?}: expected {:016X}, got {:016X}",

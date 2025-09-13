@@ -46,12 +46,26 @@ pub const fn occupancy_to_index(occupancy: BitBoardMask, mask: BitBoardMask) -> 
 
 #[inline]
 pub fn king_attacks(square: Square) -> BitBoardMask {
-    BitBoardMask(KING_ATTACKS[square.index()]) // assuming Square is a tuple struct
+    KING_ATTACKS[square.index()]
 }
 
 #[inline]
 pub fn knight_attacks(square: Square) -> BitBoardMask {
     KNIGHT_ATTACKS[square.index()]
+}
+
+#[inline]
+pub fn rook_attacks(sq: Square, occ_bb: BitBoardMask) -> BitBoardMask {
+    let mask_bb = ROOK_MASKS[sq.index()];
+    let idx = occupancy_to_index(occ_bb, mask_bb);
+    ROOK_ATTACKS[sq.index()][idx]
+}
+
+#[inline]
+pub fn bishop_attacks(sq: Square, occ_bb: BitBoardMask) -> BitBoardMask {
+    let mask_bb = BISHOP_MASKS[sq.index()];
+    let idx = occupancy_to_index(occ_bb, mask_bb);
+    BISHOP_ATTACKS[sq.index()][idx]
 }
 
 #[inline]
