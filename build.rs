@@ -16,7 +16,7 @@ fn main() {
         res.set("FileVersion", "1.0.0.0");
         res.set("ProductVersion", "1.0.0.0");
         res.set("Copyright", "© 2025 Strong Noodle LLC");
-        //res.set_icon("icon.ico"); // Optional: must be a valid .ico file
+        res.set_icon("chesscat.ico");
         res.compile().unwrap();
     }
 
