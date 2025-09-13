@@ -1,3 +1,4 @@
+pub mod bishop_attack_table;
 pub mod files;
 pub mod king_attacks;
 pub mod knight_attacks;
