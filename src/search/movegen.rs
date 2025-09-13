@@ -9,8 +9,9 @@ use crate::core::mov::Move;
 use crate::core::occupancy::OccupancyKind;
 use crate::core::piece::{Color, Piece, PieceKind};
 use crate::core::position::{MoveGenContext, Position};
+use crate::core::square::Square;
 use crate::generated::{
-    FILE_A, FILE_H, FILE_MASKS, KING_ATTACKS, KNIGHT_ATTACKS, RANK_MASKS, ROOK_ATTACKS,
+    FILE_A, FILE_H, FILE_MASKS, KNIGHT_ATTACKS, RANK_4, RANK_5, RANK_MASKS, ROOK_ATTACKS,
     SQUARE_COLOR_MASK,
 };
 
@@ -22,15 +23,6 @@ const SOUTH_EAST: i8 = -7;
 const SOUTH_WEST: i8 = -9;
 const DOUBLE_NORTH: i8 = 16;
 const DOUBLE_SOUTH: i8 = -16;
-
-//const RANK_1_MASK: u64 = 0x00000000000000FF;
-//const RANK_2_MASK: u64 = 0x000000000000FF00;
-//const RANK_3_MASK: u64 = 0x0000000000FF0000;
-const RANK_4_MASK: u64 = 0x00000000FF000000;
-const RANK_5_MASK: u64 = 0x000000FF00000000;
-//const RANK_6_MASK: u64 = 0x0000FF0000000000;
-//const RANK_7_MASK: u64 = 0x00FF000000000000;
-//const RANK_8_MASK: u64 = 0xFF00000000000000;
 
 pub struct SimpleMoveGen;
 
@@ -48,16 +40,16 @@ impl MoveGenerator for SimpleMoveGen {
             return false;
         }
 
-        let king_sq = king_bb.0.trailing_zeros() as usize;
+        let king_sq_index = king_bb.0.trailing_zeros() as usize;
         let occupancy = pos.occupancyupancy[OccupancyKind::Both];
-        let king_color_mask = BitBoardMask(SQUARE_COLOR_MASK[king_sq]);
+        let king_color_mask = BitBoardMask(SQUARE_COLOR_MASK[king_sq_index]);
 
         // 1. Knights (opposite color only)
         let knight_like = pos
             .pieces
             .get(Piece::from_parts(them, Some(PieceKind::Knight)))
             & !king_color_mask;
-        if !knight_like.is_empty() && (KNIGHT_ATTACKS[king_sq] & knight_like).is_nonempty() {
+        if !knight_like.is_empty() && (KNIGHT_ATTACKS[king_sq_index] & knight_like).is_nonempty() {
             return true;
         }
 
@@ -66,16 +58,20 @@ impl MoveGenerator for SimpleMoveGen {
             .pieces
             .get(Piece::from_parts(them, Some(PieceKind::Pawn)))
             & king_color_mask;
-        if !pawn_like.is_empty() && (PAWN_ATTACKS[them as usize][king_sq] & pawn_like).is_nonempty()
+        if !pawn_like.is_empty()
+            && (PAWN_ATTACKS[them as usize][king_sq_index] & pawn_like).is_nonempty()
         {
             return true;
         }
 
         // 3. Opponent king
-        let opp_king = pos
+        let opp_king_bb = pos
             .pieces
             .get(Piece::from_parts(them, Some(PieceKind::King)));
-        if !opp_king.is_empty() && (BitBoardMask(KING_ATTACKS[king_sq]) & opp_king).is_nonempty() {
+        let opp_king_mask = BitBoardMask(opp_king_bb.0);
+        let king_sq =
+            Square::try_from_index(king_sq_index as u8).expect("king bit index must be in 0..64");
+        if !(king_attacks(king_sq) & opp_king_mask).is_empty() {
             return true;
         }
 
@@ -86,12 +82,12 @@ impl MoveGenerator for SimpleMoveGen {
             | pos
                 .pieces
                 .get(Piece::from_parts(them, Some(PieceKind::Queen))))
-            & RANK_MASKS[king_sq]
-            | FILE_MASKS[king_sq];
+            & RANK_MASKS[king_sq_index]
+            | FILE_MASKS[king_sq_index];
         if !rook_like.is_empty() {
-            let rmask = ROOK_MASKS[king_sq];
+            let rmask = ROOK_MASKS[king_sq_index];
             let rindex = occupancy_to_index(occupancy, rmask);
-            if (ROOK_ATTACKS[king_sq][rindex] & rook_like).is_nonempty() {
+            if (ROOK_ATTACKS[king_sq_index][rindex] & rook_like).is_nonempty() {
                 return true;
             }
         }
@@ -104,13 +100,13 @@ impl MoveGenerator for SimpleMoveGen {
                 .pieces
                 .get(Piece::from_parts(them, Some(PieceKind::Queen))))
             & king_color_mask
-            & DIAGONAL_MASKS[king_sq]
-            | ANTIDIAGONAL_MASKS[king_sq];
+            & DIAGONAL_MASKS[king_sq_index]
+            | ANTIDIAGONAL_MASKS[king_sq_index];
 
         if !bishop_like.is_empty() {
-            let bmask = BISHOP_MASKS[king_sq];
+            let bmask = BISHOP_MASKS[king_sq_index];
             let bindex = occupancy_to_index(occupancy, bmask);
-            if (BISHOP_ATTACKS[king_sq][bindex] & bishop_like).is_nonempty() {
+            if (BISHOP_ATTACKS[king_sq_index][bindex] & bishop_like).is_nonempty() {
                 return true;
             }
         }
@@ -150,20 +146,8 @@ fn generate_all_pawn_moves(pos: &Position, context: &MoveGenContext, moves: &mut
 
     let (single_push_dir, double_push_dir, left_cap_dir, right_cap_dir, double_rank_mask) =
         match context.us {
-            Color::White => (
-                NORTH,
-                DOUBLE_NORTH,
-                NORTH_WEST,
-                NORTH_EAST,
-                BitBoardMask(RANK_4_MASK),
-            ),
-            Color::Black => (
-                SOUTH,
-                DOUBLE_SOUTH,
-                SOUTH_EAST,
-                SOUTH_WEST,
-                BitBoardMask(RANK_5_MASK),
-            ),
+            Color::White => (NORTH, DOUBLE_NORTH, NORTH_WEST, NORTH_EAST, RANK_4),
+            Color::Black => (SOUTH, DOUBLE_SOUTH, SOUTH_EAST, SOUTH_WEST, RANK_5),
         };
 
     // Single push
