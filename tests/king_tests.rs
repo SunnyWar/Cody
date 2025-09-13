@@ -1,5 +1,5 @@
 use cody::{
-    core::{bitboard::king_attacks, bitboardmask::BitBoardMask, square::Square},
+    core::{bitboard::king_attacks, square::Square},
     generated::KING_ATTACKS,
 };
 
