@@ -16,3 +16,26 @@ fn test_king_attack_table_correctness() {
         );
     }
 }
+
+#[test]
+fn test_king_attack_table_specific_positions() {
+    use Square::*;
+
+    let test_cases = [
+        (A1, 0x0000000000000302),
+        (D4, 0x0000001C141C0000),
+        (H1, 0x000000000000C040),
+        (A8, 0x0203000000000000),
+        (H8, 0x40C0000000000000),
+        (E5, 0x0000382838000000),
+    ];
+
+    for (square, expected_mask) in test_cases {
+        let actual = BitBoardMask(KING_ATTACKS[square.index()]);
+        assert_eq!(
+            actual.0, expected_mask,
+            "Incorrect king attack mask for {:?}: expected {:016X}, got {:016X}",
+            square, expected_mask, actual.0
+        );
+    }
+}
