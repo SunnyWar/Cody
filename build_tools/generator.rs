@@ -3,6 +3,7 @@
 use std::fs;
 use std::path::Path;
 
+use crate::build_tools::bitboard::bishop_attack_table::BishopAttackTable;
 use crate::build_tools::bitboard::files::FileBitboards;
 use crate::build_tools::bitboard::king_attacks::KingAttackTable;
 use crate::build_tools::bitboard::knight_attacks::KnightAttackTable;
@@ -28,6 +29,7 @@ pub fn run_generators(out_path: &Path) {
         Box::new(RookAttackTable),
         Box::new(KingAttackTable),
         Box::new(KnightAttackTable),
+        Box::new(BishopAttackTable),
     ];
 
     for generator in generators {

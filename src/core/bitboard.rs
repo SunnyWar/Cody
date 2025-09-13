@@ -3,7 +3,9 @@
 
 use crate::{
     core::{bitboardmask::BitBoardMask, piece::Color, square::Square},
-    generated::{KING_ATTACKS, KNIGHT_ATTACKS, NOT_FILE_A, NOT_FILE_H, ROOK_ATTACKS},
+    generated::{
+        BISHOP_ATTACKS, KING_ATTACKS, KNIGHT_ATTACKS, NOT_FILE_A, NOT_FILE_H, ROOK_ATTACKS,
+    },
 };
 
 pub const BOARD_SIZE: usize = 8;
@@ -145,50 +147,6 @@ pub const fn bishop_attacks_from(square: Square, occupancy: BitBoardMask) -> Bit
 
     diag_attacks.or(anti_attacks)
 }
-
-pub static BISHOP_ATTACKS: [[BitBoardMask; 512]; NUM_SQUARES] = {
-    let mut table = [[BitBoardMask::empty(); 512]; NUM_SQUARES];
-    let squares = Square::all_array();
-    let mut sq_idx = 0;
-
-    while sq_idx < NUM_SQUARES {
-        let square = squares[sq_idx];
-        let mask = BISHOP_MASKS[sq_idx];
-        let mask_val = mask.0;
-        let occupancy_variations = 1usize << mask_val.count_ones();
-        let max_variations = if occupancy_variations > 512 {
-            512
-        } else {
-            occupancy_variations
-        };
-
-        let mut index = 0;
-        while index < max_variations {
-            let mut occupancy_val = 0u64;
-            let mut bits = mask_val;
-            let subset = index;
-            let mut bit_index = 0;
-
-            while bits != 0 {
-                let lsb = bits & bits.wrapping_neg();
-                if (subset >> bit_index) & 1 != 0 {
-                    occupancy_val |= lsb;
-                }
-                bits &= bits - 1;
-                bit_index += 1;
-            }
-
-            let occupancy = BitBoardMask(occupancy_val);
-            table[sq_idx][index] = bishop_attacks_from(square, occupancy);
-
-            index += 1;
-        }
-
-        sq_idx += 1;
-    }
-
-    table
-};
 
 #[inline]
 const fn pawn_attacks_from(square: Square, color: Color) -> BitBoardMask {
