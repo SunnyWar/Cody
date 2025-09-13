@@ -1,6 +1,8 @@
 // src/api.rs
 
-use cody::{Engine, MaterialEvaluator, NODE_COUNT, Position, SimpleMoveGen, TEST_CASES, TestCase};
+use engine::{
+    Engine, MaterialEvaluator, NODE_COUNT, Position, SimpleMoveGen, TEST_CASES, TestCase,
+};
 use std::io::{self, BufRead, Write};
 use std::sync::atomic::Ordering;
 
