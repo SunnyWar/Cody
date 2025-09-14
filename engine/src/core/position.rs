@@ -25,7 +25,7 @@ pub struct MoveGenContext {
 #[derive(Clone, Copy)]
 pub struct Position {
     pub pieces: PieceBitboards,
-    pub occupancyupancy: OccupancyMap,
+    pub occupancy: OccupancyMap,
     pub side_to_move: Color,
     pub castling_rights: CastlingRights,
     pub ep_square: Option<Square>,
@@ -86,14 +86,14 @@ impl Position {
             Color::Black => OccupancyKind::Black,
         };
 
-        self.occupancyupancy.or_in(color_occupancy, bit);
-        self.occupancyupancy.or_in(OccupancyKind::Both, bit);
+        self.occupancy.or_in(color_occupancy, bit);
+        self.occupancy.or_in(OccupancyKind::Both, bit);
     }
 
     fn empty() -> Self {
         Self {
             pieces: PieceBitboards::new(),
-            occupancyupancy: OccupancyMap::new(),
+            occupancy: OccupancyMap::new(),
             side_to_move: Color::White,
             castling_rights: CastlingRights::empty(),
             ep_square: None,
@@ -164,44 +164,6 @@ impl Position {
 
         pos
     }
-
-    /* pub fn debug_print(&self) {
-        for rank in (0..8).rev() {
-            print!("{} ", rank + 1);
-            for file in 0..8 {
-                let square = Square::from_rank_file(rank as u8, file as u8); // assuming this exists
-                let mut piece_char = '.';
-                for (piece, bb) in self.pieces.iter() {
-                    if bb.contains_square(square) {
-                        piece_char = piece.to_char();
-                        break;
-                    }
-                }
-                print!("{} ", piece_char);
-            }
-            println!();
-        }
-        println!("  a b c d e f g h");
-
-        println!(
-            "Side to move: {}",
-            match self.side_to_move {
-                Color::White => "White",
-                Color::Black => "Black",
-            }
-        );
-
-        println!("Castling rights: {}", self.castling_rights.to_fen());
-
-        /*
-        println!(
-            "EP square: {}",
-            self.ep_square
-                .map(|sq| sq.to_string()) // assuming ep_square is Option<Square>
-                .unwrap_or("-".to_string())
-        );
-        */
-    } */
 
     pub fn apply_move_into(&self, mv: &Move, out: &mut Position) {
         *out = *self;
@@ -286,9 +248,9 @@ impl Position {
         // Update occupancyupancy
         let white_occupancy = or_color(&out.pieces, Color::White);
         let black_occupancy = or_color(&out.pieces, Color::Black);
-        out.occupancyupancy[OccupancyKind::White] = white_occupancy;
-        out.occupancyupancy[OccupancyKind::Black] = black_occupancy;
-        out.occupancyupancy[OccupancyKind::Both] = white_occupancy | black_occupancy;
+        out.occupancy[OccupancyKind::White] = white_occupancy;
+        out.occupancy[OccupancyKind::Black] = black_occupancy;
+        out.occupancy[OccupancyKind::Both] = white_occupancy | black_occupancy;
 
         // Update castling rights
         out.update_castling_rights(mv.from, mv.to);
