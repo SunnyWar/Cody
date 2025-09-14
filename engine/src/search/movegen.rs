@@ -1,5 +1,6 @@
 // src/search/movegen.rs
 
+use bitboard::attack::{BoardState, PieceSet, is_king_in_check};
 use bitboard::bitboard::{
     ANTIDIAGONAL_MASKS, BISHOP_MASKS, DIAGONAL_MASKS, PAWN_ATTACKS, ROOK_MASKS,
     bishop_attacks_from, king_attacks, knight_attacks, occupancy_to_index, rook_attacks_from,
@@ -36,86 +37,53 @@ pub trait MoveGenerator {
 
 impl MoveGenerator for SimpleMoveGen {
     fn in_check(&self, pos: &Position) -> bool {
-        let us = pos.side_to_move;
-        let them = us.opposite();
+        // Convert your Position to the bitboard crate's BoardState
+        let board_state = BoardState {
+            occupancy: pos.occupancy[OccupancyKind::Both],
+            white_pieces: PieceSet {
+                pawns: pos
+                    .pieces
+                    .get(Piece::from_parts(Color::White, Some(PieceKind::Pawn))),
+                knights: pos
+                    .pieces
+                    .get(Piece::from_parts(Color::White, Some(PieceKind::Knight))),
+                bishops: pos
+                    .pieces
+                    .get(Piece::from_parts(Color::White, Some(PieceKind::Bishop))),
+                rooks: pos
+                    .pieces
+                    .get(Piece::from_parts(Color::White, Some(PieceKind::Rook))),
+                queens: pos
+                    .pieces
+                    .get(Piece::from_parts(Color::White, Some(PieceKind::Queen))),
+                king: pos
+                    .pieces
+                    .get(Piece::from_parts(Color::White, Some(PieceKind::King))),
+            },
+            black_pieces: PieceSet {
+                pawns: pos
+                    .pieces
+                    .get(Piece::from_parts(Color::Black, Some(PieceKind::Pawn))),
+                knights: pos
+                    .pieces
+                    .get(Piece::from_parts(Color::Black, Some(PieceKind::Knight))),
+                bishops: pos
+                    .pieces
+                    .get(Piece::from_parts(Color::Black, Some(PieceKind::Bishop))),
+                rooks: pos
+                    .pieces
+                    .get(Piece::from_parts(Color::Black, Some(PieceKind::Rook))),
+                queens: pos
+                    .pieces
+                    .get(Piece::from_parts(Color::Black, Some(PieceKind::Queen))),
+                king: pos
+                    .pieces
+                    .get(Piece::from_parts(Color::Black, Some(PieceKind::King))),
+            },
+        };
 
-        let king_bb = pos.pieces.get(Piece::from_parts(us, Some(PieceKind::King)));
-        if king_bb.is_empty() {
-            return false;
-        }
-
-        let king_sq_index = king_bb.0.trailing_zeros() as usize;
-        let occupancy = pos.occupancyupancy[OccupancyKind::Both];
-        let king_color_mask = BitBoardMask(SQUARE_COLOR_MASK[king_sq_index]);
-
-        // 1. Knights (opposite color only)
-        let knight_like = pos
-            .pieces
-            .get(Piece::from_parts(them, Some(PieceKind::Knight)))
-            & !king_color_mask;
-        if !knight_like.is_empty() && (KNIGHT_ATTACKS[king_sq_index] & knight_like).is_nonempty() {
-            return true;
-        }
-
-        // 2. Pawns (same color only)
-        let pawn_like = pos
-            .pieces
-            .get(Piece::from_parts(them, Some(PieceKind::Pawn)))
-            & king_color_mask;
-        if !pawn_like.is_empty()
-            && (PAWN_ATTACKS[them as usize][king_sq_index] & pawn_like).is_nonempty()
-        {
-            return true;
-        }
-
-        // 3. Opponent king
-        let opp_king_bb = pos
-            .pieces
-            .get(Piece::from_parts(them, Some(PieceKind::King)));
-        let opp_king_mask = BitBoardMask(opp_king_bb.0);
-        let king_sq =
-            Square::try_from_index(king_sq_index as u8).expect("king bit index must be in 0..64");
-        if !(king_attacks(king_sq) & opp_king_mask).is_empty() {
-            return true;
-        }
-
-        // 4. Rook/Queen (same rank/file only)
-        let rook_like = (pos
-            .pieces
-            .get(Piece::from_parts(them, Some(PieceKind::Rook)))
-            | pos
-                .pieces
-                .get(Piece::from_parts(them, Some(PieceKind::Queen))))
-            & RANK_MASKS[king_sq_index]
-            | FILE_MASKS[king_sq_index];
-        if !rook_like.is_empty() {
-            let rmask = ROOK_MASKS[king_sq_index];
-            let rindex = occupancy_to_index(occupancy, rmask);
-            if (ROOK_ATTACKS[king_sq_index][rindex] & rook_like).is_nonempty() {
-                return true;
-            }
-        }
-
-        // 5. Bishop/Queen (same color + same diagonal/antidiagonal)
-        let bishop_like = (pos
-            .pieces
-            .get(Piece::from_parts(them, Some(PieceKind::Bishop)))
-            | pos
-                .pieces
-                .get(Piece::from_parts(them, Some(PieceKind::Queen))))
-            & king_color_mask
-            & DIAGONAL_MASKS[king_sq_index]
-            | ANTIDIAGONAL_MASKS[king_sq_index];
-
-        if !bishop_like.is_empty() {
-            let bmask = BISHOP_MASKS[king_sq_index];
-            let bindex = occupancy_to_index(occupancy, bmask);
-            if (BISHOP_ATTACKS[king_sq_index][bindex] & bishop_like).is_nonempty() {
-                return true;
-            }
-        }
-
-        false
+        let king_color = pos.side_to_move;
+        is_king_in_check(king_color, &board_state)
     }
 }
 
