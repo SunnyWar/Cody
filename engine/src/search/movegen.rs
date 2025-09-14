@@ -1,20 +1,12 @@
 // src/search/movegen.rs
 
 use bitboard::attack::{BoardState, PieceSet, is_king_in_check};
-use bitboard::bitboard::{
-    ANTIDIAGONAL_MASKS, BISHOP_MASKS, DIAGONAL_MASKS, PAWN_ATTACKS, ROOK_MASKS,
-    bishop_attacks_from, king_attacks, knight_attacks, occupancy_to_index, rook_attacks_from,
-};
+use bitboard::bitboard::{bishop_attacks_from, king_attacks, knight_attacks, rook_attacks_from};
 
 use bitboard::piece::Color;
 use bitboard::piece::{Piece, PieceKind};
-use bitboard::tables::bishop_attack::BISHOP_ATTACKS;
-use bitboard::tables::file_masks::{FILE_A, FILE_H, FILE_MASKS};
-use bitboard::tables::knight_attack::KNIGHT_ATTACKS;
-use bitboard::tables::rank_masks::{RANK_4, RANK_5, RANK_MASKS};
-use bitboard::tables::rook_attack::ROOK_ATTACKS;
-use bitboard::tables::square_colors::SQUARE_COLOR_MASK;
-use bitboard::{BitBoardMask, Square};
+use bitboard::tables::file_masks::{FILE_A, FILE_H};
+use bitboard::tables::rank_masks::{RANK_4, RANK_5};
 
 use crate::core::mov::Move;
 use crate::core::occupancy::OccupancyKind;

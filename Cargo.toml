@@ -6,6 +6,12 @@ members = [
 resolver = "3"
 
 [profile.release]
-lto = true
-codegen-units = 1
-opt-level = "z"
+opt-level = 3            # Maximum optimization
+lto = "fat"              # Link Time Optimization across crates
+codegen-units = 1        # Better optimization, slower compile
+panic = "abort"          # Removes unwinding code
+strip = true             # Removes debug symbols from final binary
+
+[profile.bench]
+inherits = "release"
+
