@@ -1,9 +1,8 @@
 // src/search/evaluator.rs
 
-use crate::core::{
-    piece::{Color, Piece, PieceKind},
-    position::Position,
-};
+use bitboard::piece::{Color, Piece, PieceKind};
+
+use crate::Position;
 
 /// Piece values in centipawns
 const PIECE_VALUES: [i32; 6] = [

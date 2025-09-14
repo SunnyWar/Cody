@@ -1,7 +1,8 @@
 // src/core/occupancy.rs
 
-use crate::core::bitboardmask::BitBoardMask;
 use std::ops::{Index, IndexMut};
+
+use bitboard::BitBoardMask;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum OccupancyKind {

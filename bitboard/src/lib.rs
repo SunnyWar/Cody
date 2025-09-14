@@ -1,16 +1,12 @@
 // bitboard/src/lib.rs
-#[derive(Clone, Copy)]
-pub struct Bitboard(u64);
 
-#[derive(Clone, Copy)]
-pub struct Square(u8);
+pub mod bitboard;
+pub mod bitboardmask;
+pub mod constants;
+pub mod piece;
+pub mod piecebitboards;
+pub mod square;
+pub mod tables;
 
-impl Bitboard {
-    pub const EMPTY: Self = Bitboard(0);
-    pub const fn from_u64(x: u64) -> Self { Bitboard(x) }
-}
-
-pub const fn rook_attacks(_sq: Square, _occ: Bitboard) -> Bitboard {
-    // placeholder until you migrate your const-fn logic
-    Bitboard::EMPTY
-}
+pub use bitboardmask::BitBoardMask;
+pub use square::Square;

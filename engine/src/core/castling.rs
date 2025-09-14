@@ -1,5 +1,6 @@
 // src/core/castling.rs
-use crate::core::piece::Color;
+
+use bitboard::piece::Color;
 
 #[derive(Clone, Copy)]
 pub struct CastlingRights {

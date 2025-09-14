@@ -3,3 +3,9 @@ members = [
   "bitboard",
   "engine",
 ]
+resolver = "3"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = "z"
