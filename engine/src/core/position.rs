@@ -1,12 +1,12 @@
 // src/core/position.rs
 
-use crate::core::bitboardmask::BitBoardMask;
+use bitboard::piece::{Color, Piece, PieceKind};
+use bitboard::piecebitboards::PieceBitboards;
+use bitboard::{BitBoardMask, Square};
+
 use crate::core::castling::CastlingRights;
 use crate::core::mov::Move;
 use crate::core::occupancy::{OccupancyKind, OccupancyMap};
-use crate::core::piece::{Color, Piece, PieceKind};
-use crate::core::piecebitboards::PieceBitboards;
-use crate::core::square::Square;
 use crate::search::movegen::generate_moves;
 
 // Flags

@@ -1,19 +1,23 @@
 // src/search/movegen.rs
 
-use crate::core::bitboard::{
+use bitboard::bitboard::{
     ANTIDIAGONAL_MASKS, BISHOP_MASKS, DIAGONAL_MASKS, PAWN_ATTACKS, ROOK_MASKS,
     bishop_attacks_from, king_attacks, knight_attacks, occupancy_to_index, rook_attacks_from,
 };
-use crate::core::bitboardmask::BitBoardMask;
+
+use bitboard::piece::Color;
+use bitboard::piece::{Piece, PieceKind};
+use bitboard::tables::bishop_attack::BISHOP_ATTACKS;
+use bitboard::tables::file_masks::{FILE_A, FILE_H, FILE_MASKS};
+use bitboard::tables::knight_attack::KNIGHT_ATTACKS;
+use bitboard::tables::rank_masks::{RANK_4, RANK_5, RANK_MASKS};
+use bitboard::tables::rook_attack::ROOK_ATTACKS;
+use bitboard::tables::square_colors::SQUARE_COLOR_MASK;
+use bitboard::{BitBoardMask, Square};
+
 use crate::core::mov::Move;
 use crate::core::occupancy::OccupancyKind;
-use crate::core::piece::{Color, Piece, PieceKind};
 use crate::core::position::{MoveGenContext, Position};
-use crate::core::square::Square;
-use crate::generated::{
-    BISHOP_ATTACKS, FILE_A, FILE_H, FILE_MASKS, KNIGHT_ATTACKS, RANK_4, RANK_5, RANK_MASKS,
-    ROOK_ATTACKS, SQUARE_COLOR_MASK,
-};
 
 const NORTH: i8 = 8;
 const SOUTH: i8 = -8;
