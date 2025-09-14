@@ -3,6 +3,7 @@
 use crate::core::position::Position;
 use once_cell::sync::Lazy;
 
+#[derive(Copy, Clone, Debug)]
 pub struct TestCase {
     pub name: &'static str,
     pub fen: &'static str,
