@@ -37,7 +37,6 @@ pub trait MoveGenerator {
 
 impl MoveGenerator for SimpleMoveGen {
     fn in_check(&self, pos: &Position) -> bool {
-        // Convert your Position to the bitboard crate's BoardState
         let board_state = BoardState {
             occupancy: pos.occupancy[OccupancyKind::Both],
             white_pieces: PieceSet {
