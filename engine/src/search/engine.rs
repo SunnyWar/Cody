@@ -3,8 +3,8 @@
 use crate::core::arena::Arena;
 use crate::search::evaluator::Evaluator;
 use bitboard::{
-    mov::Move,
-    movegen::{MoveGenerator, generate_moves},
+    mov::ChessMove,
+    movegen::{MoveGenerator, generate_legal_moves, generate_pseudo_moves},
     position::Position,
 };
 use rand::prelude::IndexedRandom;
@@ -28,14 +28,14 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
         }
     }
 
-    pub fn search(&mut self, root: &Position, depth: usize) -> (Move, i32) {
+    pub fn search(&mut self, root: &Position, depth: usize) -> (ChessMove, i32) {
         NODE_COUNT.store(0, Ordering::Relaxed);
         self.arena.reset();
         self.arena.get_mut(0).position.copy_from(root);
 
         let moves = {
             let (parent, _) = self.arena.get_pair_mut(0, 1);
-            generate_moves(&parent.position)
+            generate_legal_moves(&parent.position)
         };
 
         if moves.is_empty() {
@@ -44,7 +44,7 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
             } else {
                 0
             };
-            return (Move::null(), score);
+            return (ChessMove::null(), score);
         }
 
         let mut best_score = i32::MIN;
@@ -67,7 +67,7 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
         }
 
         let mut rng = rand::rng();
-        let chosen_move = *best_moves.choose(&mut rng).unwrap_or(&Move::null());
+        let chosen_move = *best_moves.choose(&mut rng).unwrap_or(&ChessMove::null());
 
         (chosen_move, best_score)
     }
@@ -81,7 +81,7 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
 
         let moves = {
             let (parent, _) = self.arena.get_pair_mut(ply, ply + 1);
-            generate_moves(&parent.position)
+            generate_legal_moves(&parent.position)
         };
 
         if moves.is_empty() {

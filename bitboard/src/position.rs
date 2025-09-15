@@ -3,8 +3,8 @@
 use crate::{
     BitBoardMask, Square,
     castling::CastlingRights,
-    mov::Move,
-    movegen::generate_moves,
+    mov::{ChessMove, MoveType},
+    movegen::generate_pseudo_moves,
     occupancy::{OccupancyKind, OccupancyMap},
     piece::{Color, Piece, PieceKind},
     piecebitboards::PieceBitboards,
@@ -168,12 +168,14 @@ impl Position {
         pos
     }
 
-    pub fn apply_move_into(&self, mv: &Move, out: &mut Position) {
+    pub fn apply_move_into(&self, mv: &ChessMove, out: &mut Position) {
         *out = *self;
         let us = self.side_to_move;
         let them = us.opposite();
 
         let from_mask = BitBoardMask::from_square(mv.from);
+
+        // Remove the moving piece from its original square
         let moving_piece = out
             .pieces
             .iter_mut()
@@ -187,68 +189,73 @@ impl Position {
             })
             .expect("No piece on from-square");
 
-        // Handle captures
-        if mv.flags & FLAG_CAPTURE != 0 {
-            let capture_sq = if mv.flags & FLAG_EN_PASSANT != 0 {
-                match us {
-                    Color::White => mv.to.backward(1).expect("Invalid EP capture square"),
-                    Color::Black => mv.to.forward(1).expect("Invalid EP capture square"),
-                }
-            } else {
-                mv.to
-            };
+        // Handle captures (including en passant)
+        let capture_sq = match mv.move_type {
+            MoveType::EnPassant => match us {
+                Color::White => mv.to.backward(1).expect("Invalid EP capture square"),
+                Color::Black => mv.to.forward(1).expect("Invalid EP capture square"),
+            },
+            MoveType::Capture => mv.to,
+            _ => mv.to,
+        };
 
-            let cap_mask = BitBoardMask::from_square(capture_sq);
-            for kind in [
-                PieceKind::Pawn,
-                PieceKind::Knight,
-                PieceKind::Bishop,
-                PieceKind::Rook,
-                PieceKind::Queen,
-                PieceKind::King,
-            ] {
-                let p = Piece::from_parts(them, Some(kind));
-                let bb = out.pieces.get_mut(p);
-                if (*bb & cap_mask).is_nonempty() {
-                    *bb &= !cap_mask;
-                    break;
+        match mv.move_type {
+            MoveType::Capture | MoveType::EnPassant => {
+                let cap_mask = BitBoardMask::from_square(capture_sq);
+                for kind in [
+                    PieceKind::Pawn,
+                    PieceKind::Knight,
+                    PieceKind::Bishop,
+                    PieceKind::Rook,
+                    PieceKind::Queen,
+                    PieceKind::King,
+                ] {
+                    let p = Piece::from_parts(them, Some(kind));
+                    let bb = out.pieces.get_mut(p);
+                    if (*bb & cap_mask).is_nonempty() {
+                        *bb &= !cap_mask;
+                        break;
+                    }
                 }
             }
+            _ => {}
         }
 
         // Handle castling
-        if mv.flags & FLAG_KINGSIDE_CASTLE != 0 {
-            let (rook_from, rook_to) = match us {
-                Color::White => (Square::H1, Square::F1),
-                Color::Black => (Square::H8, Square::F8),
-            };
-            let rook = Piece::from_parts(us, Some(PieceKind::Rook));
-            let rbb = out.pieces.get_mut(rook);
-            *rbb &= !BitBoardMask::from_square(rook_from);
-            *rbb |= BitBoardMask::from_square(rook_to);
-        } else if mv.flags & FLAG_QUEENSIDE_CASTLE != 0 {
-            let (rook_from, rook_to) = match us {
-                Color::White => (Square::A1, Square::D1),
-                Color::Black => (Square::A8, Square::D8),
-            };
-            let rook = Piece::from_parts(us, Some(PieceKind::Rook));
-            let rbb = out.pieces.get_mut(rook);
-            *rbb &= !BitBoardMask::from_square(rook_from);
-            *rbb |= BitBoardMask::from_square(rook_to);
+        match mv.move_type {
+            MoveType::CastleKingside => {
+                let (rook_from, rook_to) = match us {
+                    Color::White => (Square::H1, Square::F1),
+                    Color::Black => (Square::H8, Square::F8),
+                };
+                let rook = Piece::from_parts(us, Some(PieceKind::Rook));
+                let rbb = out.pieces.get_mut(rook);
+                *rbb &= !BitBoardMask::from_square(rook_from);
+                *rbb |= BitBoardMask::from_square(rook_to);
+            }
+            MoveType::CastleQueenside => {
+                let (rook_from, rook_to) = match us {
+                    Color::White => (Square::A1, Square::D1),
+                    Color::Black => (Square::A8, Square::D8),
+                };
+                let rook = Piece::from_parts(us, Some(PieceKind::Rook));
+                let rbb = out.pieces.get_mut(rook);
+                *rbb &= !BitBoardMask::from_square(rook_from);
+                *rbb |= BitBoardMask::from_square(rook_to);
+            }
+            _ => {}
         }
 
         // Handle promotion or normal move
         let to_mask = BitBoardMask::from_square(mv.to);
-        if mv.flags & FLAG_PROMOTION != 0 {
-            let promo_piece = Piece::from_parts(us, mv.promotion);
-            let bb = out.pieces.get_mut(promo_piece);
-            *bb |= to_mask;
-        } else {
-            let bb = out.pieces.get_mut(moving_piece);
-            *bb |= to_mask;
-        }
+        let final_piece = match mv.move_type {
+            MoveType::Promotion(kind) => Piece::from_parts(us, Some(kind)),
+            _ => moving_piece,
+        };
+        let bb = out.pieces.get_mut(final_piece);
+        *bb |= to_mask;
 
-        // Update occupancyupancy
+        // Update occupancy
         let white_occupancy = or_color(&out.pieces, Color::White);
         let black_occupancy = or_color(&out.pieces, Color::Black);
         out.occupancy[OccupancyKind::White] = white_occupancy;
@@ -269,7 +276,7 @@ impl Position {
         };
 
         // Update halfmove clock
-        let was_capture = mv.flags & (FLAG_CAPTURE | FLAG_EN_PASSANT) != 0;
+        let was_capture = matches!(mv.move_type, MoveType::Capture | MoveType::EnPassant);
         let was_pawn_move = moving_piece.kind() == PieceKind::Pawn;
         out.halfmove_clock = if was_capture || was_pawn_move {
             0
@@ -380,7 +387,7 @@ impl Position {
         fen
     }
 
-    pub fn parse_uci_move(&self, mv: &str) -> Option<Move> {
+    pub fn parse_uci_move(&self, mv: &str) -> Option<ChessMove> {
         if mv.len() < 4 {
             return None;
         }
@@ -403,7 +410,7 @@ impl Position {
         //    fn generate_moves(&self, pos: &Position) -> Vec<Move>;
         //    fn in_check(&self, pos: &Position) -> bool;
 
-        generate_moves(self)
+        generate_pseudo_moves(self)
             .into_iter()
             .find(|m| m.from() == from_sq && m.to() == to_sq && m.promotion() == promo)
     }

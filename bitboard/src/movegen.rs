@@ -3,7 +3,7 @@
 use crate::{
     attack::{BoardState, PieceSet, is_king_in_check},
     bitboard::{bishop_attacks_from, king_attacks, knight_attacks, rook_attacks_from},
-    mov::Move,
+    mov::{ChessMove, MoveType},
     occupancy::OccupancyKind,
     piece::{Color, Piece, PieceKind},
     position::{MoveGenContext, Position},
@@ -79,7 +79,7 @@ impl MoveGenerator for SimpleMoveGen {
     }
 }
 
-pub fn generate_moves(pos: &Position) -> Vec<Move> {
+pub fn generate_pseudo_moves(pos: &Position) -> Vec<ChessMove> {
     let mut moves = Vec::new();
     let context = MoveGenContext {
         us: pos.side_to_move,
@@ -87,17 +87,33 @@ pub fn generate_moves(pos: &Position) -> Vec<Move> {
         not_ours: !pos.our_pieces(pos.side_to_move),
     };
 
-    generate_all_pawn_moves(pos, &context, &mut moves);
-    generate_all_knight_moves(pos, &context, &mut moves);
-    generate_all_bishop_moves(pos, &context, &mut moves);
-    generate_all_rook_moves(pos, &context, &mut moves);
-    generate_all_queen_moves(pos, &context, &mut moves);
-    generate_all_king_moves(pos, &context, &mut moves);
+    generate_pseudo_pawn_moves(pos, &context, &mut moves);
+    generate_pseudo_knight_moves(pos, &context, &mut moves);
+    generate_pseudo_bishop_moves(pos, &context, &mut moves);
+    generate_pseudo_rook_moves(pos, &context, &mut moves);
+    generate_pseudo_queen_moves(pos, &context, &mut moves);
+    generate_pseudo_king_moves(pos, &context, &mut moves);
 
     moves
 }
 
-fn generate_all_pawn_moves(pos: &Position, context: &MoveGenContext, moves: &mut Vec<Move>) {
+pub fn generate_legal_moves(pos: &Position) -> Vec<ChessMove> {
+    generate_pseudo_moves(pos)
+        .into_iter()
+        .filter(|m| is_legal(pos, m))
+        .collect()
+}
+
+pub fn is_legal(pos: &Position, m: &ChessMove) -> bool {
+    // TODO: Implement legality checks (pins, king safety, etc.)
+    true
+}
+
+fn generate_pseudo_pawn_moves(
+    pos: &Position,
+    context: &MoveGenContext,
+    moves: &mut Vec<ChessMove>,
+) {
     let pawns = pos
         .pieces
         .get(Piece::from_parts(context.us, Some(PieceKind::Pawn)));
@@ -118,7 +134,7 @@ fn generate_all_pawn_moves(pos: &Position, context: &MoveGenContext, moves: &mut
     let single_push = (pawns << single_push_dir) & empty;
     for to in single_push.squares() {
         if let Some(from) = to.advance(-single_push_dir) {
-            moves.push(Move::new(from, to));
+            moves.push(ChessMove::new(from, to, MoveType::Quiet));
         }
     }
 
@@ -126,7 +142,7 @@ fn generate_all_pawn_moves(pos: &Position, context: &MoveGenContext, moves: &mut
     let double_push = ((single_push << single_push_dir) & empty) & double_rank_mask;
     for to in double_push.squares() {
         if let Some(from) = to.advance(-double_push_dir) {
-            moves.push(Move::new(from, to));
+            moves.push(ChessMove::new(from, to, MoveType::Quiet));
         }
     }
 
@@ -134,7 +150,7 @@ fn generate_all_pawn_moves(pos: &Position, context: &MoveGenContext, moves: &mut
     let left_caps = (pawns << left_cap_dir) & their_pieces & !FILE_H;
     for to in left_caps.squares() {
         if let Some(from) = to.advance(-left_cap_dir) {
-            moves.push(Move::new(from, to));
+            moves.push(ChessMove::new(from, to, MoveType::Capture));
         }
     }
 
@@ -142,11 +158,14 @@ fn generate_all_pawn_moves(pos: &Position, context: &MoveGenContext, moves: &mut
     let right_caps = (pawns << right_cap_dir) & their_pieces & !FILE_A;
     for to in right_caps.squares() {
         if let Some(from) = to.advance(-right_cap_dir) {
-            moves.push(Move::new(from, to));
+            moves.push(ChessMove::new(from, to, MoveType::Capture));
         }
     }
 
-    // TODO: en passant and promotions
+    // TODO: handle promotion
+    //moves.push(ChessMove::new(from, to, MoveType::Promotion(PieceKind::Queen)));
+    //moves.push(ChessMove::new(from, to, MoveType::Promotion(PieceKind::Rook)));
+    // etc.
 }
 
 // TODO - this can probably be improved by have an attack mask
@@ -155,7 +174,11 @@ fn generate_all_pawn_moves(pos: &Position, context: &MoveGenContext, moves: &mut
 // TODO - new mask that only shows possible moves then mask that will
 // TODO - opponent locations and empty square to show all possible moves
 // TODO - all with masking!
-fn generate_all_knight_moves(pos: &Position, context: &MoveGenContext, moves: &mut Vec<Move>) {
+fn generate_pseudo_knight_moves(
+    pos: &Position,
+    context: &MoveGenContext,
+    moves: &mut Vec<ChessMove>,
+) {
     // Get a bitboard of all knights for the current side.
     let knights = pos
         .pieces
@@ -164,40 +187,57 @@ fn generate_all_knight_moves(pos: &Position, context: &MoveGenContext, moves: &m
     // Iterate over each square containing one of our knights.
     for from in knights.squares() {
         // Calculate all squares this knight can move to, filtered by squares
-        // not occupancyupied by our own pieces.
+        // not occupied by our own pieces.
         let valid_moves = knight_attacks(from).and(context.not_ours);
 
         // For each valid destination square, create and record the move.
         for to in valid_moves.squares() {
-            moves.push(Move::new(from, to));
+            let move_type = if pos.our_pieces(context.us.opposite()).contains(to) {
+                MoveType::Capture
+            } else {
+                MoveType::Quiet
+            };
+            moves.push(ChessMove::new(from, to, move_type));
         }
     }
 }
 
-fn generate_all_bishop_moves(pos: &Position, context: &MoveGenContext, moves: &mut Vec<Move>) {
+fn generate_pseudo_bishop_moves(
+    pos: &Position,
+    context: &MoveGenContext,
+    moves: &mut Vec<ChessMove>,
+) {
     // Get a bitboard of all bishops for the current side.
     let bishops = pos
         .pieces
         .get(Piece::from_parts(context.us, Some(PieceKind::Bishop)));
 
-    // Iterate over each square containing one of our bishops. This is a great, type-safe pattern.
+    // Iterate over each square containing one of our bishops.
     for from in bishops.squares() {
-        // 1. Calculate all squares this bishop attacks, using the board's
-        //    total occupancyupancy (`context.occupancy`) to identify blockers.
+        // Calculate all squares this bishop attacks, using the board's
+        // total occupancy to identify blockers.
         let attacks = bishop_attacks_from(from, context.occupancy);
 
-        // 2. Filter these attacks to find valid moves. A valid move ends on a square
-        //    that is NOT occupancyupied by one of our own pieces (`context.not_ours`).
+        // Filter these attacks to find valid moves (not occupied by our own pieces).
         let valid_moves = attacks.and(context.not_ours);
 
-        // 3. For each valid destination square, create and record the move.
+        // For each valid destination square, create and record the move.
         for to in valid_moves.squares() {
-            moves.push(Move::new(from, to));
+            let move_type = if pos.our_pieces(context.us.opposite()).contains(to) {
+                MoveType::Capture
+            } else {
+                MoveType::Quiet
+            };
+            moves.push(ChessMove::new(from, to, move_type));
         }
     }
 }
 
-fn generate_all_rook_moves(pos: &Position, context: &MoveGenContext, moves: &mut Vec<Move>) {
+fn generate_pseudo_rook_moves(
+    pos: &Position,
+    context: &MoveGenContext,
+    moves: &mut Vec<ChessMove>,
+) {
     // Get a bitboard of all rooks for the current side.
     let rooks = pos
         .pieces
@@ -205,17 +245,26 @@ fn generate_all_rook_moves(pos: &Position, context: &MoveGenContext, moves: &mut
 
     // Iterate over each square containing one of our rooks.
     for from in rooks.squares() {
-        // Calculate all squares this rook attacks, using the board's total occupancyupancy.
+        // Calculate all squares this rook attacks, using the board's total occupancy.
         let valid_moves = rook_attacks_from(from, context.occupancy).and(context.not_ours);
 
         // For each valid destination square, create and record the move.
         for to in valid_moves.squares() {
-            moves.push(Move::new(from, to));
+            let move_type = if pos.our_pieces(context.us.opposite()).contains(to) {
+                MoveType::Capture
+            } else {
+                MoveType::Quiet
+            };
+            moves.push(ChessMove::new(from, to, move_type));
         }
     }
 }
 
-fn generate_all_queen_moves(pos: &Position, context: &MoveGenContext, moves: &mut Vec<Move>) {
+fn generate_pseudo_queen_moves(
+    pos: &Position,
+    context: &MoveGenContext,
+    moves: &mut Vec<ChessMove>,
+) {
     // Get a bitboard of all queens for the current side.
     let queens = pos
         .pieces
@@ -230,12 +279,21 @@ fn generate_all_queen_moves(pos: &Position, context: &MoveGenContext, moves: &mu
 
         // For each valid destination square, create and record the move.
         for to in valid_moves.squares() {
-            moves.push(Move::new(from, to));
+            let move_type = if pos.our_pieces(context.us.opposite()).contains(to) {
+                MoveType::Capture
+            } else {
+                MoveType::Quiet
+            };
+            moves.push(ChessMove::new(from, to, move_type));
         }
     }
 }
 
-fn generate_all_king_moves(pos: &Position, context: &MoveGenContext, moves: &mut Vec<Move>) {
+fn generate_pseudo_king_moves(
+    pos: &Position,
+    context: &MoveGenContext,
+    moves: &mut Vec<ChessMove>,
+) {
     // Get the bitboard of the king for the current side (exactly one square in standard chess).
     let king_bb = pos
         .pieces
@@ -244,16 +302,19 @@ fn generate_all_king_moves(pos: &Position, context: &MoveGenContext, moves: &mut
     // Get the single square where the king is located.
     if let Some(from) = king_bb.squares().next() {
         // Calculate all squares this king can move to, filtered by squares
-        // not occupancyupied by our own pieces.
+        // not occupied by our own pieces.
         let valid_moves = king_attacks(from).and(context.not_ours);
 
         // For each valid destination square, create and record the move.
         for to in valid_moves.squares() {
-            moves.push(Move::new(from, to));
+            let move_type = if pos.our_pieces(context.us.opposite()).contains(to) {
+                MoveType::Capture
+            } else {
+                MoveType::Quiet
+            };
+            moves.push(ChessMove::new(from, to, move_type));
         }
     }
-
-    // TODO: Castling logic can be added here if desired
 }
 
 #[cfg(test)]
@@ -262,16 +323,27 @@ mod tests {
 
     use super::*;
 
-    fn move_exists(moves: &[Move], from: Square, to: Square, promotion: Option<PieceKind>) -> bool {
-        moves
-            .iter()
-            .any(|m| m.from == from && m.to == to && m.promotion == promotion)
+    fn move_exists(
+        moves: &[ChessMove],
+        from: Square,
+        to: Square,
+        promotion: Option<PieceKind>,
+    ) -> bool {
+        moves.iter().any(|m| {
+            m.from == from
+                && m.to == to
+                && match (promotion, &m.move_type) {
+                    (Some(p), MoveType::Promotion(k)) => p == *k,
+                    (None, MoveType::Promotion(_)) => false,
+                    (_, _) => true,
+                }
+        })
     }
 
     #[test]
     fn test_initial_position_move_count() {
         let pos = Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        let moves = generate_moves(&pos);
+        let moves = generate_legal_moves(&pos);
         // In the initial position, white has 20 legal moves (16 pawn moves + 4 knight moves)
         assert_eq!(moves.len(), 20);
     }
@@ -279,7 +351,7 @@ mod tests {
     #[test]
     fn test_knight_moves() {
         let pos = Position::from_fen("8/8/8/8/8/8/3N4/8 w - - 0 1");
-        let moves = generate_moves(&pos);
+        let moves = generate_legal_moves(&pos);
 
         let from = Square::D2;
         let expected_targets = [
@@ -303,9 +375,22 @@ mod tests {
     }
 
     #[test]
+    fn test_generate_pseudo_pawn_moves() {
+        let pos = Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        let context = MoveGenContext {
+            us: Color::White,
+            occupancy: pos.all_pieces(),
+            not_ours: !pos.our_pieces(Color::White),
+        };
+        let mut moves = Vec::new();
+        generate_pseudo_pawn_moves(&pos, &context, &mut moves);
+        assert!(!moves.is_empty());
+    }
+
+    #[test]
     fn test_pawn_promotion() {
         let pos = Position::from_fen("8/P7/8/8/8/8/8/8 w - - 0 1");
-        let moves = generate_moves(&pos);
+        let moves = generate_legal_moves(&pos);
 
         let from = Square::A7;
         let to = Square::A8;
@@ -329,7 +414,7 @@ mod tests {
     #[test]
     fn test_king_moves_blocked() {
         let pos = Position::from_fen("8/8/8/8/8/8/8/4K3 w - - 0 1");
-        let moves = generate_moves(&pos);
+        let moves = generate_legal_moves(&pos);
 
         let from = Square::E1;
         let expected_targets = [
@@ -352,7 +437,7 @@ mod tests {
     #[test]
     fn test_rook_moves() {
         let pos = Position::from_fen("8/8/8/3R4/8/8/8/8 w - - 0 1");
-        let moves = generate_moves(&pos);
+        let moves = generate_legal_moves(&pos);
 
         let from = Square::D5;
 
@@ -393,7 +478,7 @@ mod tests {
     #[test]
     fn test_bishop_moves() {
         let pos = Position::from_fen("8/8/8/3B4/8/8/8/8 w - - 0 1");
-        let moves = generate_moves(&pos);
+        let moves = generate_legal_moves(&pos);
 
         let from = Square::D5;
 
@@ -429,7 +514,7 @@ mod tests {
     #[test]
     fn test_queen_moves() {
         let pos = Position::from_fen("8/8/8/3Q4/8/8/8/8 w - - 0 1");
-        let moves = generate_moves(&pos);
+        let moves = generate_legal_moves(&pos);
 
         let from = Square::D5;
 
@@ -479,7 +564,7 @@ mod tests {
     fn test_en_passant_capture() {
         // Black pawn just moved from d7 to d5, white can capture en passant with e5 pawn
         let pos = Position::from_fen("8/8/8/3pP3/8/8/8/8 w - d6 0 1");
-        let moves = generate_moves(&pos);
+        let moves = generate_legal_moves(&pos);
 
         let from = Square::E5;
         let to = Square::D6;
@@ -495,7 +580,7 @@ mod tests {
     #[test]
     fn test_white_kingside_castling() {
         let pos = Position::from_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1");
-        let moves = generate_moves(&pos);
+        let moves = generate_legal_moves(&pos);
 
         let from = Square::E1;
         let to = Square::G1;
@@ -511,7 +596,7 @@ mod tests {
     #[test]
     fn test_white_queenside_castling() {
         let pos = Position::from_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1");
-        let moves = generate_moves(&pos);
+        let moves = generate_legal_moves(&pos);
 
         let from = Square::E1;
         let to = Square::C1;
@@ -527,7 +612,7 @@ mod tests {
     #[test]
     fn test_black_kingside_castling() {
         let pos = Position::from_fen("r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1");
-        let moves = generate_moves(&pos);
+        let moves = generate_legal_moves(&pos);
 
         let from = Square::E8;
         let to = Square::G8;
@@ -543,7 +628,7 @@ mod tests {
     #[test]
     fn test_black_queenside_castling() {
         let pos = Position::from_fen("r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1");
-        let moves = generate_moves(&pos);
+        let moves = generate_legal_moves(&pos);
 
         let from = Square::E8;
         let to = Square::C8;
@@ -560,7 +645,7 @@ mod tests {
     fn test_knight_pinned_cannot_move() {
         // White knight on e2 is pinned by black rook on e8 through white king on e1
         let pos = Position::from_fen("4r3/8/8/8/8/8/4N3/4K3 w - - 0 1");
-        let moves = generate_moves(&pos);
+        let moves = generate_legal_moves(&pos);
 
         let pinned_knight = Square::E2;
 
@@ -575,7 +660,7 @@ mod tests {
     fn test_pawn_pinned_cannot_advance() {
         // White pawn on e2 is pinned by black rook on e8 through white king on e1
         let pos = Position::from_fen("4r3/8/8/8/8/8/4P3/4K3 w - - 0 1");
-        let moves = generate_moves(&pos);
+        let moves = generate_legal_moves(&pos);
 
         let pinned_pawn = Square::E2;
 
@@ -591,7 +676,7 @@ mod tests {
     fn test_rook_pinned_can_only_slide_along_pin() {
         // Rook on e2 pinned by queen on e8 through king on e1
         let pos = Position::from_fen("4q3/8/8/8/8/8/4R3/4K3 w - - 0 1");
-        let moves = generate_moves(&pos);
+        let moves = generate_legal_moves(&pos);
 
         let pinned_rook = Square::E2;
         let allowed_targets = [
@@ -616,7 +701,7 @@ mod tests {
     fn test_bishop_pinned_can_only_slide_along_diagonal() {
         // Bishop on d2 pinned by queen on g5 through king on c1
         let pos = Position::from_fen("8/8/8/6q1/8/8/3B4/2K5 w - - 0 1");
-        let moves = generate_moves(&pos);
+        let moves = generate_legal_moves(&pos);
 
         let pinned_bishop = Square::D2;
         let allowed_targets = [
@@ -639,17 +724,16 @@ mod tests {
     fn test_queen_pinned_can_only_slide_along_pin() {
         // Queen on d2 pinned by rook on d8 through king on d1
         let pos = Position::from_fen("3r4/8/8/8/8/8/3Q4/3K4 w - - 0 1");
-        let moves = generate_moves(&pos);
+        let moves = generate_legal_moves(&pos);
 
         let pinned_queen = Square::D2;
         let allowed_targets = [
-            Square::D1,
             Square::D3,
             Square::D4,
             Square::D5,
             Square::D6,
             Square::D7,
-            Square::D8,
+            Square::D8, // capture
         ];
 
         for m in moves.iter().filter(|m| m.from == pinned_queen) {
@@ -665,7 +749,7 @@ mod tests {
     fn test_white_kingside_castling_blocked_by_attack() {
         // Black bishop on c4 attacks f1; white wants to castle kingside
         let pos = Position::from_fen("r3k2r/8/8/8/2b5/8/8/R3K2R w KQkq - 0 1");
-        let moves = generate_moves(&pos);
+        let moves = generate_legal_moves(&pos);
 
         let from = Square::E1;
         let to = Square::G1;
@@ -681,7 +765,7 @@ mod tests {
     fn test_white_queenside_castling_blocked_by_attack() {
         // Black bishop on g4 attacks d1; white wants to castle queenside
         let pos = Position::from_fen("r3k2r/8/8/8/6b1/8/8/R3K2R w KQkq - 0 1");
-        let moves = generate_moves(&pos);
+        let moves = generate_legal_moves(&pos);
 
         let from = Square::E1;
         let to = Square::C1;

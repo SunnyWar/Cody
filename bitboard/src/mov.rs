@@ -5,51 +5,59 @@ use std::fmt;
 use crate::{Square, piece::PieceKind};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Move {
-    pub from: Square, // 0..63
-    pub to: Square,   // 0..63
-    pub promotion: Option<PieceKind>,
-    pub flags: u8, // bit flags for special moves
+pub enum MoveType {
+    Quiet,
+    Capture,
+    Promotion(PieceKind),
+    EnPassant,
+    CastleKingside,
+    CastleQueenside,
 }
 
-impl Move {
-    pub fn new(from: Square, to: Square) -> Self {
-        Move {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ChessMove {
+    pub from: Square,
+    pub to: Square,
+    pub move_type: MoveType,
+}
+
+impl ChessMove {
+    pub fn new(from: Square, to: Square, move_type: MoveType) -> Self {
+        ChessMove {
             from,
             to,
-            promotion: None,
-            flags: 0,
+            move_type,
         }
     }
 
     pub fn null() -> Self {
-        Move {
+        ChessMove {
             from: Square::A1,
             to: Square::A1,
-            promotion: None,
-            flags: 0,
+            move_type: MoveType::Quiet, // or a dedicated Null variant if you prefer
         }
     }
 
-    pub(crate) fn from(&self) -> Square {
-        Square::A1
+    pub fn from(&self) -> Square {
+        self.from
     }
 
-    pub(crate) fn to(&self) -> Square {
-        Square::A1
+    pub fn to(&self) -> Square {
+        self.to
     }
 
-    pub(crate) fn promotion(&self) -> Option<PieceKind> {
-        None
+    pub fn promotion(&self) -> Option<PieceKind> {
+        match self.move_type {
+            MoveType::Promotion(kind) => Some(kind),
+            _ => None,
+        }
     }
-}
 
-impl Move {
-    fn from_square(&self) -> String {
+    pub fn from_square(&self) -> String {
         square_to_string(self.from)
     }
 
-    fn to_square(&self) -> String {
+    pub fn to_square(&self) -> String {
         square_to_string(self.to)
     }
 }
@@ -58,7 +66,7 @@ fn square_to_string(sq: Square) -> String {
     format!("{}{}", sq.file_char(), sq.rank_char())
 }
 
-impl fmt::Display for Move {
+impl fmt::Display for ChessMove {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}{}", self.from_square(), self.to_square())
     }
