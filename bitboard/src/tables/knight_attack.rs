@@ -1,6 +1,6 @@
 // bitboard/src/tables/knight_attack.rs
 
-use crate::BitBoardMask;
+use crate::{BitBoardMask, Square};
 
 pub const KNIGHT_ATTACKS: [BitBoardMask; 64] = [
     BitBoardMask(0x0000000000020400),
@@ -69,23 +69,26 @@ pub const KNIGHT_ATTACKS: [BitBoardMask; 64] = [
     BitBoardMask(0x0020400000000000),
 ];
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[test]
+fn test_knight_attacks_corner() {
+    let attacks = KNIGHT_ATTACKS[Square::A1.index()];
+    assert_eq!(attacks.0.count_ones(), 2);
+}
 
-    #[test]
-    fn test_knight_attacks_corner() {
-        // Test corner square (a1 = 0)
-        let attacks = KNIGHT_ATTACKS[0];
-        // Knight on a1 can only attack b3 and c2
-        assert_eq!(attacks.0.count_ones(), 2);
-    }
+#[test]
+fn test_knight_attacks_center() {
+    let attacks = KNIGHT_ATTACKS[Square::D4.index()];
+    assert_eq!(attacks.0.count_ones(), 8);
+}
 
-    #[test]
-    fn test_knight_attacks_center() {
-        // Test center square (d4 = 27)
-        let attacks = KNIGHT_ATTACKS[27];
-        // Knight in center should have 8 possible attacks
-        assert_eq!(attacks.0.count_ones(), 8);
-    }
+#[test]
+fn test_knight_attacks_edge() {
+    let attacks = KNIGHT_ATTACKS[Square::A4.index()];
+    assert_eq!(attacks.0.count_ones(), 4);
+}
+
+#[test]
+fn test_knight_attacks_opposite_corner() {
+    let attacks = KNIGHT_ATTACKS[Square::H8.index()];
+    assert_eq!(attacks.0.count_ones(), 2);
 }

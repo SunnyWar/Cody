@@ -42,7 +42,7 @@ impl Square {
         (self as u8) / 8
     }
 
-    pub const fn bit(self) -> BitBoardMask {
+    pub const fn bitboard(self) -> BitBoardMask {
         BitBoardMask::from_square(self)
     }
 
@@ -57,6 +57,7 @@ impl Square {
         self as u8 as usize
     }
 
+    #[inline]
     pub const fn try_from_index(idx: u8) -> Option<Self> {
         if idx < 64 {
             Some(unsafe { std::mem::transmute::<u8, Square>(idx) })
@@ -121,6 +122,7 @@ impl Square {
         Square::from_rank_file(new_rank, file)
     }
 
+    #[inline]
     pub fn advance(self, offset: i8) -> Option<Self> {
         let idx = self as i8 + offset;
         if (0..64).contains(&idx) {

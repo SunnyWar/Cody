@@ -50,6 +50,7 @@ impl Position {
         self.pieces.all()
     }
 
+    #[inline]
     pub fn our_pieces(&self, us: Color) -> BitBoardMask {
         let mut acc = BitBoardMask::empty();
         acc |= self
@@ -73,6 +74,7 @@ impl Position {
         acc
     }
 
+    #[inline]
     pub fn their_pieces(&self, us: Color) -> BitBoardMask {
         self.our_pieces(us.opposite())
     }

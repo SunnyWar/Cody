@@ -11,6 +11,8 @@ lto = "fat"              # Link Time Optimization across crates
 codegen-units = 1        # Better optimization, slower compile
 panic = "abort"          # Removes unwinding code
 strip = true             # Removes debug symbols from final binary
+target-cpu = "native"
+debug = false
 
 [profile.bench]
 inherits = "release"

@@ -60,6 +60,7 @@ impl Piece {
         }
     }
 
+    #[inline]
     const fn from_index(idx: u8) -> Self {
         match idx {
             0 => Self::WhitePawn,
