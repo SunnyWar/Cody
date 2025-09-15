@@ -32,7 +32,7 @@ impl Iterator for BitIter {
 #[inline]
 pub const fn occupancy_to_index(occupancy: BitBoardMask, mask: BitBoardMask) -> usize {
     let mut index = 0usize;
-    let mut bit_index = 0;
+    let mut bit_position = 0;
 
     let occupancy_val = occupancy.0;
     let mut mask_val = mask.0;
@@ -40,10 +40,10 @@ pub const fn occupancy_to_index(occupancy: BitBoardMask, mask: BitBoardMask) -> 
     while mask_val != 0 {
         let lsb = mask_val & mask_val.wrapping_neg();
         if occupancy_val & lsb != 0 {
-            index |= 1 << bit_index;
+            index |= 1 << bit_position;
         }
         mask_val &= mask_val - 1;
-        bit_index += 1;
+        bit_position += 1;
     }
 
     index
