@@ -1,5 +1,5 @@
 // bitboard/src/tables/bishop_attack.rs
-use crate::BitBoardMask;
+use crate::{BitBoardMask, Square};
 
 pub const BISHOP_ATTACKS: [&[BitBoardMask]; 64] = [
     &[
@@ -71299,3 +71299,31 @@ pub const BISHOP_ATTACKS: [&[BitBoardMask]; 64] = [
         BitBoardMask(0x0040000000000000),
     ],
 ];
+
+#[test]
+fn test_bishop_attacks_corner() {
+    let attacks = BISHOP_ATTACKS[Square::A1.index()];
+    let total_attacks = attacks.iter().map(|m| m.0.count_ones()).sum::<u32>();
+    assert_eq!(total_attacks, 7);
+}
+
+#[test]
+fn test_bishop_attacks_center() {
+    let attacks = BISHOP_ATTACKS[Square::D4.index()];
+    let total_attacks = attacks.iter().map(|m| m.0.count_ones()).sum::<u32>();
+    assert_eq!(total_attacks, 13);
+}
+
+#[test]
+fn test_bishop_attacks_edge() {
+    let attacks = BISHOP_ATTACKS[Square::A4.index()];
+    let total_attacks = attacks.iter().map(|m| m.0.count_ones()).sum::<u32>();
+    assert_eq!(total_attacks, 7);
+}
+
+#[test]
+fn test_bishop_attacks_opposite_corner() {
+    let attacks = BISHOP_ATTACKS[Square::H8.index()];
+    let total_attacks = attacks.iter().map(|m| m.0.count_ones()).sum::<u32>();
+    assert_eq!(total_attacks, 7);
+}
