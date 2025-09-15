@@ -4,7 +4,7 @@ use std::fmt;
 
 use crate::{
     BitBoardMask,
-    tables::{file_masks::FILE_MASKS, rank_masks::RANK_MASKS},
+    tables::{file_masks::FILE_MASKS, rank_masks::RANK_MASKS, square_colors::SQUARE_COLOR_MASK},
 };
 
 #[repr(u8)]
@@ -138,6 +138,11 @@ impl Square {
 
     pub const fn rank_mask(self) -> BitBoardMask {
         RANK_MASKS[self.rank() as usize]
+    }
+
+    #[inline]
+    pub fn color_mask(self) -> BitBoardMask {
+        SQUARE_COLOR_MASK[self.index()]
     }
 }
 
