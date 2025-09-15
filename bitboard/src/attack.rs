@@ -8,7 +8,6 @@ use crate::tables::file_masks::FILE_MASKS;
 use crate::tables::knight_attack::KNIGHT_ATTACKS;
 use crate::tables::rank_masks::RANK_MASKS;
 use crate::tables::rook_attack::ROOK_ATTACKS;
-use crate::tables::square_colors::SQUARE_COLOR_MASK;
 use crate::{BitBoardMask, Square};
 
 /// Represents a board position for attack calculations
