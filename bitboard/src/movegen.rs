@@ -586,6 +586,7 @@ mod tests {
         );
     }
 
+    // TODO - fix
     #[test]
     fn test_rook_pinned_can_only_slide_along_pin() {
         // Rook on e2 pinned by queen on e8 through king on e1
@@ -594,12 +595,12 @@ mod tests {
 
         let pinned_rook = Square::E2;
         let allowed_targets = [
-            Square::E1,
             Square::E3,
             Square::E4,
             Square::E5,
             Square::E6,
             Square::E7,
+            Square::E8, //capture
         ];
 
         for m in moves.iter().filter(|m| m.from == pinned_rook) {
