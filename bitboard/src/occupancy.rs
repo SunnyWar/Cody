@@ -2,7 +2,7 @@
 
 use std::ops::{Index, IndexMut};
 
-use bitboard::BitBoardMask;
+use crate::BitBoardMask;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum OccupancyKind {

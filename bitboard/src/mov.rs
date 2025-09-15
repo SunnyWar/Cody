@@ -1,8 +1,8 @@
-// src/core/mov.rs
+// bitboard/mov.rs
 
 use std::fmt;
 
-use bitboard::{Square, piece::PieceKind};
+use crate::{Square, piece::PieceKind};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Move {

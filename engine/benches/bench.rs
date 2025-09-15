@@ -1,5 +1,6 @@
+use bitboard::movegen::SimpleMoveGen;
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use engine::{Engine, MaterialEvaluator, NODE_COUNT, SimpleMoveGen, TEST_CASES};
+use engine::{Engine, MaterialEvaluator, NODE_COUNT, TEST_CASES};
 use std::hint::black_box;
 use std::sync::atomic::Ordering;
 
