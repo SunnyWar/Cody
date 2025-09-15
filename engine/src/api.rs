@@ -1,8 +1,8 @@
 // src/api.rs
 
-use engine::{
-    Engine, MaterialEvaluator, NODE_COUNT, Position, SimpleMoveGen, TEST_CASES, TestCase,
-};
+use bitboard::movegen::SimpleMoveGen;
+use bitboard::position::Position;
+use engine::{Engine, MaterialEvaluator, NODE_COUNT, TEST_CASES, TestCase};
 use std::io::{self, BufRead, Write};
 use std::sync::atomic::Ordering;
 

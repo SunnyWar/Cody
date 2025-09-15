@@ -1,16 +1,17 @@
-// src/search/movegen.rs
+// bitboard/src/movegen.rs
 
-use bitboard::attack::{BoardState, PieceSet, is_king_in_check};
-use bitboard::bitboard::{bishop_attacks_from, king_attacks, knight_attacks, rook_attacks_from};
-
-use bitboard::piece::Color;
-use bitboard::piece::{Piece, PieceKind};
-use bitboard::tables::file_masks::{FILE_A, FILE_H};
-use bitboard::tables::rank_masks::{RANK_4, RANK_5};
-
-use crate::core::mov::Move;
-use crate::core::occupancy::OccupancyKind;
-use crate::core::position::{MoveGenContext, Position};
+use crate::{
+    attack::{BoardState, PieceSet, is_king_in_check},
+    bitboard::{bishop_attacks_from, king_attacks, knight_attacks, rook_attacks_from},
+    mov::Move,
+    occupancy::OccupancyKind,
+    piece::{Color, Piece, PieceKind},
+    position::{MoveGenContext, Position},
+    tables::{
+        file_masks::{FILE_A, FILE_H},
+        rank_masks::{RANK_4, RANK_5},
+    },
+};
 
 const NORTH: i8 = 8;
 const SOUTH: i8 = -8;

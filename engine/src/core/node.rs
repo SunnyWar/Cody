@@ -1,6 +1,6 @@
 // src/core/node.rs
 
-use crate::core::position::Position;
+use bitboard::position::Position;
 
 #[derive(Clone, Default)]
 pub struct Node {

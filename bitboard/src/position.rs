@@ -1,13 +1,14 @@
-// src/core/position.rs
+// bitboard/src/position.rs
 
-use bitboard::piece::{Color, Piece, PieceKind};
-use bitboard::piecebitboards::PieceBitboards;
-use bitboard::{BitBoardMask, Square};
-
-use crate::core::castling::CastlingRights;
-use crate::core::mov::Move;
-use crate::core::occupancy::{OccupancyKind, OccupancyMap};
-use crate::search::movegen::generate_moves;
+use crate::{
+    BitBoardMask, Square,
+    castling::CastlingRights,
+    mov::Move,
+    movegen::generate_moves,
+    occupancy::{OccupancyKind, OccupancyMap},
+    piece::{Color, Piece, PieceKind},
+    piecebitboards::PieceBitboards,
+};
 
 // Flags
 const FLAG_CAPTURE: u8 = 1 << 0;

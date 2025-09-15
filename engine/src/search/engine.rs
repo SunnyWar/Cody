@@ -1,9 +1,12 @@
 // src/search/engine.rs
 
-use crate::core::mov::Move;
-use crate::core::{arena::Arena, position::Position};
+use crate::core::arena::Arena;
 use crate::search::evaluator::Evaluator;
-use crate::search::movegen::{MoveGenerator, generate_moves};
+use bitboard::{
+    mov::Move,
+    movegen::{MoveGenerator, generate_moves},
+    position::Position,
+};
 use rand::prelude::IndexedRandom;
 use std::sync::atomic::{AtomicU64, Ordering};
 pub static NODE_COUNT: AtomicU64 = AtomicU64::new(0);

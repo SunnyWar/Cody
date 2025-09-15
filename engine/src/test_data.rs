@@ -1,6 +1,6 @@
 // src/test_data.rs
 
-use crate::core::position::Position;
+use bitboard::position::Position;
 use once_cell::sync::Lazy;
 
 #[derive(Copy, Clone, Debug)]
