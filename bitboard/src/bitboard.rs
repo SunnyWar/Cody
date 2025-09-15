@@ -1,6 +1,8 @@
 // bitboard/src/bitboard.rs
 #![allow(long_running_const_eval)]
 
+use std::arch::x86_64::*;
+
 use crate::piece::Color;
 use crate::{
     BitBoardMask, Square,
@@ -29,24 +31,15 @@ impl Iterator for BitIter {
     }
 }
 
+#[cfg(all(target_arch = "x86_64", target_feature = "bmi2"))]
 #[inline]
-pub const fn occupancy_to_index(occupancy: BitBoardMask, mask: BitBoardMask) -> usize {
-    let mut index = 0usize;
-    let mut bit_position = 0;
-
-    let occupancy_val = occupancy.0;
-    let mut mask_val = mask.0;
-
-    while mask_val != 0 {
-        let lsb = mask_val & mask_val.wrapping_neg();
-        if occupancy_val & lsb != 0 {
-            index |= 1 << bit_position;
-        }
-        mask_val &= mask_val - 1;
-        bit_position += 1;
+pub fn occupancy_to_index(occupancy: BitBoardMask, mask: BitBoardMask) -> usize {
+    // Use PEXT (Parallel Bits Extract) if available on x86_64 with BMI2
+    // PEXT extracts bits from occupancy according to the mask pattern
+    unsafe {
+        // extracts bits according to mask
+        _pext_u64(occupancy.0, mask.0) as usize
     }
-
-    index
 }
 
 #[inline]
@@ -258,3 +251,44 @@ pub const ANTIDIAGONAL_MASKS: [BitBoardMask; NUM_SQUARES] = {
     }
     table
 };
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_occupancy_to_index_basic() {
+        let mask = BitBoardMask(0b10110); // bits at positions 1, 2, and 4
+        let occupancy = BitBoardMask(0b10010); // bits at positions 1 and 4 are set
+
+        // The mask bits are: [bit 1, bit 2, bit 4]
+        // Occupancy has bits 1 and 4 set, so index should be: 1 (bit 0) + 0 (bit 1) + 1 (bit 2) = 0b101 = 5
+        let index = occupancy_to_index(occupancy, mask);
+        assert_eq!(index, 0b101);
+    }
+
+    #[test]
+    fn test_occupancy_to_index_empty_mask() {
+        let mask = BitBoardMask(0);
+        let occupancy = BitBoardMask(0b111111);
+        let index = occupancy_to_index(occupancy, mask);
+        assert_eq!(index, 0);
+    }
+
+    #[test]
+    fn test_occupancy_to_index_full_match() {
+        let mask = BitBoardMask(0b111);
+        let occupancy = BitBoardMask(0b111);
+        let index = occupancy_to_index(occupancy, mask);
+        assert_eq!(index, 0b111);
+    }
+
+    #[test]
+    fn test_occupancy_to_index_partial_match() {
+        let mask = BitBoardMask(0b101010);
+        let occupancy = BitBoardMask(0b100000);
+        let index = occupancy_to_index(occupancy, mask);
+        // Only the highest bit in mask is set in occupancy, which is the 3rd bit in mask order
+        assert_eq!(index, 0b100);
+    }
+}

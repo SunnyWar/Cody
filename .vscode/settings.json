@@ -1,3 +1,6 @@
 {
-    "files.saveConflictResolution": "overwriteFileOnDisk"
+    "files.saveConflictResolution": "overwriteFileOnDisk",
+   "rust-analyzer.cargo.extraEnv": {
+    "RUSTFLAGS": "-C target-feature=+bmi2"
+  }
 }
