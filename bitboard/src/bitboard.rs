@@ -77,7 +77,7 @@ pub fn bishop_attacks(sq: Square, occ_bb: BitBoardMask) -> BitBoardMask {
 const fn rook_mask(square: Square) -> BitBoardMask {
     let rank_mask = square.rank_mask();
     let file_mask = square.file_mask();
-    let origin = square.bit();
+    let origin = square.bitboard();
 
     rank_mask.or(file_mask).and(origin.not())
 }
@@ -132,7 +132,7 @@ const fn bishop_mask(square: Square) -> BitBoardMask {
 
 #[inline]
 pub const fn bishop_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
-    let origin = square.bit();
+    let origin = square.bitboard();
 
     // Diagonal directions
     let diag_mask = DIAGONAL_MASKS[square.index()];
@@ -153,7 +153,7 @@ pub const fn bishop_attacks_from(square: Square, occupancy: BitBoardMask) -> Bit
 
 #[inline]
 const fn pawn_attacks_from(square: Square, color: Color) -> BitBoardMask {
-    let bb = square.bit();
+    let bb = square.bitboard();
 
     match color {
         Color::White => {

@@ -81,34 +81,42 @@ impl BitBoardMask {
         }
     }
 
+    #[inline]
     pub fn contains(&self, sq: Square) -> bool {
         self.0 & (1u64 << (sq as u8)) != 0
     }
 
+    #[inline]
     pub const fn shift_left(self, n: u32) -> Self {
         BitBoardMask(self.0 << n)
     }
 
+    #[inline]
     pub const fn shift_right(self, n: u32) -> Self {
         BitBoardMask(self.0 >> n)
     }
 
+    #[inline]
     pub const fn or(self, other: Self) -> Self {
         BitBoardMask(self.0 | other.0)
     }
 
+    #[inline]
     pub const fn and(self, other: Self) -> Self {
         BitBoardMask(self.0 & other.0)
     }
 
+    #[inline]
     pub const fn xor(self, other: Self) -> Self {
         BitBoardMask(self.0 ^ other.0)
     }
 
+    #[inline]
     pub const fn not(self) -> Self {
         BitBoardMask(!self.0)
     }
 
+    #[inline]
     pub const fn from_squares(squares: &[Square]) -> Self {
         let mut mask = 0u64;
         let mut i = 0;
