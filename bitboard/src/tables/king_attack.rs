@@ -1,5 +1,5 @@
 // bitboard/src/tables/king_attack.rs
-use crate::BitBoardMask;
+use crate::{BitBoardMask, Square};
 
 pub const KING_ATTACKS: [BitBoardMask; 64] = [
     BitBoardMask(0x0000000000000302),
@@ -67,3 +67,21 @@ pub const KING_ATTACKS: [BitBoardMask; 64] = [
     BitBoardMask(0xA0E0000000000000),
     BitBoardMask(0x40C0000000000000),
 ];
+
+#[test]
+fn test_king_attacks_corner() {
+    let attacks = KING_ATTACKS[Square::A1.index()];
+    assert_eq!(attacks.0.count_ones(), 3);
+}
+
+#[test]
+fn test_king_attacks_edge() {
+    let attacks = KING_ATTACKS[Square::A4.index()];
+    assert_eq!(attacks.0.count_ones(), 5);
+}
+
+#[test]
+fn test_king_attacks_center() {
+    let attacks = KING_ATTACKS[Square::D4.index()];
+    assert_eq!(attacks.0.count_ones(), 8);
+}
