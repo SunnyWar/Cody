@@ -1,3 +1,5 @@
+use bitboard::BitBoardMask;
+use bitboard::bitboard::occupancy_to_index;
 use bitboard::movegen::SimpleMoveGen;
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use engine::{Engine, MaterialEvaluator, NODE_COUNT, TEST_CASES};
@@ -25,5 +27,20 @@ fn bench_search(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_search);
+fn bench_occupancy_to_index(c: &mut Criterion) {
+    let mut group = c.benchmark_group("OccupancyIndex");
+
+    let mask = BitBoardMask(0b10110);
+    let occupancy = BitBoardMask(0b10010);
+
+    group.bench_function("basic occupancy_to_index", |b| {
+        b.iter(|| {
+            let _ = black_box(occupancy_to_index(occupancy, mask));
+        });
+    });
+
+    group.finish();
+}
+
+criterion_group!(benches, bench_search, bench_occupancy_to_index);
 criterion_main!(benches);
