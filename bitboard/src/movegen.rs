@@ -404,6 +404,9 @@ mod tests {
                     (MoveType::Promotion(_), None) => false,
                     (MoveType::Quiet, None) => true,
                     (MoveType::Capture, None) => true,
+                    (MoveType::EnPassant, None) => true,
+                    (MoveType::CastleKingside, None) => true,
+                    (MoveType::CastleQueenside, None) => true,
                     _ => false,
                 }
         })
