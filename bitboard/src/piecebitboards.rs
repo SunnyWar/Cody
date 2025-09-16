@@ -2,7 +2,7 @@
 
 use crate::{BitBoardMask, piece::Piece};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct PieceBitboards {
     inner: [BitBoardMask; 12],
 }
