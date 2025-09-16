@@ -5,6 +5,7 @@ use crate::bitboard::{
 use crate::piece::Color;
 use crate::tables::bishop_attack::BISHOP_ATTACKS;
 use crate::tables::file_masks::FILE_MASKS;
+use crate::tables::king_attack::KING_ATTACKS;
 use crate::tables::knight_attack::KNIGHT_ATTACKS;
 use crate::tables::rank_masks::RANK_MASKS;
 use crate::tables::rook_attack::ROOK_ATTACKS;
@@ -51,8 +52,9 @@ pub fn is_square_attacked(square: Square, by_color: Color, board: &BoardState) -
         return true;
     }
 
-    // Check king attacks
-    if !(king_attacks_from_square(square) & attacking_pieces.king).is_empty() {
+    // Check king attacks (same color squares only)
+    let king_like = attacking_pieces.king & king_color_mask;
+    if !king_like.is_empty() && (KING_ATTACKS[sq_index] & king_like).is_nonempty() {
         return true;
     }
 
@@ -97,10 +99,4 @@ pub fn is_king_in_check(king_color: Color, board: &BoardState) -> bool {
         .expect("king bit index must be in 0..64");
 
     is_square_attacked(king_square, king_color.opposite(), board)
-}
-
-fn king_attacks_from_square(square: Square) -> BitBoardMask {
-    // Implementation depends on how you currently have king_attacks()
-    // You might need to move that function here too
-    todo!("Implement king attacks lookup")
 }
