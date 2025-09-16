@@ -463,13 +463,11 @@ mod tests {
         let from = Square::D2;
         let expected_targets = [
             Square::B1,
-            Square::C3,
-            Square::E3,
-            Square::F1,
             Square::B3,
+            Square::C4,
+            Square::E4,
             Square::F3,
-            Square::C1,
-            Square::E1,
+            Square::F1,
         ];
 
         for to in expected_targets.iter() {
