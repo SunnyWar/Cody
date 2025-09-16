@@ -71302,28 +71302,29 @@ pub const BISHOP_ATTACKS: [&[BitBoardMask]; 64] = [
 
 #[test]
 fn test_bishop_attacks_corner() {
-    let attacks = BISHOP_ATTACKS[Square::A1.index()];
-    let total_attacks = attacks.iter().map(|m| m.0.count_ones()).sum::<u32>();
-    assert_eq!(total_attacks, 7);
+    let empty_mask_index = 0; // no blockers
+    let attacks = BISHOP_ATTACKS[Square::A1.index()][empty_mask_index];
+    assert_eq!(attacks.0.count_ones(), 7);
 }
 
 #[test]
 fn test_bishop_attacks_center() {
-    let attacks = BISHOP_ATTACKS[Square::D4.index()];
-    let total_attacks = attacks.iter().map(|m| m.0.count_ones()).sum::<u32>();
-    assert_eq!(total_attacks, 13);
+    let empty_mask_index = 0;
+    let attacks = BISHOP_ATTACKS[Square::D4.index()][empty_mask_index];
+    assert_eq!(attacks.0.count_ones(), 13);
 }
 
 #[test]
 fn test_bishop_attacks_edge() {
-    let attacks = BISHOP_ATTACKS[Square::A4.index()];
-    let total_attacks = attacks.iter().map(|m| m.0.count_ones()).sum::<u32>();
-    assert_eq!(total_attacks, 7);
+    let empty_mask_index = 0;
+    let attacks = BISHOP_ATTACKS[Square::A4.index()][empty_mask_index];
+    assert_eq!(attacks.0.count_ones(), 7);
 }
 
 #[test]
 fn test_bishop_attacks_opposite_corner() {
-    let attacks = BISHOP_ATTACKS[Square::H8.index()];
-    let total_attacks = attacks.iter().map(|m| m.0.count_ones()).sum::<u32>();
-    assert_eq!(total_attacks, 7);
+    let empty_mask_index = 0;
+    let attacks = BISHOP_ATTACKS[Square::H8.index()][empty_mask_index];
+    assert_eq!(attacks.0.count_ones(), 7);
 }
+
