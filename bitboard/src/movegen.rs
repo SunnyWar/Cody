@@ -12,7 +12,7 @@ use crate::{
     position::{MoveGenContext, Position},
     tables::{
         file_masks::{FILE_A, FILE_H},
-        rank_masks::{RANK_4, RANK_5},
+        rank_masks::{RANK_4, RANK_5, RANK_8},
     },
 };
 
@@ -164,6 +164,13 @@ fn get_attackers(pos: &Position, sq: Square, attacker_color: Color) -> BitBoardM
     attackers
 }
 
+fn is_promotion_rank(square: Square, color: Color) -> bool {
+    match color {
+        Color::White => square.rank() == 7, // 8th rank
+        Color::Black => square.rank() == 0, // 1st rank
+    }
+}
+
 fn generate_pseudo_pawn_moves(
     pos: &Position,
     context: &MoveGenContext,
@@ -189,11 +196,22 @@ fn generate_pseudo_pawn_moves(
     let single_push = (pawns << single_push_dir) & empty;
     for to in single_push.squares() {
         if let Some(from) = to.advance(-single_push_dir) {
-            moves.push(ChessMove::new(from, to, MoveType::Quiet));
+            if is_promotion_rank(to, context.us) {
+                for &promo in &[
+                    PieceKind::Queen,
+                    PieceKind::Rook,
+                    PieceKind::Bishop,
+                    PieceKind::Knight,
+                ] {
+                    moves.push(ChessMove::new(from, to, MoveType::Promotion(promo)));
+                }
+            } else {
+                moves.push(ChessMove::new(from, to, MoveType::Quiet));
+            }
         }
     }
 
-    // Double push
+    // Double push (never a promotion)
     let double_push = ((single_push << single_push_dir) & empty) & double_rank_mask;
     for to in double_push.squares() {
         if let Some(from) = to.advance(-double_push_dir) {
@@ -205,7 +223,18 @@ fn generate_pseudo_pawn_moves(
     let left_caps = (pawns << left_cap_dir) & their_pieces & !FILE_H;
     for to in left_caps.squares() {
         if let Some(from) = to.advance(-left_cap_dir) {
-            moves.push(ChessMove::new(from, to, MoveType::Capture));
+            if is_promotion_rank(to, context.us) {
+                for &promo in &[
+                    PieceKind::Queen,
+                    PieceKind::Rook,
+                    PieceKind::Bishop,
+                    PieceKind::Knight,
+                ] {
+                    moves.push(ChessMove::new(from, to, MoveType::Promotion(promo)));
+                }
+            } else {
+                moves.push(ChessMove::new(from, to, MoveType::Capture));
+            }
         }
     }
 
@@ -213,14 +242,20 @@ fn generate_pseudo_pawn_moves(
     let right_caps = (pawns << right_cap_dir) & their_pieces & !FILE_A;
     for to in right_caps.squares() {
         if let Some(from) = to.advance(-right_cap_dir) {
-            moves.push(ChessMove::new(from, to, MoveType::Capture));
+            if is_promotion_rank(to, context.us) {
+                for &promo in &[
+                    PieceKind::Queen,
+                    PieceKind::Rook,
+                    PieceKind::Bishop,
+                    PieceKind::Knight,
+                ] {
+                    moves.push(ChessMove::new(from, to, MoveType::Promotion(promo)));
+                }
+            } else {
+                moves.push(ChessMove::new(from, to, MoveType::Capture));
+            }
         }
     }
-
-    // TODO: handle promotion
-    //moves.push(ChessMove::new(from, to, MoveType::Promotion(PieceKind::Queen)));
-    //moves.push(ChessMove::new(from, to, MoveType::Promotion(PieceKind::Rook)));
-    // etc.
 }
 
 // TODO - this can probably be improved by have an attack mask
@@ -473,6 +508,10 @@ mod tests {
             PieceKind::Bishop,
             PieceKind::Knight,
         ];
+
+        for m in &moves {
+            println!("{:?} -> {:?}, {:?}", m.from, m.to, m.move_type);
+        }
 
         for kind in promotions.iter() {
             assert!(
@@ -730,7 +769,7 @@ mod tests {
 
     #[test]
     fn test_pawn_pinned_cannot_advance() {
-        // White pawn on e2 is pinned by black rook on e8 through white king on e1
+        // White pawn on e2 is pinned by black rook on b2 to white king on h2
         let pos = Position::from_fen("8/1k6/8/8/8/8/1r2P2K/8 w - - 0 1");
         let moves = generate_legal_moves(&pos);
 
