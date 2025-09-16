@@ -59,8 +59,10 @@ pub fn is_square_attacked(square: Square, by_color: Color, board: &BoardState) -
     }
 
     // Check rook/queen attacks (same rank/file)
-    let rook_like = (attacking_pieces.rooks | attacking_pieces.queens)
-        & (RANK_MASKS[sq_index] | FILE_MASKS[sq_index]);
+    let rank = sq_index / 8;
+    let file = sq_index % 8;
+    let rook_like =
+        (attacking_pieces.rooks | attacking_pieces.queens) & (RANK_MASKS[rank] | FILE_MASKS[file]);
     if !rook_like.is_empty() {
         let rmask = ROOK_MASKS[sq_index];
         let rindex = occupancy_to_index(board.occupancy, rmask);
