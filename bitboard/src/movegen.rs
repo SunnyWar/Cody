@@ -256,6 +256,25 @@ fn generate_pseudo_pawn_moves(
             }
         }
     }
+
+    // En passant
+    if let Some(ep_square) = pos.ep_square {
+        // Left EP capture
+        let left_ep = (pawns << left_cap_dir) & ep_square.bitboard();
+        for to in left_ep.squares() {
+            if let Some(from) = to.advance(-left_cap_dir) {
+                moves.push(ChessMove::new(from, to, MoveType::EnPassant));
+            }
+        }
+
+        // Right EP capture
+        let right_ep = (pawns << right_cap_dir) & ep_square.bitboard();
+        for to in right_ep.squares() {
+            if let Some(from) = to.advance(-right_cap_dir) {
+                moves.push(ChessMove::new(from, to, MoveType::EnPassant));
+            }
+        }
+    }
 }
 
 // TODO - this can probably be improved by have an attack mask
