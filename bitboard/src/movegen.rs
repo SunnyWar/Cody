@@ -731,7 +731,7 @@ mod tests {
     #[test]
     fn test_pawn_pinned_cannot_advance() {
         // White pawn on e2 is pinned by black rook on e8 through white king on e1
-        let pos = Position::from_fen("4r3/1k6/8/8/8/8/4P3/4K3 w - - 0 1");
+        let pos = Position::from_fen("8/1k6/8/8/8/8/1r2P2K/8 w - - 0 1");
         let moves = generate_legal_moves(&pos);
 
         let pinned_pawn = Square::E2;
