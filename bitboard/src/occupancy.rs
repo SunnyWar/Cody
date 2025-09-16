@@ -28,11 +28,14 @@ impl OccupancyMap {
     pub fn or_in(&mut self, kind: OccupancyKind, mask: BitBoardMask) {
         self.inner[kind as usize] |= mask;
     }
-}
 
-impl Default for OccupancyMap {
     fn default() -> Self {
         Self::new()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.inner[0].is_empty() && self.inner[1].is_empty() && self.inner[2].is_empty()
     }
 }
 

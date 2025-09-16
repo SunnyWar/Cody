@@ -1,8 +1,11 @@
 // bitboard/src/movegen.rs
 
 use crate::{
+    BitBoardMask, Square,
     attack::{BoardState, PieceSet, is_king_in_check},
-    bitboard::{bishop_attacks_from, king_attacks, knight_attacks, rook_attacks_from},
+    bitboard::{
+        bishop_attacks_from, king_attacks, knight_attacks, pawn_attacks_to, rook_attacks_from,
+    },
     mov::{ChessMove, MoveType},
     occupancy::OccupancyKind,
     piece::{Color, Piece, PieceKind},
@@ -105,8 +108,60 @@ pub fn generate_legal_moves(pos: &Position) -> Vec<ChessMove> {
 }
 
 pub fn is_legal(pos: &Position, m: &ChessMove) -> bool {
-    // TODO: Implement legality checks (pins, king safety, etc.)
-    true
+    let mut new_pos = Position::default();
+    pos.apply_move_into(m, &mut new_pos);
+
+    let king_sq = new_pos
+        .pieces
+        .get(Piece::from_parts(pos.side_to_move, Some(PieceKind::King)))
+        .squares()
+        .next()
+        .expect("King must exist");
+
+    let attackers = get_attackers(&new_pos, king_sq, pos.side_to_move.opposite());
+    attackers.is_empty()
+}
+
+fn get_attackers(pos: &Position, sq: Square, attacker_color: Color) -> BitBoardMask {
+    let mut attackers = BitBoardMask::empty();
+
+    // Pawn attacks
+    attackers |= pawn_attacks_to(sq, attacker_color).and(
+        pos.pieces
+            .get(Piece::from_parts(attacker_color, Some(PieceKind::Pawn))),
+    );
+
+    // Knight attacks
+    attackers |= knight_attacks(sq).and(
+        pos.pieces
+            .get(Piece::from_parts(attacker_color, Some(PieceKind::Knight))),
+    );
+
+    // Bishop/Queen attacks
+    attackers |= bishop_attacks_from(sq, pos.occupancy[OccupancyKind::Both]).and(
+        pos.pieces
+            .get(Piece::from_parts(attacker_color, Some(PieceKind::Bishop)))
+            | pos
+                .pieces
+                .get(Piece::from_parts(attacker_color, Some(PieceKind::Queen))),
+    );
+
+    // Rook/Queen attacks
+    attackers |= rook_attacks_from(sq, pos.occupancy[OccupancyKind::Both]).and(
+        pos.pieces
+            .get(Piece::from_parts(attacker_color, Some(PieceKind::Rook)))
+            | pos
+                .pieces
+                .get(Piece::from_parts(attacker_color, Some(PieceKind::Queen))),
+    );
+
+    // King attacks
+    attackers |= king_attacks(sq).and(
+        pos.pieces
+            .get(Piece::from_parts(attacker_color, Some(PieceKind::King))),
+    );
+
+    attackers
 }
 
 fn generate_pseudo_pawn_moves(
@@ -294,18 +349,13 @@ fn generate_pseudo_king_moves(
     context: &MoveGenContext,
     moves: &mut Vec<ChessMove>,
 ) {
-    // Get the bitboard of the king for the current side (exactly one square in standard chess).
     let king_bb = pos
         .pieces
         .get(Piece::from_parts(context.us, Some(PieceKind::King)));
 
-    // Get the single square where the king is located.
     if let Some(from) = king_bb.squares().next() {
-        // Calculate all squares this king can move to, filtered by squares
-        // not occupied by our own pieces.
+        // Standard king moves
         let valid_moves = king_attacks(from).and(context.not_ours);
-
-        // For each valid destination square, create and record the move.
         for to in valid_moves.squares() {
             let move_type = if pos.our_pieces(context.us.opposite()).contains(to) {
                 MoveType::Capture
@@ -313,6 +363,23 @@ fn generate_pseudo_king_moves(
                 MoveType::Quiet
             };
             moves.push(ChessMove::new(from, to, move_type));
+        }
+
+        // Castling moves
+        if pos.can_castle_kingside(context.us) {
+            let to = match context.us {
+                Color::White => Square::G1,
+                Color::Black => Square::G8,
+            };
+            moves.push(ChessMove::new(from, to, MoveType::CastleKingside));
+        }
+
+        if pos.can_castle_queenside(context.us) {
+            let to = match context.us {
+                Color::White => Square::C1,
+                Color::Black => Square::C8,
+            };
+            moves.push(ChessMove::new(from, to, MoveType::CastleQueenside));
         }
     }
 }
@@ -332,10 +399,12 @@ mod tests {
         moves.iter().any(|m| {
             m.from == from
                 && m.to == to
-                && match (promotion, &m.move_type) {
-                    (Some(p), MoveType::Promotion(k)) => p == *k,
-                    (None, MoveType::Promotion(_)) => false,
-                    (_, _) => true,
+                && match (&m.move_type, promotion) {
+                    (MoveType::Promotion(k), Some(p)) => *k == p,
+                    (MoveType::Promotion(_), None) => false,
+                    (MoveType::Quiet, None) => true,
+                    (MoveType::Capture, None) => true,
+                    _ => false,
                 }
         })
     }
@@ -350,7 +419,7 @@ mod tests {
 
     #[test]
     fn test_knight_moves() {
-        let pos = Position::from_fen("8/8/8/8/8/8/3N4/8 w - - 0 1");
+        let pos = Position::from_fen("4k3/8/8/8/8/8/3N4/4K3 w - - 0 1");
         let moves = generate_legal_moves(&pos);
 
         let from = Square::D2;
@@ -389,7 +458,7 @@ mod tests {
 
     #[test]
     fn test_pawn_promotion() {
-        let pos = Position::from_fen("8/P7/8/8/8/8/8/8 w - - 0 1");
+        let pos = Position::from_fen("4k3/P7/8/8/8/8/8/4K3 w - - 0 1");
         let moves = generate_legal_moves(&pos);
 
         let from = Square::A7;
@@ -436,7 +505,7 @@ mod tests {
 
     #[test]
     fn test_rook_moves() {
-        let pos = Position::from_fen("8/8/8/3R4/8/8/8/8 w - - 0 1");
+        let pos = Position::from_fen("4k3/8/8/3R4/8/8/8/4K3 w - - 0 1");
         let moves = generate_legal_moves(&pos);
 
         let from = Square::D5;
@@ -477,7 +546,7 @@ mod tests {
 
     #[test]
     fn test_bishop_moves() {
-        let pos = Position::from_fen("8/8/8/3B4/8/8/8/8 w - - 0 1");
+        let pos = Position::from_fen("8/8/8/3B4/8/8/8/4K3 w - - 0 1");
         let moves = generate_legal_moves(&pos);
 
         let from = Square::D5;
@@ -513,7 +582,7 @@ mod tests {
 
     #[test]
     fn test_queen_moves() {
-        let pos = Position::from_fen("8/8/8/3Q4/8/8/8/8 w - - 0 1");
+        let pos = Position::from_fen("4k3/8/8/3Q4/8/8/8/4K3 w - - 0 1");
         let moves = generate_legal_moves(&pos);
 
         let from = Square::D5;
@@ -563,7 +632,7 @@ mod tests {
     #[test]
     fn test_en_passant_capture() {
         // Black pawn just moved from d7 to d5, white can capture en passant with e5 pawn
-        let pos = Position::from_fen("8/8/8/3pP3/8/8/8/8 w - d6 0 1");
+        let pos = Position::from_fen("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1");
         let moves = generate_legal_moves(&pos);
 
         let from = Square::E5;

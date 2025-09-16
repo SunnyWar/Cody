@@ -11,6 +11,20 @@ pub struct CastlingRights {
 }
 
 impl CastlingRights {
+    pub fn kingside(&self, color: Color) -> bool {
+        match color {
+            Color::White => self.white_kingside,
+            Color::Black => self.black_kingside,
+        }
+    }
+
+    pub fn queenside(&self, color: Color) -> bool {
+        match color {
+            Color::White => self.white_queenside,
+            Color::Black => self.black_queenside,
+        }
+    }
+
     pub fn empty() -> Self {
         Self {
             white_kingside: false,

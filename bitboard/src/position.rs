@@ -2,20 +2,14 @@
 
 use crate::{
     BitBoardMask, Square,
+    attack::{BoardState, PieceSet, is_square_attacked},
     castling::CastlingRights,
     mov::{ChessMove, MoveType},
     movegen::generate_pseudo_moves,
     occupancy::{OccupancyKind, OccupancyMap},
-    piece::{Color, Piece, PieceKind},
+    piece::{self, Color, Piece, PieceKind},
     piecebitboards::PieceBitboards,
 };
-
-// Flags
-const FLAG_CAPTURE: u8 = 1 << 0;
-const FLAG_KINGSIDE_CASTLE: u8 = 1 << 1;
-const FLAG_QUEENSIDE_CASTLE: u8 = 1 << 2;
-const FLAG_EN_PASSANT: u8 = 1 << 3;
-const FLAG_PROMOTION: u8 = 1 << 4;
 
 pub struct MoveGenContext {
     pub us: Color,
@@ -72,6 +66,51 @@ impl Position {
             .pieces
             .get(Piece::from_parts(us, Some(PieceKind::King)));
         acc
+    }
+
+    pub fn can_castle_kingside(&self, color: Color) -> bool {
+        let (king_sq, f_sq, g_sq) = match color {
+            Color::White => (Square::E1, Square::F1, Square::G1),
+            Color::Black => (Square::E8, Square::F8, Square::G8),
+        };
+
+        if !self.castling_rights.kingside(color) {
+            return false;
+        }
+
+        // Check if squares are empty using the occupancy map
+        let empty = (self.occupancy[OccupancyKind::Both] & f_sq.bitboard()).is_empty()
+            && (self.occupancy[OccupancyKind::Both] & g_sq.bitboard()).is_empty();
+
+        // Use self for attack detection
+        let safe = !is_square_attacked(king_sq, color.opposite(), &self.to_board_state())
+            && !is_square_attacked(f_sq, color.opposite(), &self.to_board_state())
+            && !is_square_attacked(g_sq, color.opposite(), &self.to_board_state());
+
+        empty && safe
+    }
+
+    pub fn can_castle_queenside(&self, color: Color) -> bool {
+        let (king_sq, d_sq, c_sq, b_sq) = match color {
+            Color::White => (Square::E1, Square::D1, Square::C1, Square::B1),
+            Color::Black => (Square::E8, Square::D8, Square::C8, Square::B8),
+        };
+
+        if !self.castling_rights.queenside(color) {
+            return false;
+        }
+
+        // Check if squares are empty using the occupancy map
+        let empty = (self.occupancy[OccupancyKind::Both] & d_sq.bitboard()).is_empty()
+            && (self.occupancy[OccupancyKind::Both] & c_sq.bitboard()).is_empty()
+            && (self.occupancy[OccupancyKind::Both] & b_sq.bitboard()).is_empty();
+
+        // Use self for attack detection
+        let safe = !is_square_attacked(king_sq, color.opposite(), &self.to_board_state())
+            && !is_square_attacked(d_sq, color.opposite(), &self.to_board_state())
+            && !is_square_attacked(c_sq, color.opposite(), &self.to_board_state());
+
+        empty && safe
     }
 
     #[inline]
@@ -413,6 +452,64 @@ impl Position {
         generate_pseudo_moves(self)
             .into_iter()
             .find(|m| m.from() == from_sq && m.to() == to_sq && m.promotion() == promo)
+    }
+
+    pub fn to_board_state(&self) -> BoardState {
+        BoardState {
+            occupancy: self.occupancy[crate::occupancy::OccupancyKind::Both],
+            white_pieces: PieceSet {
+                pawns: self.pieces.get(piece::Piece::from_parts(
+                    piece::Color::White,
+                    Some(piece::PieceKind::Pawn),
+                )),
+                knights: self.pieces.get(piece::Piece::from_parts(
+                    piece::Color::White,
+                    Some(piece::PieceKind::Knight),
+                )),
+                bishops: self.pieces.get(piece::Piece::from_parts(
+                    piece::Color::White,
+                    Some(piece::PieceKind::Bishop),
+                )),
+                rooks: self.pieces.get(piece::Piece::from_parts(
+                    piece::Color::White,
+                    Some(piece::PieceKind::Rook),
+                )),
+                queens: self.pieces.get(piece::Piece::from_parts(
+                    piece::Color::White,
+                    Some(piece::PieceKind::Queen),
+                )),
+                king: self.pieces.get(piece::Piece::from_parts(
+                    piece::Color::White,
+                    Some(piece::PieceKind::King),
+                )),
+            },
+            black_pieces: PieceSet {
+                pawns: self.pieces.get(piece::Piece::from_parts(
+                    piece::Color::Black,
+                    Some(piece::PieceKind::Pawn),
+                )),
+                knights: self.pieces.get(piece::Piece::from_parts(
+                    piece::Color::Black,
+                    Some(piece::PieceKind::Knight),
+                )),
+                bishops: self.pieces.get(piece::Piece::from_parts(
+                    piece::Color::Black,
+                    Some(piece::PieceKind::Bishop),
+                )),
+                rooks: self.pieces.get(piece::Piece::from_parts(
+                    piece::Color::Black,
+                    Some(piece::PieceKind::Rook),
+                )),
+                queens: self.pieces.get(piece::Piece::from_parts(
+                    piece::Color::Black,
+                    Some(piece::PieceKind::Queen),
+                )),
+                king: self.pieces.get(piece::Piece::from_parts(
+                    piece::Color::Black,
+                    Some(piece::PieceKind::King),
+                )),
+            },
+        }
     }
 }
 

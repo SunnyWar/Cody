@@ -24,7 +24,15 @@ impl Color {
             Color::Black => Color::White,
         }
     }
+
+    pub const fn index(self) -> usize {
+        match self {
+            Color::White => 0,
+            Color::Black => 1,
+        }
+    }
 }
+
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Piece {
