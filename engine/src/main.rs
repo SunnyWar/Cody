@@ -4,6 +4,6 @@
 mod api;
 
 fn main() {
-    let mut api = api::CodyApi::new();
+    let mut api = api::uciapi::CodyApi::new();
     api.run();
 }

@@ -33,6 +33,8 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
         self.arena.reset();
         self.arena.get_mut(0).position.copy_from(root);
 
+        let start_time = std::time::Instant::now();
+
         let moves = {
             let (parent, _) = self.arena.get_pair_mut(0, 1);
             generate_legal_moves(&parent.position)
@@ -48,7 +50,7 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
         }
 
         let mut best_score = i32::MIN;
-        let mut best_moves = Vec::new();
+        let mut best_move = ChessMove::null();
 
         for m in moves {
             {
@@ -59,17 +61,30 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
 
             if score > best_score {
                 best_score = score;
-                best_moves.clear();
-                best_moves.push(m);
-            } else if score == best_score {
-                best_moves.push(m);
+                best_move = m;
             }
         }
 
-        let mut rng = rand::rng();
-        let chosen_move = *best_moves.choose(&mut rng).unwrap_or(&ChessMove::null());
+        let elapsed_ms = start_time.elapsed().as_millis() as u64;
+        let nodes = NODE_COUNT.load(Ordering::Relaxed);
+        let nps = if elapsed_ms > 0 {
+            (nodes * 1000) / elapsed_ms
+        } else {
+            0
+        };
 
-        (chosen_move, best_score)
+        // UCI info line
+        println!(
+            "info depth {} score cp {} nodes {} time {} nps {} pv {}",
+            depth,
+            best_score,
+            nodes,
+            elapsed_ms,
+            nps,
+            best_move // for a real PV, you'd print the whole line of moves
+        );
+
+        (best_move, best_score)
     }
 
     fn search_node(&mut self, ply: usize, remaining: usize) -> i32 {
@@ -104,5 +119,9 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
         }
 
         best_score
+    }
+
+    pub fn clear_state(&self) {
+        NODE_COUNT.store(0, Ordering::Relaxed)
     }
 }

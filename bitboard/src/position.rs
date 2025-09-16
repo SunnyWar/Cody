@@ -17,7 +17,7 @@ pub struct MoveGenContext {
     pub occupancy: BitBoardMask,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Position {
     pub pieces: PieceBitboards,
     pub occupancy: OccupancyMap,

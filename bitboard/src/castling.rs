@@ -2,7 +2,7 @@
 
 use crate::piece::Color;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct CastlingRights {
     pub(crate) white_kingside: bool,
     pub(crate) white_queenside: bool,

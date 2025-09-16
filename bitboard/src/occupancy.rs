@@ -11,7 +11,7 @@ pub enum OccupancyKind {
     Both = 2,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct OccupancyMap {
     inner: [BitBoardMask; 3],
 }

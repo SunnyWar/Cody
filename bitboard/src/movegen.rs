@@ -12,7 +12,7 @@ use crate::{
     position::{MoveGenContext, Position},
     tables::{
         file_masks::{FILE_A, FILE_H},
-        rank_masks::{RANK_4, RANK_5, RANK_8},
+        rank_masks::{RANK_4, RANK_5},
     },
 };
 
@@ -111,14 +111,20 @@ pub fn is_legal(pos: &Position, m: &ChessMove) -> bool {
     let mut new_pos = Position::default();
     pos.apply_move_into(m, &mut new_pos);
 
-    let king_sq = new_pos
+    // Try to find the king square for the original side to move
+    let king_sq_opt = new_pos
         .pieces
         .get(Piece::from_parts(pos.side_to_move, Some(PieceKind::King)))
         .squares()
-        .next()
-        .expect("King must exist");
+        .next();
 
+    if king_sq_opt.is_none() {
+        return false; // Treat as illegal instead of panicking
+    }
+
+    let king_sq = king_sq_opt.unwrap();
     let attackers = get_attackers(&new_pos, king_sq, pos.side_to_move.opposite());
+
     attackers.is_empty()
 }
 
