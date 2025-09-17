@@ -4,10 +4,9 @@ use crate::core::arena::Arena;
 use crate::search::evaluator::Evaluator;
 use bitboard::{
     mov::ChessMove,
-    movegen::{MoveGenerator, generate_legal_moves, generate_pseudo_moves},
+    movegen::{MoveGenerator, generate_legal_moves},
     position::Position,
 };
-use rand::prelude::IndexedRandom;
 use std::sync::atomic::{AtomicU64, Ordering};
 pub static NODE_COUNT: AtomicU64 = AtomicU64::new(0);
 
@@ -31,8 +30,6 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
     pub fn search(&mut self, root: &Position, depth: usize) -> (ChessMove, i32) {
         self.arena.reset();
         self.arena.get_mut(0).position.copy_from(root);
-
-        let start_time = std::time::Instant::now();
 
         let moves = {
             let (parent, _) = self.arena.get_pair_mut(0, 1);

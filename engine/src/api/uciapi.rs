@@ -10,6 +10,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::api::golimits::GoLimits;
 
+pub const MATE_SCORE: i32 = 30_000; // or 32_000, or 10_000
+
 pub struct CodyApi {
     engine: Engine<SimpleMoveGen, MaterialEvaluator>,
     current_pos: Position,
@@ -111,38 +113,51 @@ impl CodyApi {
         self.stop.store(false, Ordering::Relaxed);
         self.limits = self.parse_go_limits(cmd);
 
-        // A simple policy: if movetime is given, we do iterative deepening until the time expires.
-        // If depth is given, search up to that depth.
         let start = std::time::Instant::now();
-        let mut best = None;
-        let mut best_score = 0;
-        let mut last_nodes = 0u64;
-
-        let max_depth = self.limits.depth.unwrap_or(64); // cap to something reasonable if infinite/movetime
+        let max_depth = self.limits.depth.unwrap_or(64);
         NODE_COUNT.store(0, Ordering::Relaxed);
+
+        let mut last_completed_move = None;
 
         for d in 1..=max_depth {
             let (bm, sc) = self.engine.search(&self.current_pos, d);
-            best = Some(bm);
-            best_score = sc;
+
+            // Store the PV from this fully completed depth
+            last_completed_move = Some(bm);
 
             let elapsed = start.elapsed().as_millis() as u64;
             let nodes = NODE_COUNT.load(Ordering::Relaxed);
             let nps = if elapsed > 0 {
-                (nodes as u128 * 1000 / elapsed as u128) as u64
+                nodes * 1000 / elapsed
             } else {
                 0
             };
 
-            writeln!(
-                out,
-                "info depth {} score cp {} nodes {} time {} nps {}",
-                d, best_score, nodes, elapsed, nps
-            )
-            .unwrap();
+            // Print info line with proper mate/centipawn formatting
+            if sc.abs() > MATE_SCORE - 100 {
+                let mate_in = if sc > 0 {
+                    (MATE_SCORE - sc + 1) / 2
+                } else {
+                    -(MATE_SCORE + sc) / 2
+                };
+                writeln!(
+                    out,
+                    "info depth {} score mate {} nodes {} time {} nps {}",
+                    d, mate_in, nodes, elapsed, nps
+                )
+                .unwrap();
+            } else {
+                writeln!(
+                    out,
+                    "info depth {} score cp {} nodes {} time {} nps {}",
+                    d, sc, nodes, elapsed, nps
+                )
+                .unwrap();
+            }
+
             out.flush().unwrap();
 
-            // Stop conditions (movetime or external stop)
+            // Stop conditions
             if let Some(mt) = self.limits.movetime_ms
                 && elapsed >= mt
             {
@@ -151,11 +166,10 @@ impl CodyApi {
             if self.stop.load(Ordering::Relaxed) {
                 break;
             }
-
-            last_nodes = nodes;
         }
 
-        let bm = best.expect("At least depth 1 should produce a move");
+        // Output the best move from the last *completed* depth
+        let bm = last_completed_move.expect("At least depth 1 should produce a move");
         writeln!(out, "bestmove {}", bm).unwrap();
     }
 
