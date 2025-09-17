@@ -29,7 +29,6 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
     }
 
     pub fn search(&mut self, root: &Position, depth: usize) -> (ChessMove, i32) {
-        NODE_COUNT.store(0, Ordering::Relaxed);
         self.arena.reset();
         self.arena.get_mut(0).position.copy_from(root);
 
@@ -64,25 +63,6 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
                 best_move = m;
             }
         }
-
-        let elapsed_ms = start_time.elapsed().as_millis() as u64;
-        let nodes = NODE_COUNT.load(Ordering::Relaxed);
-        let nps = if elapsed_ms > 0 {
-            (nodes * 1000) / elapsed_ms
-        } else {
-            0
-        };
-
-        // UCI info line
-        println!(
-            "info depth {} score cp {} nodes {} time {} nps {} pv {}",
-            depth,
-            best_score,
-            nodes,
-            elapsed_ms,
-            nps,
-            best_move // for a real PV, you'd print the whole line of moves
-        );
 
         (best_move, best_score)
     }

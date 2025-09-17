@@ -87,8 +87,6 @@ impl CodyApi {
         if let Some(&"moves") = tokens.peek() {
             tokens.next(); // consume "moves"
             for mv in tokens {
-                // You need a parser from UCI to your ChessMove type.
-                // If you already have Position::parse_uci_move, use it:
                 match pos.parse_uci_move(mv) {
                     Some(chess_move) => {
                         // Apply move into pos, in-place or via a helper you have
@@ -136,7 +134,6 @@ impl CodyApi {
                 0
             };
 
-            // If you can reconstruct a PV, add it here
             writeln!(
                 out,
                 "info depth {} score cp {} nodes {} time {} nps {}",
@@ -146,10 +143,10 @@ impl CodyApi {
             out.flush().unwrap();
 
             // Stop conditions (movetime or external stop)
-            if let Some(mt) = self.limits.movetime_ms {
-                if elapsed >= mt {
-                    break;
-                }
+            if let Some(mt) = self.limits.movetime_ms
+                && elapsed >= mt
+            {
+                break;
             }
             if self.stop.load(Ordering::Relaxed) {
                 break;
