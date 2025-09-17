@@ -7,7 +7,10 @@ use bitboard::{
     movegen::{MoveGenerator, generate_legal_moves},
     position::Position,
 };
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::io::{self, Write};
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering;
+
 pub static NODE_COUNT: AtomicU64 = AtomicU64::new(0);
 
 const MATE_SCORE: i32 = -1;
@@ -58,6 +61,10 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
             if score > best_score {
                 best_score = score;
                 best_move = m;
+
+                // Build PV string — for now just the root move
+                let pv_str = best_move.to_string();
+                print_uci_info(depth, best_score, &pv_str, 0);
             }
         }
 
@@ -101,4 +108,37 @@ impl<M: MoveGenerator, E: Evaluator> Engine<M, E> {
     pub fn clear_state(&self) {
         NODE_COUNT.store(0, Ordering::Relaxed)
     }
+}
+
+pub fn print_uci_info(
+    depth: usize,
+    score: i32,
+    pv: &str, // principal variation as a space-separated string
+    elapsed_ms: u64,
+) {
+    let nodes = NODE_COUNT.load(Ordering::Relaxed);
+    let nps = if elapsed_ms > 0 {
+        nodes * 1000 / elapsed_ms
+    } else {
+        0
+    };
+
+    if score.abs() > MATE_SCORE - 100 {
+        let mate_in = if score > 0 {
+            (MATE_SCORE - score + 1) / 2
+        } else {
+            -(MATE_SCORE + score) / 2
+        };
+        println!(
+            "info depth {} score mate {} nodes {} time {} nps {} pv {}",
+            depth, mate_in, nodes, elapsed_ms, nps, pv
+        );
+    } else {
+        println!(
+            "info depth {} score cp {} nodes {} time {} nps {} pv {}",
+            depth, score, nodes, elapsed_ms, nps, pv
+        );
+    }
+
+    io::stdout().flush().unwrap();
 }
