@@ -1,7 +1,8 @@
 // bitboard/src/attacks.rs
-use crate::bitboard::{
-    ANTIDIAGONAL_MASKS, BISHOP_MASKS, DIAGONAL_MASKS, PAWN_ATTACKS, ROOK_MASKS, occupancy_to_index,
-};
+#[cfg(all(target_arch = "x86_64", target_feature = "bmi2"))]
+use crate::bitboard::occupancy_to_index;
+
+use crate::bitboard::{ANTIDIAGONAL_MASKS, BISHOP_MASKS, DIAGONAL_MASKS, PAWN_ATTACKS, ROOK_MASKS};
 use crate::piece::Color;
 use crate::tables::bishop_attack::BISHOP_ATTACKS;
 use crate::tables::file_masks::FILE_MASKS;
