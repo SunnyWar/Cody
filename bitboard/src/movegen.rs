@@ -119,7 +119,7 @@ pub fn is_legal(pos: &Position, m: &ChessMove) -> bool {
         .next();
 
     if king_sq_opt.is_none() {
-        return false; // Treat as illegal instead of panicking
+        return false;
     }
 
     let king_sq = king_sq_opt.unwrap();
