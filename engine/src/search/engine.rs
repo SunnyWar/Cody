@@ -13,7 +13,8 @@ use std::sync::atomic::Ordering;
 
 pub static NODE_COUNT: AtomicU64 = AtomicU64::new(0);
 
-const MATE_SCORE: i32 = -1;
+// Positive large value used to detect mate scores. Keep consistent with UCI API's MATE_SCORE.
+const MATE_SCORE: i32 = 30_000;
 
 pub struct Engine<M: MoveGenerator, E: Evaluator> {
     arena: Arena,

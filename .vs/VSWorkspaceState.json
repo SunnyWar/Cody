@@ -1,0 +1,12 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\bitboard",
+    "\\bitboard\\src",
+    "\\engine",
+    "\\engine\\src",
+    "\\engine\\src\\search"
+  ],
+  "SelectedNode": "\\engine\\src\\search\\engine.rs",
+  "PreviewInSolutionExplorer": false
+}
