@@ -6,6 +6,9 @@ use crate::{
     bitboard::{
         bishop_attacks_from, king_attacks, knight_attacks, pawn_attacks_to, rook_attacks_from,
     },
+    constants::{
+        DOUBLE_NORTH, DOUBLE_SOUTH, NORTH, NORTH_EAST, NORTH_WEST, SOUTH, SOUTH_EAST, SOUTH_WEST,
+    },
     mov::{ChessMove, MoveType},
     occupancy::OccupancyKind,
     piece::{Color, Piece, PieceKind},
@@ -15,15 +18,6 @@ use crate::{
         rank_masks::{RANK_4, RANK_5},
     },
 };
-
-const NORTH: i8 = 8;
-const SOUTH: i8 = -8;
-const NORTH_EAST: i8 = 9;
-const NORTH_WEST: i8 = 7;
-const SOUTH_EAST: i8 = -7;
-const SOUTH_WEST: i8 = -9;
-const DOUBLE_NORTH: i8 = 16;
-const DOUBLE_SOUTH: i8 = -16;
 
 pub struct SimpleMoveGen;
 
