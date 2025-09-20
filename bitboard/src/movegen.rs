@@ -320,7 +320,6 @@ fn generate_pseudo_bishop_moves(
 
         // Filter these attacks to find valid moves (not occupied by our own pieces).
         let valid_moves = attacks.and(context.not_ours);
-
         push_moves_from_valid_targets(pos, context, from, valid_moves, moves);
     }
 }
@@ -339,11 +338,11 @@ fn generate_pseudo_rook_moves(
     for from in rooks.squares() {
         // Calculate all squares this rook attacks, using the board's total occupancy.
         let valid_moves = rook_attacks_from(from, context.occupancy).and(context.not_ours);
-
         push_moves_from_valid_targets(pos, context, from, valid_moves, moves);
     }
 }
 
+#[inline]
 fn push_moves_from_valid_targets(
     pos: &Position,
     context: &MoveGenContext,
