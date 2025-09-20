@@ -298,16 +298,7 @@ fn generate_pseudo_knight_moves(
         // Calculate all squares this knight can move to, filtered by squares
         // not occupied by our own pieces.
         let valid_moves = knight_attacks(from).and(context.not_ours);
-
-        // For each valid destination square, create and record the move.
-        for to in valid_moves.squares() {
-            let move_type = if pos.our_pieces(context.us.opposite()).contains(to) {
-                MoveType::Capture
-            } else {
-                MoveType::Quiet
-            };
-            moves.push(ChessMove::new(from, to, move_type));
-        }
+        push_moves_from_valid_targets(pos, context, from, valid_moves, moves);
     }
 }
 
@@ -330,15 +321,7 @@ fn generate_pseudo_bishop_moves(
         // Filter these attacks to find valid moves (not occupied by our own pieces).
         let valid_moves = attacks.and(context.not_ours);
 
-        // For each valid destination square, create and record the move.
-        for to in valid_moves.squares() {
-            let move_type = if pos.our_pieces(context.us.opposite()).contains(to) {
-                MoveType::Capture
-            } else {
-                MoveType::Quiet
-            };
-            moves.push(ChessMove::new(from, to, move_type));
-        }
+        push_moves_from_valid_targets(pos, context, from, valid_moves, moves);
     }
 }
 
@@ -357,15 +340,24 @@ fn generate_pseudo_rook_moves(
         // Calculate all squares this rook attacks, using the board's total occupancy.
         let valid_moves = rook_attacks_from(from, context.occupancy).and(context.not_ours);
 
-        // For each valid destination square, create and record the move.
-        for to in valid_moves.squares() {
-            let move_type = if pos.our_pieces(context.us.opposite()).contains(to) {
-                MoveType::Capture
-            } else {
-                MoveType::Quiet
-            };
-            moves.push(ChessMove::new(from, to, move_type));
-        }
+        push_moves_from_valid_targets(pos, context, from, valid_moves, moves);
+    }
+}
+
+fn push_moves_from_valid_targets(
+    pos: &Position,
+    context: &MoveGenContext,
+    from: Square,
+    valid_targets: BitBoardMask,
+    moves: &mut Vec<ChessMove>,
+) {
+    for to in valid_targets.squares() {
+        let move_type = if pos.our_pieces(context.us.opposite()).contains(to) {
+            MoveType::Capture
+        } else {
+            MoveType::Quiet
+        };
+        moves.push(ChessMove::new(from, to, move_type));
     }
 }
 
@@ -386,15 +378,7 @@ fn generate_pseudo_queen_moves(
             | bishop_attacks_from(from, context.occupancy))
         .and(context.not_ours);
 
-        // For each valid destination square, create and record the move.
-        for to in valid_moves.squares() {
-            let move_type = if pos.our_pieces(context.us.opposite()).contains(to) {
-                MoveType::Capture
-            } else {
-                MoveType::Quiet
-            };
-            moves.push(ChessMove::new(from, to, move_type));
-        }
+        push_moves_from_valid_targets(pos, context, from, valid_moves, moves);
     }
 }
 
@@ -410,14 +394,7 @@ fn generate_pseudo_king_moves(
     if let Some(from) = king_bb.squares().next() {
         // Standard king moves
         let valid_moves = king_attacks(from).and(context.not_ours);
-        for to in valid_moves.squares() {
-            let move_type = if pos.our_pieces(context.us.opposite()).contains(to) {
-                MoveType::Capture
-            } else {
-                MoveType::Quiet
-            };
-            moves.push(ChessMove::new(from, to, move_type));
-        }
+        push_moves_from_valid_targets(pos, context, from, valid_moves, moves);
 
         // Castling moves
         if pos.can_castle_kingside(context.us) {

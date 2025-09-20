@@ -168,10 +168,14 @@ impl CodyApi {
             }
         }
 
-    // Output the best move from the last *completed* depth
-    let bm = last_completed_move.expect("At least depth 1 should produce a move");
-    let bm_str = if bm.is_null() { "0000".to_string() } else { bm.to_string() };
-    writeln!(out, "bestmove {}", bm_str).unwrap();
+        // Output the best move from the last *completed* depth
+        let bm = last_completed_move.expect("At least depth 1 should produce a move");
+        let bm_str = if bm.is_null() {
+            "0000".to_string()
+        } else {
+            bm.to_string()
+        };
+        writeln!(out, "bestmove {}", bm_str).unwrap();
     }
 
     fn parse_go_limits(&self, cmd: &str) -> GoLimits {
