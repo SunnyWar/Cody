@@ -1,0 +1,13 @@
+id name Cody
+id author Strong Noodle
+option name Threads type spin default 1 min 1 max 22
+uciok
+readyok
+debug: handle_go limits: GoLimits { depth: Some(1), movetime_ms: None, wtime_ms: None, btime_ms: None, winc_ms: None, binc_ms: None, ponder: false, infinite: false }
+debug: starting depth 1
+info depth 1 score cp 0 nodes 1 time 0 nps 0 pv a2a3
+info depth 1 score cp 5 nodes 2 time 0 nps 0 pv b2b3
+info depth 1 score cp 10 nodes 10 time 0 nps 0 pv b2b4
+debug: finished search depth 1
+info depth 1 score cp 10 nodes 20 time 10 nps 2000
+bestmove b2b4

@@ -1,25 +1,25 @@
 # Cody Chess Engine — MVP TODO Roadmap
 
 ## 0. Handle UCI Commands (Minimum for Arena Tournament)
-- [ ] **position**
+- [x] **position**
   - Parse `startpos` or `fen`
   - Apply move list if present
-- [ ] **go**
+- [x] **go**
   - Parse at least `movetime` and/or `wtime`/`btime`
   - Run search loop
   - Output `bestmove <move>`
-- [ ] **quit**
+- [x] **quit**
   - Exit cleanly
 
 ## 1. Search Core (Stub for MVP)
-- [ ] Implement fixed-depth or fixed-time search (depth=1 is enough for Arena to run games)
-- [ ] Generate legal moves from current position
-- [ ] Pick a move (random, eval-based, or fixed) and return via `bestmove`
+- [x] Implement fixed-depth or fixed-time search (depth=1 is enough for Arena to run games)
+- [x] Generate legal moves from current position
+- [x] Pick a move (random, eval-based, or fixed) and return via `bestmove`
 
 ## 2. Position Handling
-- [ ] FEN parser → internal board representation
-- [ ] Move parser (LAN/coordinate notation)
-- [ ] Apply moves to board state
+- [x] FEN parser → internal board representation
+- [x] Move parser (LAN/coordinate notation)
+- [x] Apply moves to board state
 
 ## 3. Diagnostics & Traceability
 - [ ] Log all received UCI commands (for debugging)
@@ -38,37 +38,37 @@
 ## 5. Search Core (Negamax + Alpha‑Beta)
 **Goal:** Basic minimax search with pruning.  
 **Tasks:**
-- Implement `negamax(position, depth, alpha, beta) -> score`.
-- Terminal conditions:
+- [x] Implement `negamax(position, depth, alpha, beta) -> score`.
+- [x] Terminal conditions:
   - Depth = 0 → return evaluation.
   - No legal moves → checkmate/stalemate scoring.
-- Add alpha‑beta pruning.
-- Count nodes, cutoffs, max depth reached.
+- [x] Add alpha‑beta pruning.
+- [x] Count nodes, cutoffs, max depth reached.
 
 ---
 
 ## 6. Evaluation Function (Material‑Only MVP)
 **Goal:** Assign a score to a position.  
 **Tasks:**
-- Piece values: Pawn=100, Knight=320, Bishop=330, Rook=500, Queen=900.
-- Score = (material for side to move) − (material for opponent).
-- Log score breakdown by piece type.
+- [x] Piece values: Pawn=100, Knight=320, Bishop=330, Rook=500, Queen=900.
+- [x] Score = (material for side to move) − (material for opponent).
+- [x] Log score breakdown by piece type. (basic evaluation implemented; advanced PST blending also present)
 
 ---
 
 ## 8. Iterative Deepening (Optional for MVP)
 **Goal:** Improve move ordering and allow time control.  
 **Tasks:**
-- Search depth 1, then 2, etc., keeping best move so far.
-- Stop when time runs out.
+- [ ] Search depth 1, then 2, etc., keeping best move so far.
+- [ ] Stop when time runs out.
 
 ---
 
 ## 9. Incremental Improvements (Post‑MVP)
-- Quiescence search
-- Piece‑square tables
-- Move ordering (killer moves, history heuristic)
-- Transposition table
-- Parallel search (thread pool integration)
+- [x] Quiescence search
+- [x] Piece‑square tables
+- [x] Move ordering (MVV/LVA implemented; killer/history heuristics pending)
+- [ ] Transposition table
+- [x] Parallel search (thread pool integration)
 
 ---
