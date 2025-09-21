@@ -7,7 +7,10 @@ use bitboard::position::Position;
 
 use crate::VERBOSE;
 use crate::search::engine::NODE_COUNT;
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::sync::atomic::Ordering;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
     movegen: &M,
@@ -20,6 +23,18 @@ pub fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
     // Stand pat evaluation
     if VERBOSE.load(Ordering::Relaxed) {
         eprintln!("[debug] quiescence enter ply={}", ply);
+        // Append to cody_uci.log for traceability
+        if let Ok(mut f) = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("cody_uci.log")
+        {
+            let stamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            let _ = writeln!(f, "{} OUT: [debug] quiescence enter ply={}", stamp, ply);
+        }
     }
     let stand_pat = evaluator.evaluate(&arena.get(ply).position);
     if stand_pat >= beta {
@@ -55,6 +70,24 @@ pub fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
             moves.len(),
             node_count
         );
+        if let Ok(mut f) = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("cody_uci.log")
+        {
+            let stamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            let _ = writeln!(
+                f,
+                "{} OUT: [debug] quiescence ply={} captures={} nodes={}",
+                stamp,
+                ply,
+                moves.len(),
+                node_count
+            );
+        }
     }
 
     if moves.is_empty() {

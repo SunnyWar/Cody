@@ -22,9 +22,9 @@
 - [x] Apply moves to board state
 
 ## 3. Diagnostics & Traceability
-- [ ] Log all received UCI commands (for debugging)
-- [ ] Log all sent responses
-- [ ] Add `bench` command for internal testing (optional for Arena)
+- [x] Log all received UCI commands (for debugging)
+- [x] Log all sent responses
+- [x] Add `bench` command for internal testing (optional for Arena)
 
 ## 4. Post-MVP (Future Work)
 - [ ] Implement iterative deepening, alpha-beta, transposition table
@@ -59,7 +59,6 @@
 ## 8. Iterative Deepening (Optional for MVP)
 **Goal:** Improve move ordering and allow time control.  
 **Tasks:**
-- [ ] Search depth 1, then 2, etc., keeping best move so far.
 - [ ] Stop when time runs out.
 
 ---
