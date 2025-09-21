@@ -88,24 +88,49 @@ impl Evaluator for MaterialEvaluator {
 }
 
 fn compute_phase(pos: &Position) -> i32 {
+    use PieceKind::*;
+
     let mut phase = MAX_PHASE;
 
-    for &color in &[Color::White, Color::Black] {
-        for (i, kind) in [
-            PieceKind::Pawn,
-            PieceKind::Knight,
-            PieceKind::Bishop,
-            PieceKind::Rook,
-            PieceKind::Queen,
-            PieceKind::King,
-        ]
-        .iter()
-        .enumerate()
-        {
-            let piece = Piece::from_parts(color, Some(*kind));
-            let count = pos.pieces.get(piece).0.count_ones() as i32;
-            phase -= PHASE_WEIGHTS[i] * count;
-        }
+    for color in [Color::White, Color::Black] {
+        // Unrolled for maximum performance
+        let pawn_count = pos
+            .pieces
+            .get(Piece::from_parts(color, Some(Pawn)))
+            .0
+            .count_ones() as i32;
+        let knight_count = pos
+            .pieces
+            .get(Piece::from_parts(color, Some(Knight)))
+            .0
+            .count_ones() as i32;
+        let bishop_count = pos
+            .pieces
+            .get(Piece::from_parts(color, Some(Bishop)))
+            .0
+            .count_ones() as i32;
+        let rook_count = pos
+            .pieces
+            .get(Piece::from_parts(color, Some(Rook)))
+            .0
+            .count_ones() as i32;
+        let queen_count = pos
+            .pieces
+            .get(Piece::from_parts(color, Some(Queen)))
+            .0
+            .count_ones() as i32;
+        let king_count = pos
+            .pieces
+            .get(Piece::from_parts(color, Some(King)))
+            .0
+            .count_ones() as i32;
+
+        phase -= PHASE_WEIGHTS[0] * pawn_count
+            + PHASE_WEIGHTS[1] * knight_count
+            + PHASE_WEIGHTS[2] * bishop_count
+            + PHASE_WEIGHTS[3] * rook_count
+            + PHASE_WEIGHTS[4] * queen_count
+            + PHASE_WEIGHTS[5] * king_count;
     }
 
     phase.clamp(0, MAX_PHASE)
