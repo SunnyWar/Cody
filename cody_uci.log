@@ -1,0 +1,13 @@
+1758441728 IN: uci
+1758441728 OUT: id name Cody
+1758441728 OUT: id author Strong Noodle
+1758441728 OUT: option name Threads type spin default 1 min 1 max 22
+1758441728 OUT: option name Verbose type check default false
+1758441728 OUT: uciok
+1758441728 IN: isready
+1758441728 OUT: readyok
+1758441728 IN: ucinewgame
+1758441728 IN: position startfen rnb1kbnr/pppp1ppp/8/4p3/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+1758441728 IN: go depth 1
+1758441728 OUT: info depth 1 score cp 10 nodes 20 time 0 nps 0
+1758441728 OUT: bestmove b2b4
