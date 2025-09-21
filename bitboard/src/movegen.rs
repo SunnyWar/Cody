@@ -19,6 +19,7 @@ use crate::{
     },
 };
 
+#[derive(Clone, Copy)]
 pub struct SimpleMoveGen;
 
 pub trait MoveGenerator {

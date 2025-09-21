@@ -23,6 +23,7 @@ const PIECE_VALUES: [i32; 6] = [
 
 /// Simple material-count evaluator.
 /// Positive = advantage for White, negative = advantage for Black.
+#[derive(Clone, Copy)]
 pub struct MaterialEvaluator;
 
 pub trait Evaluator {
