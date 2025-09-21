@@ -2,6 +2,7 @@
 
 use crate::core::arena::Arena;
 use crate::search::evaluator::Evaluator;
+use bitboard::movegen::generate_pseudo_moves;
 use bitboard::piece::{Color, Piece, PieceKind};
 use bitboard::{
     mov::ChessMove,
@@ -290,10 +291,16 @@ fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
     let mut moves = if movegen.in_check(pos) {
         generate_legal_moves(pos)
     } else {
-        // Otherwise, generate captures/promotions/en-passant only
-        generate_legal_moves(pos)
+        // Otherwise, generate capture-like pseudo moves only, then filter to legal
+        generate_pseudo_moves(pos)
             .into_iter()
             .filter(|m| is_capture_like_move(m))
+            .filter(|m| {
+                // legality check: apply move into a temp pos and ensure own king not left in check
+                let mut temp = Position::default();
+                pos.apply_move_into(m, &mut temp);
+                !movegen.in_check(&temp)
+            })
             .collect()
     };
 
