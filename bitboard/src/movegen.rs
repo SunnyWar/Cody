@@ -106,7 +106,9 @@ pub fn generate_legal_moves(pos: &Position) -> Vec<ChessMove> {
 /// This mirrors the helper previously duplicated in the engine crate so the
 /// move-generation logic is centralized in the `bitboard` crate.
 pub fn generate_pseudo_captures(pos: &Position) -> Vec<ChessMove> {
-    use crate::bitboard::{bishop_attacks_from, king_attacks, knight_attacks, pawn_attacks_to, rook_attacks_from};
+    use crate::bitboard::{
+        bishop_attacks_from, king_attacks, knight_attacks, pawn_attacks_to, rook_attacks_from,
+    };
     use crate::mov::MoveType;
     use crate::piece::PieceKind;
 
@@ -120,8 +122,8 @@ pub fn generate_pseudo_captures(pos: &Position) -> Vec<ChessMove> {
     for to in Square::all_array() {
         let attackers = pawn_attacks_to(to, us) & pawn_bb;
         for from in attackers.squares() {
-            let is_promo = (us == Color::White && to.rank() == 7)
-                || (us == Color::Black && to.rank() == 0);
+            let is_promo =
+                (us == Color::White && to.rank() == 7) || (us == Color::Black && to.rank() == 0);
             if is_promo {
                 for &promo in &[
                     PieceKind::Queen,
@@ -138,7 +140,9 @@ pub fn generate_pseudo_captures(pos: &Position) -> Vec<ChessMove> {
     }
 
     // Knight captures
-    let knight_bb = pos.pieces.get(Piece::from_parts(us, Some(PieceKind::Knight)));
+    let knight_bb = pos
+        .pieces
+        .get(Piece::from_parts(us, Some(PieceKind::Knight)));
     for from in knight_bb.squares() {
         let attacks = knight_attacks(from) & their_occ;
         for to in attacks.squares() {
@@ -147,8 +151,12 @@ pub fn generate_pseudo_captures(pos: &Position) -> Vec<ChessMove> {
     }
 
     // Bishop/queen captures
-    let bishop_like_bb = pos.pieces.get(Piece::from_parts(us, Some(PieceKind::Bishop)))
-        | pos.pieces.get(Piece::from_parts(us, Some(PieceKind::Queen)));
+    let bishop_like_bb = pos
+        .pieces
+        .get(Piece::from_parts(us, Some(PieceKind::Bishop)))
+        | pos
+            .pieces
+            .get(Piece::from_parts(us, Some(PieceKind::Queen)));
     for from in bishop_like_bb.squares() {
         let attacks = bishop_attacks_from(from, occ) & their_occ;
         for to in attacks.squares() {
@@ -158,7 +166,9 @@ pub fn generate_pseudo_captures(pos: &Position) -> Vec<ChessMove> {
 
     // Rook/queen captures
     let rook_like_bb = pos.pieces.get(Piece::from_parts(us, Some(PieceKind::Rook)))
-        | pos.pieces.get(Piece::from_parts(us, Some(PieceKind::Queen)));
+        | pos
+            .pieces
+            .get(Piece::from_parts(us, Some(PieceKind::Queen)));
     for from in rook_like_bb.squares() {
         let attacks = rook_attacks_from(from, occ) & their_occ;
         for to in attacks.squares() {
