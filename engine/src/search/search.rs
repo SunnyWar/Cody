@@ -3,7 +3,6 @@
 use crate::core::arena::Arena;
 use crate::search::core::{INF, MATE_SCORE, NODE_COUNT, print_uci_info, search_node_with_arena};
 use crate::search::evaluator::Evaluator;
-use crate::search::quiescence::quiescence_with_arena;
 use bitboard::{
     mov::ChessMove,
     movegen::{MoveGenerator, generate_legal_moves},
