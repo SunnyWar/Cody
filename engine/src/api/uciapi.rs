@@ -10,8 +10,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::api::golimits::GoLimits;
 
-pub const MATE_SCORE: i32 = 30_000; // or 32_000, or 10_000
-
 pub struct CodyApi {
     engine: Engine<SimpleMoveGen, MaterialEvaluator>,
     current_pos: Position,
