@@ -2,6 +2,7 @@
 // Module entry for move generation. Public API is re-exported from `api`.
 
 pub mod api;
+pub mod knight;
 pub mod pawn;
 
 pub use api::{
@@ -10,4 +11,5 @@ pub use api::{
 };
 
 // Re-export pawn generator to preserve the original API surface
+pub use knight::generate_pseudo_knight_moves;
 pub use pawn::generate_pseudo_pawn_moves;
