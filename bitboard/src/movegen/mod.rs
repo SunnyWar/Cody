@@ -2,6 +2,7 @@
 // Module entry for move generation. Public API is re-exported from `api`.
 
 pub mod api;
+pub mod captures;
 pub mod king;
 pub mod knight;
 pub mod legality;
