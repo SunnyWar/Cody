@@ -278,17 +278,8 @@ fn generate_pseudo_knight_moves(
     moves: &mut Vec<ChessMove>,
 ) {
     // Get a bitboard of all knights for the current side.
-    let knights = pos
-        .pieces
-        .get(Piece::from_parts(context.us, Some(PieceKind::Knight)));
-
-    // Iterate over each square containing one of our knights.
-    for from in knights.squares() {
-        // Calculate all squares this knight can move to, filtered by squares
-        // not occupied by our own pieces.
-        let valid_moves = knight_attacks(from).and(context.not_ours);
-        push_moves_from_valid_targets(pos, context, from, valid_moves, moves);
-    }
+    // Delegate to the extracted knight module implementation.
+    crate::movegen::generate_pseudo_knight_moves(pos, context, moves);
 }
 
 fn generate_pseudo_bishop_moves(
@@ -332,7 +323,7 @@ fn generate_pseudo_rook_moves(
 }
 
 #[inline]
-fn push_moves_from_valid_targets(
+pub(crate) fn push_moves_from_valid_targets(
     pos: &Position,
     context: &MoveGenContext,
     from: Square,
