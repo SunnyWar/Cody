@@ -15,6 +15,8 @@ pub static NODE_COUNT: AtomicU64 = AtomicU64::new(0);
 
 // Positive large value used to detect mate scores. Keep consistent with UCI API's MATE_SCORE.
 const MATE_SCORE: i32 = 30_000;
+// Large infinity value for alpha-beta bounds
+const INF: i32 = 1_000_000_000;
 
 pub struct Engine<
     M: MoveGenerator + Clone + Send + Sync + 'static,
@@ -79,6 +81,8 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                     &mut self.arena,
                     1,
                     depth - 1,
+                    -INF,
+                    INF,
                 );
 
                 if score > best_score {
@@ -116,8 +120,15 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                             let (parent, child) = local_arena.get_pair_mut(0, 1);
                             parent.position.apply_move_into(&m, &mut child.position);
                         }
-                        let score =
-                            -search_node_with_arena(&mg, &ev, &mut local_arena, 1, depth - 1);
+                        let score = -search_node_with_arena(
+                            &mg,
+                            &ev,
+                            &mut local_arena,
+                            1,
+                            depth - 1,
+                            -INF,
+                            INF,
+                        );
                         (m, score)
                     })
                     .collect()
@@ -144,6 +155,8 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             &mut self.arena,
             ply,
             remaining,
+            -INF,
+            INF,
         )
     }
 
@@ -192,6 +205,8 @@ fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     arena: &mut Arena,
     ply: usize,
     remaining: usize,
+    mut alpha: i32,
+    beta: i32,
 ) -> i32 {
     NODE_COUNT.fetch_add(1, Ordering::Relaxed);
 
@@ -207,6 +222,7 @@ fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     if moves.is_empty() {
         let pos = &arena.get(ply).position;
         if movegen.in_check(pos) {
+            // mate: return losing score adjusted by ply (so earlier mate is worse)
             return -MATE_SCORE + ply as i32;
         }
         return 0;
@@ -218,8 +234,30 @@ fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
             let (parent, child) = arena.get_pair_mut(ply, ply + 1);
             parent.position.apply_move_into(&m, &mut child.position);
         }
-        let score = -search_node_with_arena(movegen, evaluator, arena, ply + 1, remaining - 1);
-        best_score = best_score.max(score);
+
+        // Recursive negamax with swapped alpha/beta and sign inversion
+        let score = -search_node_with_arena(
+            movegen,
+            evaluator,
+            arena,
+            ply + 1,
+            remaining - 1,
+            -beta,
+            -alpha,
+        );
+
+        if score > best_score {
+            best_score = score;
+        }
+
+        if score > alpha {
+            alpha = score;
+        }
+
+        // Beta cutoff
+        if alpha >= beta {
+            break;
+        }
     }
 
     best_score
