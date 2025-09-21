@@ -60,7 +60,7 @@ pub fn print_uci_info(
         .append(true)
         .open("cody_uci.log")
     {
-    let stamp = util::iso_stamp_ms();
+        let stamp = util::iso_stamp_ms();
         let _ = writeln!(f, "{} OUT: {}", stamp, info_line);
     }
 }
@@ -80,15 +80,15 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     NODE_COUNT.fetch_add(1, Ordering::Relaxed);
 
     // Debug: announce entry to this node
-    if ply <= 2 || NODE_COUNT.load(Ordering::Relaxed) % 500_000 == 0 {
-        if VERBOSE.load(Ordering::Relaxed) {
-            eprintln!(
-                "[debug] search_node enter ply={} remaining={} nodecount={}",
-                ply,
-                remaining,
-                NODE_COUNT.load(Ordering::Relaxed)
-            );
-        }
+    if (ply <= 2 || NODE_COUNT.load(Ordering::Relaxed).is_multiple_of(500_000))
+        && VERBOSE.load(Ordering::Relaxed)
+    {
+        eprintln!(
+            "[debug] search_node enter ply={} remaining={} nodecount={}",
+            ply,
+            remaining,
+            NODE_COUNT.load(Ordering::Relaxed)
+        );
     }
 
     if remaining == 0 {
@@ -126,13 +126,12 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     let mut moves_vec = moves;
     if let Some(e) = tt_entry_opt {
         let bmove = e.best_move;
-        if !bmove.is_null() {
-            if let Some(pos) = moves_vec
+        if !bmove.is_null()
+            && let Some(pos) = moves_vec
                 .iter()
                 .position(|mm| mm.from == bmove.from && mm.to == bmove.to)
-            {
-                moves_vec.swap(0, pos);
-            }
+        {
+            moves_vec.swap(0, pos);
         }
     }
 
