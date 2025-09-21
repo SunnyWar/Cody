@@ -21,8 +21,9 @@ pub struct CodyApi {
 
 impl CodyApi {
     pub fn new() -> Self {
+        let engine = Engine::new(65_536, SimpleMoveGen, MaterialEvaluator);
         Self {
-            engine: Engine::new(65_536, SimpleMoveGen, MaterialEvaluator),
+            engine,
             current_pos: Position::default(),
             limits: GoLimits::default(),
             stop: Arc::new(AtomicBool::new(false)),
@@ -37,6 +38,7 @@ impl CodyApi {
             let cmd = line.unwrap();
             match cmd.as_str() {
                 "uci" => self.handle_uci(&mut stdout),
+                cmd if cmd.starts_with("setoption") => self.handle_setoption(cmd),
                 "isready" => self.handle_isready(&mut stdout),
                 "ucinewgame" => self.handle_newgame(&mut stdout),
                 cmd if cmd.starts_with("position") => self.handle_position(cmd, &mut stdout),
@@ -55,7 +57,43 @@ impl CodyApi {
     fn handle_uci(&self, out: &mut impl Write) {
         writeln!(out, "id name Cody").unwrap();
         writeln!(out, "id author Strong Noodle").unwrap();
+        // Advertise a Threads option so UIs can control parallelism.
+        let max_threads = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1);
+        writeln!(
+            out,
+            "option name Threads type spin default 1 min 1 max {}",
+            max_threads
+        )
+        .unwrap();
         writeln!(out, "uciok").unwrap();
+    }
+
+    fn handle_setoption(&mut self, cmd: &str) {
+        // Parse: setoption name <name...> value <value>
+        let parts: Vec<&str> = cmd.split_whitespace().skip(1).collect();
+        let mut name_idx: Option<usize> = None;
+        let mut value_idx: Option<usize> = None;
+        for (i, &p) in parts.iter().enumerate() {
+            if p.eq_ignore_ascii_case("name") {
+                name_idx = Some(i);
+            } else if p.eq_ignore_ascii_case("value") {
+                value_idx = Some(i);
+            }
+        }
+
+        if let (Some(ni), Some(vi)) = (name_idx, value_idx) {
+            if ni + 1 <= vi {
+                let name = parts[ni + 1..vi].join(" ");
+                let value = parts.get(vi + 1).copied().unwrap_or("");
+                if name.eq_ignore_ascii_case("threads") {
+                    if let Ok(n) = value.parse::<usize>() {
+                        self.engine.set_num_threads(n.max(1));
+                    }
+                }
+            }
+        }
     }
 
     fn handle_isready(&self, out: &mut impl Write) {
