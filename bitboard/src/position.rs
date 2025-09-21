@@ -507,6 +507,11 @@ impl Position {
             },
         }
     }
+
+    /// Compute a 64-bit Zobrist hash for this position.
+    pub fn zobrist_hash(&self) -> u64 {
+        crate::zobrist::compute_zobrist(self)
+    }
 }
 
 #[inline]
