@@ -5,8 +5,8 @@ use bitboard::movegen::MoveGenerator;
 use bitboard::piece::{Color, Piece, PieceKind};
 use bitboard::position::Position;
 
-use crate::search::engine::NODE_COUNT;
 use crate::VERBOSE;
+use crate::search::engine::NODE_COUNT;
 use std::sync::atomic::Ordering;
 
 pub fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
@@ -47,7 +47,8 @@ pub fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
     };
 
     let node_count = NODE_COUNT.load(Ordering::Relaxed);
-    if VERBOSE.load(Ordering::Relaxed) && (ply > 200 || moves.len() > 200 || node_count > 5_000_000) {
+    if VERBOSE.load(Ordering::Relaxed) && (ply > 200 || moves.len() > 200 || node_count > 5_000_000)
+    {
         eprintln!(
             "[debug] quiescence ply={} captures={} nodes={}",
             ply,
