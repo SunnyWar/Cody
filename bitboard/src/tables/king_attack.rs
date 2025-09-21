@@ -1,5 +1,6 @@
 // bitboard/src/tables/king_attack.rs
-use crate::{BitBoardMask, Square};
+use crate::BitBoardMask;
+use crate::Square;
 
 pub const KING_ATTACKS: [BitBoardMask; 64] = [
     BitBoardMask(0x0000000000000302),

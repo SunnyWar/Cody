@@ -360,7 +360,7 @@ impl Position {
         }
     }
 
-    fn to_fen(&self) -> String {
+    pub fn to_fen(&self) -> String {
         let mut fen = String::new();
 
         for rank in (0..8).rev() {
@@ -510,6 +510,18 @@ impl Position {
                 )),
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fen_roundtrip() {
+        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        let pos = Position::from_fen(fen);
+        assert_eq!(pos.to_fen(), fen);
     }
 }
 
