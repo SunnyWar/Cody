@@ -6,6 +6,7 @@ use bitboard::piece::{Color, Piece, PieceKind};
 use bitboard::position::Position;
 
 use crate::search::engine::NODE_COUNT;
+use crate::VERBOSE;
 use std::sync::atomic::Ordering;
 
 pub fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
@@ -17,7 +18,9 @@ pub fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
     beta: i32,
 ) -> i32 {
     // Stand pat evaluation
-    eprintln!("[debug] quiescence enter ply={}", ply);
+    if VERBOSE.load(Ordering::Relaxed) {
+        eprintln!("[debug] quiescence enter ply={}", ply);
+    }
     let stand_pat = evaluator.evaluate(&arena.get(ply).position);
     if stand_pat >= beta {
         return stand_pat;
@@ -44,7 +47,7 @@ pub fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
     };
 
     let node_count = NODE_COUNT.load(Ordering::Relaxed);
-    if ply > 200 || moves.len() > 200 || node_count > 5_000_000 {
+    if VERBOSE.load(Ordering::Relaxed) && (ply > 200 || moves.len() > 200 || node_count > 5_000_000) {
         eprintln!(
             "[debug] quiescence ply={} captures={} nodes={}",
             ply,

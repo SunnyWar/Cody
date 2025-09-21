@@ -3,7 +3,7 @@
 use bitboard::movegen::SimpleMoveGen;
 use bitboard::piece::Color;
 use bitboard::position::Position;
-use engine::{Engine, MaterialEvaluator, NODE_COUNT, TEST_CASES, TestCase};
+use engine::{Engine, MaterialEvaluator, NODE_COUNT, TEST_CASES, TestCase, VERBOSE};
 use std::io::{self, BufRead, Write};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -91,6 +91,10 @@ impl CodyApi {
                     if let Ok(n) = value.parse::<usize>() {
                         self.engine.set_num_threads(n.max(1));
                     }
+                } else if name.eq_ignore_ascii_case("verbose") {
+                    // Accept "true"/"false" (case-insensitive) to toggle runtime verbose logging.
+                    let enable = value.eq_ignore_ascii_case("true");
+                    VERBOSE.store(enable, Ordering::Relaxed);
                 }
             }
         }
@@ -135,8 +139,10 @@ impl CodyApi {
                         pos = new_pos;
                     }
                     None => {
-                        // If you want visibility during debugging:
-                        dbg!("Failed to parse UCI move", mv, &pos);
+                        // If you want visibility during debugging, print to stderr when verbose is enabled.
+                        if VERBOSE.load(Ordering::Relaxed) {
+                            eprintln!("Failed to parse UCI move {} for pos {}", mv, pos.to_fen());
+                        }
                         // Per UCI, silently ignoring is acceptable, but better to get this right.
                     }
                 }
@@ -151,8 +157,10 @@ impl CodyApi {
         self.stop.store(false, Ordering::Relaxed);
         self.limits = self.parse_go_limits(cmd);
         // Debug trace: announce parsed limits so UIs / logs can see we've started handling go
-        writeln!(out, "debug: handle_go limits: {:?}", self.limits).ok();
-        out.flush().ok();
+        if VERBOSE.load(Ordering::Relaxed) {
+            writeln!(out, "debug: handle_go limits: {:?}", self.limits).ok();
+            out.flush().ok();
+        }
 
         let start = std::time::Instant::now();
         let max_depth = self.limits.depth.unwrap_or(64);
@@ -161,12 +169,16 @@ impl CodyApi {
         let mut last_completed_move = None;
 
         for d in 1..=max_depth {
-            writeln!(out, "debug: starting depth {}", d).ok();
-            out.flush().ok();
+            if VERBOSE.load(Ordering::Relaxed) {
+                writeln!(out, "debug: starting depth {}", d).ok();
+                out.flush().ok();
+            }
             let (bm, sc) = self.engine.search(&self.current_pos, d);
 
-            writeln!(out, "debug: finished search depth {}", d).ok();
-            out.flush().ok();
+            if VERBOSE.load(Ordering::Relaxed) {
+                writeln!(out, "debug: finished search depth {}", d).ok();
+                out.flush().ok();
+            }
 
             // Store the PV from this fully completed depth
             last_completed_move = Some(bm);
