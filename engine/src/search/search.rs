@@ -214,10 +214,3 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         }
     }
 }
-
-// Helper functions like `search_node_with_arena` and `print_uci_info` live in `core.rs`.
-
-// MVV/LVA score: higher is better. Use victim material scaled minus attacker material.
-// quiescence, ordering and helpers live in `crate::search::quiescence` to keep this file focused.
-
-// Capture generator moved into `bitboard::movegen::generate_pseudo_captures`.
