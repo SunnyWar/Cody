@@ -5,9 +5,11 @@ use crate::search::evaluator::Evaluator;
 use crate::search::quiescence::quiescence_with_arena;
 use bitboard::movegen::{MoveGenerator, generate_legal_moves};
 use bitboard::position::Position;
+use std::fs::OpenOptions;
 use std::io::{self, Write};
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub static NODE_COUNT: AtomicU64 = AtomicU64::new(0);
 
@@ -29,24 +31,41 @@ pub fn print_uci_info(
         0
     };
 
-    if score.abs() > MATE_SCORE - 100 {
+    // Build the UCI info string (with mate/centipawn formatting) and write to stdout
+    // and append the same line to cody_uci.log for traceability.
+    let info_line = if score.abs() > MATE_SCORE - 100 {
         let mate_in = if score > 0 {
             (MATE_SCORE - score + 1) / 2
         } else {
             -(MATE_SCORE + score) / 2
         };
-        println!(
+        format!(
             "info depth {} score mate {} nodes {} time {} nps {} pv {}",
             depth, mate_in, nodes, elapsed_ms, nps, pv
-        );
+        )
     } else {
-        println!(
+        format!(
             "info depth {} score cp {} nodes {} time {} nps {} pv {}",
             depth, score, nodes, elapsed_ms, nps, pv
-        );
-    }
+        )
+    };
 
-    io::stdout().flush().unwrap();
+    // Write to stdout first
+    println!("{}", info_line);
+    io::stdout().flush().ok();
+
+    // Append to cody_uci.log (best-effort)
+    if let Ok(mut f) = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("cody_uci.log")
+    {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let _ = writeln!(f, "{} OUT: {}", stamp, info_line);
+    }
 }
 
 // Helper recursive search that operates on a provided arena and components.

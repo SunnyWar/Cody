@@ -145,7 +145,7 @@ impl CodyApi {
         self.writeln_and_log(out, "readyok");
     }
 
-    fn handle_position(&mut self, cmd: &str, _out: &mut impl Write) {
+    fn handle_position(&mut self, cmd: &str, out: &mut impl Write) {
         let mut tokens = cmd.split_whitespace().skip(1).peekable();
         let mut pos = Position::default();
 
@@ -180,9 +180,12 @@ impl CodyApi {
                         pos = new_pos;
                     }
                     None => {
-                        // If you want visibility during debugging, print to stderr when verbose is enabled.
+                        // If you want visibility during debugging, write to the UCI log and stdout when verbose is enabled.
                         if VERBOSE.load(Ordering::Relaxed) {
-                            eprintln!("Failed to parse UCI move {} for pos {}", mv, pos.to_fen());
+                            let text =
+                                format!("Failed to parse UCI move {} for pos {}", mv, pos.to_fen());
+                            // Best-effort: write to stdout and append to cody_uci.log
+                            self.writeln_and_log(out, &text);
                         }
                         // Per UCI, silently ignoring is acceptable, but better to get this right.
                     }
