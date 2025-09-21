@@ -4,6 +4,7 @@
 pub mod api;
 pub mod knight;
 pub mod pawn;
+pub mod sliders;
 
 pub use api::{
     MoveGenerator, SimpleMoveGen, generate_legal_moves, generate_pseudo_captures,
@@ -13,3 +14,6 @@ pub use api::{
 // Re-export pawn generator to preserve the original API surface
 pub use knight::generate_pseudo_knight_moves;
 pub use pawn::generate_pseudo_pawn_moves;
+pub use sliders::{
+    generate_pseudo_bishop_moves, generate_pseudo_queen_moves, generate_pseudo_rook_moves,
+};

@@ -18,7 +18,7 @@ fn bench_search(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("Position", case.name), case, |b, tc| {
             b.iter(|| {
                 NODE_COUNT.store(0, Ordering::Relaxed);
-                let _score = engine.search(black_box(&tc.position()), depth);
+                let _score = engine.search(black_box(&tc.position()), depth, None, None);
                 black_box(NODE_COUNT.load(Ordering::Relaxed))
             });
         });

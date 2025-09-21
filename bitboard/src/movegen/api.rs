@@ -287,21 +287,7 @@ fn generate_pseudo_bishop_moves(
     context: &MoveGenContext,
     moves: &mut Vec<ChessMove>,
 ) {
-    // Get a bitboard of all bishops for the current side.
-    let bishops = pos
-        .pieces
-        .get(Piece::from_parts(context.us, Some(PieceKind::Bishop)));
-
-    // Iterate over each square containing one of our bishops.
-    for from in bishops.squares() {
-        // Calculate all squares this bishop attacks, using the board's
-        // total occupancy to identify blockers.
-        let attacks = bishop_attacks_from(from, context.occupancy);
-
-        // Filter these attacks to find valid moves (not occupied by our own pieces).
-        let valid_moves = attacks.and(context.not_ours);
-        push_moves_from_valid_targets(pos, context, from, valid_moves, moves);
-    }
+    crate::movegen::generate_pseudo_bishop_moves(pos, context, moves);
 }
 
 fn generate_pseudo_rook_moves(
@@ -309,17 +295,7 @@ fn generate_pseudo_rook_moves(
     context: &MoveGenContext,
     moves: &mut Vec<ChessMove>,
 ) {
-    // Get a bitboard of all rooks for the current side.
-    let rooks = pos
-        .pieces
-        .get(Piece::from_parts(context.us, Some(PieceKind::Rook)));
-
-    // Iterate over each square containing one of our rooks.
-    for from in rooks.squares() {
-        // Calculate all squares this rook attacks, using the board's total occupancy.
-        let valid_moves = rook_attacks_from(from, context.occupancy).and(context.not_ours);
-        push_moves_from_valid_targets(pos, context, from, valid_moves, moves);
-    }
+    crate::movegen::generate_pseudo_rook_moves(pos, context, moves);
 }
 
 #[inline]
@@ -345,20 +321,7 @@ fn generate_pseudo_queen_moves(
     context: &MoveGenContext,
     moves: &mut Vec<ChessMove>,
 ) {
-    // Get a bitboard of all queens for the current side.
-    let queens = pos
-        .pieces
-        .get(Piece::from_parts(context.us, Some(PieceKind::Queen)));
-
-    // Iterate over each square containing one of our queens.
-    for from in queens.squares() {
-        // Calculate all squares this queen can move to (rook-like and bishop-like moves).
-        let valid_moves = (rook_attacks_from(from, context.occupancy)
-            | bishop_attacks_from(from, context.occupancy))
-        .and(context.not_ours);
-
-        push_moves_from_valid_targets(pos, context, from, valid_moves, moves);
-    }
+    crate::movegen::generate_pseudo_queen_moves(pos, context, moves);
 }
 
 fn generate_pseudo_king_moves(
