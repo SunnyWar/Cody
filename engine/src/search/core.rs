@@ -8,7 +8,8 @@ use std::fs::OpenOptions;
 use std::io::{self, Write};
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
-use std::time::{SystemTime, UNIX_EPOCH};
+// use the UCI API's iso_stamp for consistent timestamps with milliseconds
+use crate::util;
 
 pub static NODE_COUNT: AtomicU64 = AtomicU64::new(0);
 
@@ -59,10 +60,7 @@ pub fn print_uci_info(
         .append(true)
         .open("cody_uci.log")
     {
-        let stamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
+    let stamp = util::iso_stamp_ms();
         let _ = writeln!(f, "{} OUT: {}", stamp, info_line);
     }
 }

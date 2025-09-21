@@ -7,7 +7,6 @@ use std::fs::OpenOptions;
 use std::io::{self, BufRead, Write};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::api::golimits::GoLimits;
 
@@ -41,6 +40,11 @@ impl CodyApi {
         }
     }
 
+    // Use crate util for consistent millisecond-precision ISO timestamps.
+    fn iso_stamp() -> String {
+        engine::util::iso_stamp_ms()
+    }
+
     pub fn run(&mut self) {
         let stdin = io::stdin();
         let mut stdout = io::stdout();
@@ -68,23 +72,16 @@ impl CodyApi {
         }
     }
 
-    fn now_stamp() -> u64 {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0)
-    }
-
     fn log_in(&mut self, cmd: &str) {
         if let Some(f) = &mut self.log {
-            let _ = writeln!(f, "{} IN: {}", Self::now_stamp(), cmd);
+            let _ = writeln!(f, "{} IN: {}", Self::iso_stamp(), cmd);
         }
     }
 
     fn writeln_and_log(&mut self, out: &mut impl Write, text: &str) {
         writeln!(out, "{}", text).unwrap();
         if let Some(f) = &mut self.log {
-            let _ = writeln!(f, "{} OUT: {}", Self::now_stamp(), text);
+            let _ = writeln!(f, "{} OUT: {}", Self::iso_stamp(), text);
         }
     }
 
