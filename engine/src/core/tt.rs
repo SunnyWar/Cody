@@ -1,4 +1,3 @@
-use crate::search::core::INF;
 use bitboard::mov::ChessMove;
 
 #[derive(Clone, Copy, Debug)]

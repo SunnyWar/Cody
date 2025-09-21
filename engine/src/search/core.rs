@@ -4,7 +4,6 @@ use crate::core::tt::{TTFlag, TranspositionTable};
 use crate::search::evaluator::Evaluator;
 use crate::search::quiescence::quiescence_with_arena;
 use bitboard::movegen::{MoveGenerator, generate_legal_moves};
-use bitboard::position::Position;
 use std::fs::OpenOptions;
 use std::io::{self, Write};
 use std::sync::atomic::AtomicU64;
