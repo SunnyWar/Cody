@@ -78,16 +78,15 @@ impl Position {
             return false;
         }
 
-        // Check if squares are empty using the occupancy map
-        let empty = (self.occupancy[OccupancyKind::Both] & f_sq.bitboard()).is_empty()
-            && (self.occupancy[OccupancyKind::Both] & g_sq.bitboard()).is_empty();
+        let occ = self.occupancy[OccupancyKind::Both];
+        if !(occ & f_sq.bitboard()).is_empty() || !(occ & g_sq.bitboard()).is_empty() {
+            return false;
+        }
 
-        // Use self for attack detection
-        let safe = !is_square_attacked(king_sq, color.opposite(), &self.to_board_state())
-            && !is_square_attacked(f_sq, color.opposite(), &self.to_board_state())
-            && !is_square_attacked(g_sq, color.opposite(), &self.to_board_state());
-
-        empty && safe
+        let board_state = self.to_board_state();
+        !is_square_attacked(king_sq, color.opposite(), &board_state)
+            && !is_square_attacked(f_sq, color.opposite(), &board_state)
+            && !is_square_attacked(g_sq, color.opposite(), &board_state)
     }
 
     pub fn can_castle_queenside(&self, color: Color) -> bool {
@@ -100,17 +99,18 @@ impl Position {
             return false;
         }
 
-        // Check if squares are empty using the occupancy map
-        let empty = (self.occupancy[OccupancyKind::Both] & d_sq.bitboard()).is_empty()
-            && (self.occupancy[OccupancyKind::Both] & c_sq.bitboard()).is_empty()
-            && (self.occupancy[OccupancyKind::Both] & b_sq.bitboard()).is_empty();
+        let occ = self.occupancy[OccupancyKind::Both];
+        if !(occ & d_sq.bitboard()).is_empty()
+            || !(occ & c_sq.bitboard()).is_empty()
+            || !(occ & b_sq.bitboard()).is_empty()
+        {
+            return false;
+        }
 
-        // Use self for attack detection
-        let safe = !is_square_attacked(king_sq, color.opposite(), &self.to_board_state())
-            && !is_square_attacked(d_sq, color.opposite(), &self.to_board_state())
-            && !is_square_attacked(c_sq, color.opposite(), &self.to_board_state());
-
-        empty && safe
+        let board_state = self.to_board_state();
+        !is_square_attacked(king_sq, color.opposite(), &board_state)
+            && !is_square_attacked(d_sq, color.opposite(), &board_state)
+            && !is_square_attacked(c_sq, color.opposite(), &board_state)
     }
 
     #[inline]
@@ -333,31 +333,27 @@ impl Position {
     }
 
     fn update_castling_rights(&mut self, from: Square, to: Square) {
-        use Square::*;
-
-        match from {
-            E1 => {
-                self.castling_rights.clear(Color::White, true);
-                self.castling_rights.clear(Color::White, false);
+        fn clear_for_square(rights: &mut CastlingRights, sq: Square) {
+            use Square::*;
+            match sq {
+                E1 => {
+                    rights.clear(Color::White, true);
+                    rights.clear(Color::White, false);
+                }
+                E8 => {
+                    rights.clear(Color::Black, true);
+                    rights.clear(Color::Black, false);
+                }
+                A1 => rights.clear(Color::White, false),
+                H1 => rights.clear(Color::White, true),
+                A8 => rights.clear(Color::Black, false),
+                H8 => rights.clear(Color::Black, true),
+                _ => {}
             }
-            E8 => {
-                self.castling_rights.clear(Color::Black, true);
-                self.castling_rights.clear(Color::Black, false);
-            }
-            A1 => self.castling_rights.clear(Color::White, false),
-            H1 => self.castling_rights.clear(Color::White, true),
-            A8 => self.castling_rights.clear(Color::Black, false),
-            H8 => self.castling_rights.clear(Color::Black, true),
-            _ => {}
         }
 
-        match to {
-            A1 => self.castling_rights.clear(Color::White, false),
-            H1 => self.castling_rights.clear(Color::White, true),
-            A8 => self.castling_rights.clear(Color::Black, false),
-            H8 => self.castling_rights.clear(Color::Black, true),
-            _ => {}
-        }
+        clear_for_square(&mut self.castling_rights, from);
+        clear_for_square(&mut self.castling_rights, to);
     }
 
     pub fn to_fen(&self) -> String {
@@ -513,18 +509,6 @@ impl Position {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_fen_roundtrip() {
-        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        let pos = Position::from_fen(fen);
-        assert_eq!(pos.to_fen(), fen);
-    }
-}
-
 #[inline]
 fn or_color(pieces: &PieceBitboards, c: Color) -> BitBoardMask {
     let mut acc = BitBoardMask::empty();
@@ -546,5 +530,17 @@ fn is_pawn_double_push(piece: Piece, from: Square, to: Square, side: Color) -> b
     match side {
         Color::White => from.rank() == 1 && (from.forward(2) == Some(to)),
         Color::Black => from.rank() == 6 && (from.backward(2) == Some(to)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fen_roundtrip() {
+        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        let pos = Position::from_fen(fen);
+        assert_eq!(pos.to_fen(), fen);
     }
 }
