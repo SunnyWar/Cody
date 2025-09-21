@@ -66,27 +66,13 @@ impl Square {
         }
     }
 
-    #[rustfmt::skip]
     pub fn from_rank_file(rank: u8, file: u8) -> Option<Self> {
-        use Square::*;
-        match (rank, file) {
-            (0, 0) => Some(A1), (0, 1) => Some(B1), (0, 2) => Some(C1), (0, 3) => Some(D1),
-            (0, 4) => Some(E1), (0, 5) => Some(F1), (0, 6) => Some(G1), (0, 7) => Some(H1),
-            (1, 0) => Some(A2), (1, 1) => Some(B2), (1, 2) => Some(C2), (1, 3) => Some(D2),
-            (1, 4) => Some(E2), (1, 5) => Some(F2), (1, 6) => Some(G2), (1, 7) => Some(H2),
-            (2, 0) => Some(A3), (2, 1) => Some(B3), (2, 2) => Some(C3), (2, 3) => Some(D3),
-            (2, 4) => Some(E3), (2, 5) => Some(F3), (2, 6) => Some(G3), (2, 7) => Some(H3),
-            (3, 0) => Some(A4), (3, 1) => Some(B4), (3, 2) => Some(C4), (3, 3) => Some(D4),
-            (3, 4) => Some(E4), (3, 5) => Some(F4), (3, 6) => Some(G4), (3, 7) => Some(H4),
-            (4, 0) => Some(A5), (4, 1) => Some(B5), (4, 2) => Some(C5), (4, 3) => Some(D5),
-            (4, 4) => Some(E5), (4, 5) => Some(F5), (4, 6) => Some(G5), (4, 7) => Some(H5),
-            (5, 0) => Some(A6), (5, 1) => Some(B6), (5, 2) => Some(C6), (5, 3) => Some(D6),
-            (5, 4) => Some(E6), (5, 5) => Some(F6), (5, 6) => Some(G6), (5, 7) => Some(H6),
-            (6, 0) => Some(A7), (6, 1) => Some(B7), (6, 2) => Some(C7), (6, 3) => Some(D7),
-            (6, 4) => Some(E7), (6, 5) => Some(F7), (6, 6) => Some(G7), (6, 7) => Some(H7),
-            (7, 0) => Some(A8), (7, 1) => Some(B8), (7, 2) => Some(C8), (7, 3) => Some(D8),
-            (7, 4) => Some(E8), (7, 5) => Some(F8), (7, 6) => Some(G8), (7, 7) => Some(H8),
-            _ => None,
+        if rank < 8 && file < 8 {
+            let idx = rank * 8 + file;
+            // Safety: idx is in 0..=63
+            Some(unsafe { std::mem::transmute::<u8, Self>(idx) })
+        } else {
+            None
         }
     }
 
