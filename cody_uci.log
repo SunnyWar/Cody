@@ -59,3 +59,16 @@
 1758479248 OUT: info depth 1 score cp 10 nodes 10 time 0 nps 0 pv b2b4
 1758479248 OUT: info depth 1 score cp 10 nodes 20 time 0 nps 0
 1758479248 OUT: bestmove b2b4
+2025-09-21T19:09:57.329Z IN: uci
+2025-09-21T19:09:57.330Z OUT: id name Cody
+2025-09-21T19:09:57.330Z OUT: id author Strong Noodle
+2025-09-21T19:09:57.330Z OUT: option name Threads type spin default 1 min 1 max 22
+2025-09-21T19:09:57.330Z OUT: option name Verbose type check default false
+2025-09-21T19:09:57.330Z OUT: uciok
+2025-09-21T19:09:57.330Z IN: isready
+2025-09-21T19:09:57.330Z OUT: readyok
+2025-09-21T19:09:57.330Z IN: ucinewgame
+2025-09-21T19:09:57.332Z IN: position startfen rnb1kbnr/pppp1ppp/8/4p3/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+2025-09-21T19:09:57.332Z IN: go depth 1
+2025-09-21T19:09:57.332Z OUT: info depth 1 score cp 10 nodes 20 time 0 nps 0 pv b2b4
+2025-09-21T19:09:57.333Z OUT: bestmove b2b4

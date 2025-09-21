@@ -203,74 +203,18 @@ impl CodyApi {
             out.flush().ok();
         }
 
-        let start = std::time::Instant::now();
+        // Use engine's iterative deepening search. We forward the move time limit
+        // and a stop flag so the engine can honor them between depths.
         let max_depth = self.limits.depth.unwrap_or(64);
         NODE_COUNT.store(0, Ordering::Relaxed);
 
-        let mut last_completed_move = None;
+        let time_budget = self.limits.movetime_ms;
+        let stop_flag = &self.stop;
 
-        for d in 1..=max_depth {
-            if VERBOSE.load(Ordering::Relaxed) {
-                self.writeln_and_log(out, &format!("debug: starting depth {}", d));
-                out.flush().ok();
-            }
-            let (bm, sc) = self.engine.search(&self.current_pos, d);
+        let (bm, _sc) =
+            self.engine
+                .search(&self.current_pos, max_depth, time_budget, Some(stop_flag));
 
-            if VERBOSE.load(Ordering::Relaxed) {
-                self.writeln_and_log(out, &format!("debug: finished search depth {}", d));
-                out.flush().ok();
-            }
-
-            // Store the PV from this fully completed depth
-            last_completed_move = Some(bm);
-
-            let elapsed = start.elapsed().as_millis() as u64;
-            let nodes = NODE_COUNT.load(Ordering::Relaxed);
-            let nps = if elapsed > 0 {
-                nodes * 1000 / elapsed
-            } else {
-                0
-            };
-
-            // Print info line with proper mate/centipawn formatting
-            if sc.abs() > MATE_SCORE - 100 {
-                let mate_in = if sc > 0 {
-                    (MATE_SCORE - sc + 1) / 2
-                } else {
-                    -(MATE_SCORE + sc) / 2
-                };
-                self.writeln_and_log(
-                    out,
-                    &format!(
-                        "info depth {} score mate {} nodes {} time {} nps {}",
-                        d, mate_in, nodes, elapsed, nps
-                    ),
-                );
-            } else {
-                self.writeln_and_log(
-                    out,
-                    &format!(
-                        "info depth {} score cp {} nodes {} time {} nps {}",
-                        d, sc, nodes, elapsed, nps
-                    ),
-                );
-            }
-
-            out.flush().unwrap();
-
-            // Stop conditions
-            if let Some(mt) = self.limits.movetime_ms
-                && elapsed >= mt
-            {
-                break;
-            }
-            if self.stop.load(Ordering::Relaxed) {
-                break;
-            }
-        }
-
-        // Output the best move from the last *completed* depth
-        let bm = last_completed_move.expect("At least depth 1 should produce a move");
         let bm_str = if bm.is_null() {
             "0000".to_string()
         } else {
@@ -335,7 +279,7 @@ impl CodyApi {
             NODE_COUNT.store(0, Ordering::Relaxed);
 
             let start = std::time::Instant::now();
-            let _score = self.engine.search(&pos.position(), depth);
+            let _score = self.engine.search(&pos.position(), depth, None, None);
             let elapsed = start.elapsed().as_secs_f64();
             let nodes = NODE_COUNT.load(Ordering::Relaxed);
             total_nodes += nodes;
