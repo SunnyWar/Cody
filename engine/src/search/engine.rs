@@ -2,6 +2,7 @@
 
 use crate::core::arena::Arena;
 use crate::search::evaluator::Evaluator;
+use bitboard::piece::{Color, Piece, PieceKind};
 use bitboard::{
     mov::ChessMove,
     movegen::{MoveGenerator, generate_legal_moves},
@@ -211,7 +212,7 @@ fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     NODE_COUNT.fetch_add(1, Ordering::Relaxed);
 
     if remaining == 0 {
-        return evaluator.evaluate(&arena.get(ply).position);
+        return quiescence_with_arena(movegen, evaluator, arena, ply, alpha, beta);
     }
 
     let moves = {
@@ -261,4 +262,127 @@ fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     }
 
     best_score
+}
+
+// Quiescence search that explores captures (and promotions / en-passant). Also handles being in check by
+// generating all legal moves when in check so evasions are searched.
+fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
+    movegen: &M,
+    evaluator: &E,
+    arena: &mut Arena,
+    ply: usize,
+    mut alpha: i32,
+    beta: i32,
+) -> i32 {
+    // Stand pat evaluation
+    let stand_pat = evaluator.evaluate(&arena.get(ply).position);
+    if stand_pat >= beta {
+        return stand_pat;
+    }
+    if alpha < stand_pat {
+        alpha = stand_pat;
+    }
+
+    let (parent, _) = arena.get_pair_mut(ply, ply + 1);
+    let pos = &parent.position;
+
+    // If we're in check, we must consider all evasions (not just captures)
+    let mut moves = if movegen.in_check(pos) {
+        generate_legal_moves(pos)
+    } else {
+        // Otherwise, generate captures/promotions/en-passant only
+        generate_legal_moves(pos)
+            .into_iter()
+            .filter(|m| is_capture_like_move(m))
+            .collect()
+    };
+
+    if moves.is_empty() {
+        return stand_pat;
+    }
+
+    // Order captures by MVV/LVA descending
+    moves.sort_by_key(|m| -mvv_lva_score(pos, m));
+
+    let mut best = i32::MIN;
+    for m in moves {
+        {
+            let (parent, child) = arena.get_pair_mut(ply, ply + 1);
+            parent.position.apply_move_into(&m, &mut child.position);
+        }
+
+        let score = -quiescence_with_arena(movegen, evaluator, arena, ply + 1, -beta, -alpha);
+
+        if score > best {
+            best = score;
+        }
+
+        if score > alpha {
+            alpha = score;
+        }
+
+        if alpha >= beta {
+            break;
+        }
+    }
+
+    if best == i32::MIN { stand_pat } else { best }
+}
+
+// Determine whether a move should be considered in quiescence (captures, en-passant, promotions)
+fn is_capture_like_move(mv: &ChessMove) -> bool {
+    use bitboard::mov::MoveType;
+
+    match mv.move_type {
+        MoveType::Capture | MoveType::EnPassant => true,
+        MoveType::Promotion(_) => true,
+        MoveType::Quiet | MoveType::CastleKingside | MoveType::CastleQueenside => false,
+    }
+}
+
+// MVV/LVA score: higher is better. Use victim material scaled minus attacker material.
+fn mvv_lva_score(pos: &Position, mv: &ChessMove) -> i32 {
+    // victim
+    let victim_piece = match mv.move_type {
+        bitboard::mov::MoveType::EnPassant => {
+            // captured pawn is behind the to-square depending on side to move
+            let us = pos.side_to_move;
+            let cap_sq = match us {
+                Color::White => mv.to.backward(1).unwrap(),
+                Color::Black => mv.to.forward(1).unwrap(),
+            };
+            get_piece_on_square(pos, cap_sq)
+        }
+        _ => get_piece_on_square(pos, mv.to),
+    };
+
+    let victim_value = victim_piece.map(|p| piece_value(p.kind())).unwrap_or(0);
+
+    // attacker
+    let attacker_piece = get_piece_on_square(pos, mv.from);
+    let attacker_value = attacker_piece.map(|p| piece_value(p.kind())).unwrap_or(0);
+
+    victim_value * 100 - attacker_value
+}
+
+fn piece_value(kind: PieceKind) -> i32 {
+    match kind {
+        PieceKind::Pawn => 100,
+        PieceKind::Knight => 320,
+        PieceKind::Bishop => 330,
+        PieceKind::Rook => 500,
+        PieceKind::Queen => 900,
+        PieceKind::King => 10000,
+    }
+}
+
+// Find the piece enum occupying a square in the given position, if any.
+fn get_piece_on_square(pos: &Position, sq: bitboard::Square) -> Option<Piece> {
+    let mask = bitboard::BitBoardMask::from_square(sq);
+    for (piece, bb) in pos.pieces.iter() {
+        if (bb & mask).is_nonempty() {
+            return Some(piece);
+        }
+    }
+    None
 }
