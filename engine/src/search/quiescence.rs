@@ -7,10 +7,10 @@ use bitboard::position::Position;
 
 use crate::VERBOSE;
 use crate::search::engine::NODE_COUNT;
+use crate::util;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::atomic::Ordering;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
     movegen: &M,
@@ -29,10 +29,7 @@ pub fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
             .append(true)
             .open("cody_uci.log")
         {
-            let stamp = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map(|d| d.as_secs())
-                .unwrap_or(0);
+            let stamp = util::iso_stamp_ms();
             let _ = writeln!(f, "{} OUT: [debug] quiescence enter ply={}", stamp, ply);
         }
     }
@@ -75,10 +72,7 @@ pub fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
             .append(true)
             .open("cody_uci.log")
         {
-            let stamp = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map(|d| d.as_secs())
-                .unwrap_or(0);
+            let stamp = util::iso_stamp_ms();
             let _ = writeln!(
                 f,
                 "{} OUT: [debug] quiescence ply={} captures={} nodes={}",

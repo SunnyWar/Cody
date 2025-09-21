@@ -2,6 +2,7 @@
 pub mod core;
 pub mod search;
 pub mod test_data;
+pub mod util;
 
 pub use crate::search::engine::{Engine, NODE_COUNT};
 pub use crate::search::evaluator::MaterialEvaluator;
