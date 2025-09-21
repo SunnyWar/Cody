@@ -3,7 +3,6 @@ use crate::{
     mov::ChessMove,
     piece::{Piece, PieceKind},
     position::{MoveGenContext, Position},
-    occupancy::OccupancyKind,
 };
 
 pub fn generate_pseudo_bishop_moves(

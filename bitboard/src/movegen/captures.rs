@@ -12,11 +12,7 @@ use crate::{
 
 /// Generate pseudo capture-like moves (captures, promotions, en-passant).
 pub fn generate_pseudo_captures(pos: &Position) -> Vec<ChessMove> {
-    use crate::bitboard::{
-        bishop_attacks_from, king_attacks, knight_attacks, pawn_attacks_to, rook_attacks_from,
-    };
-    use crate::mov::MoveType;
-    use crate::piece::PieceKind;
+    // Use top-level imports to avoid duplication
 
     let mut moves = Vec::new();
     let us = pos.side_to_move;

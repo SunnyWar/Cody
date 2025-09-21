@@ -7,20 +7,10 @@
 use crate::{
     BitBoardMask, Square,
     attack::{BoardState, PieceSet, is_king_in_check},
-    bitboard::{
-        bishop_attacks_from, king_attacks, knight_attacks, pawn_attacks_to, rook_attacks_from,
-    },
-    constants::{
-        DOUBLE_NORTH, DOUBLE_SOUTH, NORTH, NORTH_EAST, NORTH_WEST, SOUTH, SOUTH_EAST, SOUTH_WEST,
-    },
     mov::{ChessMove, MoveType},
     occupancy::OccupancyKind,
     piece::{Color, Piece, PieceKind},
     position::{MoveGenContext, Position},
-    tables::{
-        file_masks::{FILE_A, FILE_H},
-        rank_masks::{RANK_4, RANK_5},
-    },
 };
 
 #[derive(Clone, Copy)]
@@ -102,7 +92,7 @@ pub fn generate_pseudo_moves(pos: &Position) -> Vec<ChessMove> {
 pub fn generate_legal_moves(pos: &Position) -> Vec<ChessMove> {
     generate_pseudo_moves(pos)
         .into_iter()
-        .filter(|m| is_legal(pos, m))
+        .filter(|m| crate::movegen::is_legal(pos, m))
         .collect()
 }
 
@@ -113,67 +103,7 @@ pub fn generate_pseudo_captures(pos: &Position) -> Vec<ChessMove> {
     crate::movegen::captures::generate_pseudo_captures(pos)
 }
 
-pub fn is_legal(pos: &Position, m: &ChessMove) -> bool {
-    let mut new_pos = Position::default();
-    pos.apply_move_into(m, &mut new_pos);
-
-    // Try to find the king square for the original side to move
-    let king_sq_opt = new_pos
-        .pieces
-        .get(Piece::from_parts(pos.side_to_move, Some(PieceKind::King)))
-        .squares()
-        .next();
-
-    if king_sq_opt.is_none() {
-        return false;
-    }
-
-    let king_sq = king_sq_opt.unwrap();
-    let attackers = get_attackers(&new_pos, king_sq, pos.side_to_move.opposite());
-
-    attackers.is_empty()
-}
-
-fn get_attackers(pos: &Position, sq: Square, attacker_color: Color) -> BitBoardMask {
-    let mut attackers = BitBoardMask::empty();
-
-    // Pawn attacks
-    attackers |= pawn_attacks_to(sq, attacker_color).and(
-        pos.pieces
-            .get(Piece::from_parts(attacker_color, Some(PieceKind::Pawn))),
-    );
-
-    // Knight attacks
-    attackers |= knight_attacks(sq).and(
-        pos.pieces
-            .get(Piece::from_parts(attacker_color, Some(PieceKind::Knight))),
-    );
-
-    // Bishop/Queen attacks
-    attackers |= bishop_attacks_from(sq, pos.occupancy[OccupancyKind::Both]).and(
-        pos.pieces
-            .get(Piece::from_parts(attacker_color, Some(PieceKind::Bishop)))
-            | pos
-                .pieces
-                .get(Piece::from_parts(attacker_color, Some(PieceKind::Queen))),
-    );
-
-    // Rook/Queen attacks
-    attackers |= rook_attacks_from(sq, pos.occupancy[OccupancyKind::Both]).and(
-        pos.pieces
-            .get(Piece::from_parts(attacker_color, Some(PieceKind::Rook)))
-            | pos
-                .pieces
-                .get(Piece::from_parts(attacker_color, Some(PieceKind::Queen))),
-    );
-
-    // King attacks
-    attackers |= king_attacks(sq).and(
-        pos.pieces
-            .get(Piece::from_parts(attacker_color, Some(PieceKind::King))),
-    );
-    attackers
-}
+// Delegated to `movegen::legality` during refactor
 
 // Pawn move generation was moved into `movegen::pawn` during the refactor.
 // See `crate::movegen::pawn` for the implementation (generate_pseudo_pawn_moves).
@@ -246,31 +176,9 @@ fn generate_pseudo_king_moves(
 
 #[cfg(test)]
 mod tests {
-    use crate::Square;
-
     use super::*;
 
-    fn move_exists(
-        moves: &[ChessMove],
-        from: Square,
-        to: Square,
-        promotion: Option<PieceKind>,
-    ) -> bool {
-        moves.iter().any(|m| {
-            m.from == from
-                && m.to == to
-                && match (&m.move_type, promotion) {
-                    (MoveType::Promotion(k), Some(p)) => *k == p,
-                    (MoveType::Promotion(_), None) => false,
-                    (MoveType::Quiet, None) => true,
-                    (MoveType::Capture, None) => true,
-                    (MoveType::EnPassant, None) => true,
-                    (MoveType::CastleKingside, None) => true,
-                    (MoveType::CastleQueenside, None) => true,
-                    _ => false,
-                }
-        })
-    }
+    // Helper `move_exists` removed during refactor; tests still validate behavior
 
     #[test]
     fn test_initial_position_move_count() {
