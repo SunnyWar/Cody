@@ -11,6 +11,7 @@ use bitboard::{
 use std::io::{self, Write};
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
+use crate::VERBOSE;
 
 pub static NODE_COUNT: AtomicU64 = AtomicU64::new(0);
 
@@ -200,7 +201,14 @@ fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 
     // Debug: announce entry to this node
     if ply <= 2 || NODE_COUNT.load(Ordering::Relaxed) % 500_000 == 0 {
-        eprintln!("[debug] search_node enter ply={} remaining={} nodecount={}", ply, remaining, NODE_COUNT.load(Ordering::Relaxed));
+        if VERBOSE.load(Ordering::Relaxed) {
+            eprintln!(
+                "[debug] search_node enter ply={} remaining={} nodecount={}",
+                ply,
+                remaining,
+                NODE_COUNT.load(Ordering::Relaxed)
+            );
+        }
     }
 
     if remaining == 0 {
