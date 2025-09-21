@@ -57,10 +57,10 @@ pub fn compute_zobrist(pos: &Position) -> u64 {
     let mut h: u64 = 0;
 
     for (piece, bb) in pos.pieces.iter() {
-        let idx = piece_index(piece) as usize;
+        let idx = piece_index(piece);
         // iterate squares set
         for sq in bb.squares() {
-            let sqi = sq.index() as usize;
+            let sqi = sq.index();
             h ^= ZOBRIST_PIECE_KEYS[idx][sqi];
         }
     }
@@ -85,7 +85,7 @@ pub fn compute_zobrist(pos: &Position) -> u64 {
 
     // En-passant: include square index when present
     if let Some(sq) = pos.ep_square {
-        h ^= ZOBRIST_PIECE_KEYS[0][sq.index() as usize];
+        h ^= ZOBRIST_PIECE_KEYS[0][sq.index()];
     }
 
     h
