@@ -1,12 +1,13 @@
-// src/api.rs
-
 use bitboard::movegen::SimpleMoveGen;
 use bitboard::piece::Color;
 use bitboard::position::Position;
 use engine::{Engine, MaterialEvaluator, NODE_COUNT, TEST_CASES, TestCase, VERBOSE};
+use std::fs::File;
+use std::fs::OpenOptions;
 use std::io::{self, BufRead, Write};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::api::golimits::GoLimits;
 
@@ -17,16 +18,26 @@ pub struct CodyApi {
     current_pos: Position,
     limits: GoLimits,
     stop: Arc<AtomicBool>, // for future: stop support
+    // Optional log file for UCI diagnostics (IN/OUT)
+    log: Option<File>,
 }
 
 impl CodyApi {
     pub fn new() -> Self {
         let engine = Engine::new(65_536, SimpleMoveGen, MaterialEvaluator);
+        // Try to open a log file in append mode; non-fatal if it fails.
+        let log = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("cody_uci.log")
+            .ok();
+
         Self {
             engine,
             current_pos: Position::default(),
             limits: GoLimits::default(),
             stop: Arc::new(AtomicBool::new(false)),
+            log,
         }
     }
 
@@ -36,6 +47,9 @@ impl CodyApi {
 
         for line in stdin.lock().lines() {
             let cmd = line.unwrap();
+            // Log incoming command
+            self.log_in(&cmd);
+
             match cmd.as_str() {
                 "uci" => self.handle_uci(&mut stdout),
                 cmd if cmd.starts_with("setoption") => self.handle_setoption(cmd),
@@ -54,20 +68,41 @@ impl CodyApi {
         }
     }
 
-    fn handle_uci(&self, out: &mut impl Write) {
-        writeln!(out, "id name Cody").unwrap();
-        writeln!(out, "id author Strong Noodle").unwrap();
+    fn now_stamp() -> u64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0)
+    }
+
+    fn log_in(&mut self, cmd: &str) {
+        if let Some(f) = &mut self.log {
+            let _ = writeln!(f, "{} IN: {}", Self::now_stamp(), cmd);
+        }
+    }
+
+    fn writeln_and_log(&mut self, out: &mut impl Write, text: &str) {
+        writeln!(out, "{}", text).unwrap();
+        if let Some(f) = &mut self.log {
+            let _ = writeln!(f, "{} OUT: {}", Self::now_stamp(), text);
+        }
+    }
+
+    fn handle_uci(&mut self, out: &mut impl Write) {
+        self.writeln_and_log(out, "id name Cody");
+        self.writeln_and_log(out, "id author Strong Noodle");
         // Advertise a Threads option so UIs can control parallelism.
         let max_threads = std::thread::available_parallelism()
             .map(|n| n.get())
             .unwrap_or(1);
-        writeln!(
-            out,
+        let opt = format!(
             "option name Threads type spin default 1 min 1 max {}",
             max_threads
-        )
-        .unwrap();
-        writeln!(out, "uciok").unwrap();
+        );
+        self.writeln_and_log(out, &opt);
+        // Advertise Verbose option so UIs can toggle runtime verbose logging via setoption
+        self.writeln_and_log(out, "option name Verbose type check default false");
+        self.writeln_and_log(out, "uciok");
     }
 
     fn handle_setoption(&mut self, cmd: &str) {
@@ -91,8 +126,14 @@ impl CodyApi {
                     if let Ok(n) = value.parse::<usize>() {
                         self.engine.set_num_threads(n.max(1));
                     }
-                } else if name.eq_ignore_ascii_case("verbose") {
+                } else if name.eq_ignore_ascii_case("verbose")
+                    || name.eq_ignore_ascii_case("verbosE")
+                {
                     // Accept "true"/"false" (case-insensitive) to toggle runtime verbose logging.
+                    let enable = value.eq_ignore_ascii_case("true");
+                    VERBOSE.store(enable, Ordering::Relaxed);
+                } else if name.eq_ignore_ascii_case("verbose") {
+                    // Fallback for oddly cased names
                     let enable = value.eq_ignore_ascii_case("true");
                     VERBOSE.store(enable, Ordering::Relaxed);
                 }
@@ -100,8 +141,8 @@ impl CodyApi {
         }
     }
 
-    fn handle_isready(&self, out: &mut impl Write) {
-        writeln!(out, "readyok").unwrap();
+    fn handle_isready(&mut self, out: &mut impl Write) {
+        self.writeln_and_log(out, "readyok");
     }
 
     fn handle_position(&mut self, cmd: &str, _out: &mut impl Write) {
@@ -158,7 +199,7 @@ impl CodyApi {
         self.limits = self.parse_go_limits(cmd);
         // Debug trace: announce parsed limits so UIs / logs can see we've started handling go
         if VERBOSE.load(Ordering::Relaxed) {
-            writeln!(out, "debug: handle_go limits: {:?}", self.limits).ok();
+            self.writeln_and_log(out, &format!("debug: handle_go limits: {:?}", self.limits));
             out.flush().ok();
         }
 
@@ -170,13 +211,13 @@ impl CodyApi {
 
         for d in 1..=max_depth {
             if VERBOSE.load(Ordering::Relaxed) {
-                writeln!(out, "debug: starting depth {}", d).ok();
+                self.writeln_and_log(out, &format!("debug: starting depth {}", d));
                 out.flush().ok();
             }
             let (bm, sc) = self.engine.search(&self.current_pos, d);
 
             if VERBOSE.load(Ordering::Relaxed) {
-                writeln!(out, "debug: finished search depth {}", d).ok();
+                self.writeln_and_log(out, &format!("debug: finished search depth {}", d));
                 out.flush().ok();
             }
 
@@ -198,19 +239,21 @@ impl CodyApi {
                 } else {
                     -(MATE_SCORE + sc) / 2
                 };
-                writeln!(
+                self.writeln_and_log(
                     out,
-                    "info depth {} score mate {} nodes {} time {} nps {}",
-                    d, mate_in, nodes, elapsed, nps
-                )
-                .unwrap();
+                    &format!(
+                        "info depth {} score mate {} nodes {} time {} nps {}",
+                        d, mate_in, nodes, elapsed, nps
+                    ),
+                );
             } else {
-                writeln!(
+                self.writeln_and_log(
                     out,
-                    "info depth {} score cp {} nodes {} time {} nps {}",
-                    d, sc, nodes, elapsed, nps
-                )
-                .unwrap();
+                    &format!(
+                        "info depth {} score cp {} nodes {} time {} nps {}",
+                        d, sc, nodes, elapsed, nps
+                    ),
+                );
             }
 
             out.flush().unwrap();
@@ -233,7 +276,7 @@ impl CodyApi {
         } else {
             bm.to_string()
         };
-        writeln!(out, "bestmove {}", bm_str).unwrap();
+        self.writeln_and_log(out, &format!("bestmove {}", bm_str));
     }
 
     fn parse_go_limits(&self, cmd: &str) -> GoLimits {
@@ -298,19 +341,20 @@ impl CodyApi {
             total_nodes += nodes;
             let nps = (nodes as f64 / elapsed) as u64;
 
-            writeln!(out, "-----------------------------------------------").unwrap();
-            writeln!(out, "{}", pos.fen).unwrap();
-            writeln!(out, "Best move: {}", _score.0).unwrap();
-            writeln!(
+            self.writeln_and_log(out, "-----------------------------------------------");
+            self.writeln_and_log(out, &pos.fen);
+            self.writeln_and_log(out, &format!("Best move: {}", _score.0));
+            self.writeln_and_log(
                 out,
-                "{:<width$}  nodes {:>10}  time {:>5}  nps {:>10}",
-                pos.name,
-                nodes,
-                format!("{:.0}", elapsed * 1000.0),
-                nps,
-                width = name_width
-            )
-            .unwrap();
+                &format!(
+                    "{:<width$}  nodes {:>10}  time {:>5}  nps {:>10}",
+                    pos.name,
+                    nodes,
+                    format!("{:.0}", elapsed * 1000.0),
+                    nps,
+                    width = name_width
+                ),
+            );
 
             out.flush().unwrap();
         }
@@ -318,10 +362,10 @@ impl CodyApi {
         let total_time_ms = (start_all.elapsed().as_secs_f64() * 1000.0) as u64;
         let total_nps = (total_nodes as f64 / (total_time_ms as f64 / 1000.0)) as u64;
 
-        writeln!(out, "===========================").unwrap();
-        writeln!(out, "Total time (ms) : {}", total_time_ms).unwrap();
-        writeln!(out, "Nodes searched  : {}", total_nodes).unwrap();
-        writeln!(out, "Nodes/second    : {}", total_nps).unwrap();
+        self.writeln_and_log(out, "===========================");
+        self.writeln_and_log(out, &format!("Total time (ms) : {}", total_time_ms));
+        self.writeln_and_log(out, &format!("Nodes searched  : {}", total_nodes));
+        self.writeln_and_log(out, &format!("Nodes/second    : {}", total_nps));
         out.flush().unwrap();
     }
 
