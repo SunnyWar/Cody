@@ -150,6 +150,9 @@ impl CodyApi {
     fn handle_go(&mut self, cmd: &str, out: &mut impl Write) {
         self.stop.store(false, Ordering::Relaxed);
         self.limits = self.parse_go_limits(cmd);
+        // Debug trace: announce parsed limits so UIs / logs can see we've started handling go
+        writeln!(out, "debug: handle_go limits: {:?}", self.limits).ok();
+        out.flush().ok();
 
         let start = std::time::Instant::now();
         let max_depth = self.limits.depth.unwrap_or(64);
@@ -158,7 +161,12 @@ impl CodyApi {
         let mut last_completed_move = None;
 
         for d in 1..=max_depth {
+            writeln!(out, "debug: starting depth {}", d).ok();
+            out.flush().ok();
             let (bm, sc) = self.engine.search(&self.current_pos, d);
+
+            writeln!(out, "debug: finished search depth {}", d).ok();
+            out.flush().ok();
 
             // Store the PV from this fully completed depth
             last_completed_move = Some(bm);

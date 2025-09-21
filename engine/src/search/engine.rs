@@ -2,7 +2,7 @@
 
 use crate::core::arena::Arena;
 use crate::search::evaluator::Evaluator;
-use bitboard::piece::{Color, Piece, PieceKind};
+use crate::search::quiescence::quiescence_with_arena;
 use bitboard::{
     mov::ChessMove,
     movegen::{MoveGenerator, generate_legal_moves},
@@ -198,6 +198,11 @@ fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 ) -> i32 {
     NODE_COUNT.fetch_add(1, Ordering::Relaxed);
 
+    // Debug: announce entry to this node
+    if ply <= 2 || NODE_COUNT.load(Ordering::Relaxed) % 500_000 == 0 {
+        eprintln!("[debug] search_node enter ply={} remaining={} nodecount={}", ply, remaining, NODE_COUNT.load(Ordering::Relaxed));
+    }
+
     if remaining == 0 {
         return quiescence_with_arena(movegen, evaluator, arena, ply, alpha, beta);
     }
@@ -251,133 +256,7 @@ fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     best_score
 }
 
-// Quiescence search that explores captures (and promotions / en-passant). Also handles being in check by
-// generating all legal moves when in check so evasions are searched.
-fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
-    movegen: &M,
-    evaluator: &E,
-    arena: &mut Arena,
-    ply: usize,
-    mut alpha: i32,
-    beta: i32,
-) -> i32 {
-    // Stand pat evaluation
-    let stand_pat = evaluator.evaluate(&arena.get(ply).position);
-    if stand_pat >= beta {
-        return stand_pat;
-    }
-    if alpha < stand_pat {
-        alpha = stand_pat;
-    }
-
-    let (parent, _) = arena.get_pair_mut(ply, ply + 1);
-    let pos = &parent.position;
-
-    // If we're in check, we must consider all evasions (not just captures)
-    let mut moves = if movegen.in_check(pos) {
-        generate_legal_moves(pos)
-    } else {
-        // Otherwise, generate capture-like pseudo moves using bitboard queries, then filter to legal
-        bitboard::movegen::generate_pseudo_captures(pos)
-            .into_iter()
-            .filter(|m| {
-                // legality check: apply move into a temp pos and ensure own king not left in check
-                let mut temp = Position::default();
-                pos.apply_move_into(m, &mut temp);
-                !movegen.in_check(&temp)
-            })
-            .collect()
-    };
-
-    // Debugging: if quiescence recursion gets very deep or there are a lot of captures, log a marker.
-    // This helps detect where the engine might be spinning or exploding in nodes.
-    let node_count = NODE_COUNT.load(Ordering::Relaxed);
-    if ply > 200 || moves.len() > 200 || node_count > 5_000_000 {
-        eprintln!(
-            "[debug] quiescence ply={} captures={} nodes={}",
-            ply,
-            moves.len(),
-            node_count
-        );
-    }
-
-    if moves.is_empty() {
-        return stand_pat;
-    }
-
-    // Order captures by MVV/LVA descending
-    moves.sort_by_key(|m| -mvv_lva_score(pos, m));
-
-    let mut best = i32::MIN;
-    for m in moves {
-        {
-            let (parent, child) = arena.get_pair_mut(ply, ply + 1);
-            parent.position.apply_move_into(&m, &mut child.position);
-        }
-
-        let score = -quiescence_with_arena(movegen, evaluator, arena, ply + 1, -beta, -alpha);
-
-        if score > best {
-            best = score;
-        }
-
-        if score > alpha {
-            alpha = score;
-        }
-
-        if alpha >= beta {
-            break;
-        }
-    }
-
-    if best == i32::MIN { stand_pat } else { best }
-}
-
 // MVV/LVA score: higher is better. Use victim material scaled minus attacker material.
-fn mvv_lva_score(pos: &Position, mv: &ChessMove) -> i32 {
-    // victim
-    let victim_piece = match mv.move_type {
-        bitboard::mov::MoveType::EnPassant => {
-            // captured pawn is behind the to-square depending on side to move
-            let us = pos.side_to_move;
-            let cap_sq = match us {
-                Color::White => mv.to.backward(1).unwrap(),
-                Color::Black => mv.to.forward(1).unwrap(),
-            };
-            get_piece_on_square(pos, cap_sq)
-        }
-        _ => get_piece_on_square(pos, mv.to),
-    };
-
-    let victim_value = victim_piece.map(|p| piece_value(p.kind())).unwrap_or(0);
-
-    // attacker
-    let attacker_piece = get_piece_on_square(pos, mv.from);
-    let attacker_value = attacker_piece.map(|p| piece_value(p.kind())).unwrap_or(0);
-
-    victim_value * 100 - attacker_value
-}
-
-fn piece_value(kind: PieceKind) -> i32 {
-    match kind {
-        PieceKind::Pawn => 100,
-        PieceKind::Knight => 320,
-        PieceKind::Bishop => 330,
-        PieceKind::Rook => 500,
-        PieceKind::Queen => 900,
-        PieceKind::King => 10000,
-    }
-}
-
-// Find the piece enum occupying a square in the given position, if any.
-fn get_piece_on_square(pos: &Position, sq: bitboard::Square) -> Option<Piece> {
-    let mask = bitboard::BitBoardMask::from_square(sq);
-    for (piece, bb) in pos.pieces.iter() {
-        if (bb & mask).is_nonempty() {
-            return Some(piece);
-        }
-    }
-    None
-}
+// quiescence, ordering and helpers live in `crate::search::quiescence` to keep this file focused.
 
 // Capture generator moved into `bitboard::movegen::generate_pseudo_captures`.

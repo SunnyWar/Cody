@@ -120,7 +120,8 @@ pub fn generate_pseudo_captures(pos: &Position) -> Vec<ChessMove> {
     // Pawn captures (including promotions)
     let pawn_bb = pos.pieces.get(Piece::from_parts(us, Some(PieceKind::Pawn)));
     for to in Square::all_array() {
-        let attackers = pawn_attacks_to(to, us) & pawn_bb;
+        // only consider pawn attacks that actually capture an opponent piece
+        let attackers = pawn_attacks_to(to, us) & pawn_bb & their_occ;
         for from in attackers.squares() {
             let is_promo =
                 (us == Color::White && to.rank() == 7) || (us == Color::Black && to.rank() == 0);
