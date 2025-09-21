@@ -2,7 +2,6 @@
 
 use crate::core::arena::Arena;
 use crate::search::evaluator::Evaluator;
-use bitboard::movegen::generate_pseudo_moves;
 use bitboard::piece::{Color, Piece, PieceKind};
 use bitboard::{
     mov::ChessMove,
@@ -149,19 +148,6 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         (best_move, best_score)
     }
 
-    fn search_node(&mut self, ply: usize, remaining: usize) -> i32 {
-        // Default wrapper that uses the internal arena and components
-        search_node_with_arena(
-            &self.movegen,
-            &self.evaluator,
-            &mut self.arena,
-            ply,
-            remaining,
-            -INF,
-            INF,
-        )
-    }
-
     pub fn clear_state(&self) {
         NODE_COUNT.store(0, Ordering::Relaxed)
     }
@@ -292,7 +278,7 @@ fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
         generate_legal_moves(pos)
     } else {
         // Otherwise, generate capture-like pseudo moves using bitboard queries, then filter to legal
-        generate_pseudo_capture_moves(pos)
+        bitboard::movegen::generate_pseudo_captures(pos)
             .into_iter()
             .filter(|m| {
                 // legality check: apply move into a temp pos and ensure own king not left in check
@@ -347,17 +333,6 @@ fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
     if best == i32::MIN { stand_pat } else { best }
 }
 
-// Determine whether a move should be considered in quiescence (captures, en-passant, promotions)
-fn is_capture_like_move(mv: &ChessMove) -> bool {
-    use bitboard::mov::MoveType;
-
-    match mv.move_type {
-        MoveType::Capture | MoveType::EnPassant => true,
-        MoveType::Promotion(_) => true,
-        MoveType::Quiet | MoveType::CastleKingside | MoveType::CastleQueenside => false,
-    }
-}
-
 // MVV/LVA score: higher is better. Use victim material scaled minus attacker material.
 fn mvv_lva_score(pos: &Position, mv: &ChessMove) -> i32 {
     // victim
@@ -405,95 +380,4 @@ fn get_piece_on_square(pos: &Position, sq: bitboard::Square) -> Option<Piece> {
     None
 }
 
-// Generate pseudo capture-like moves (captures, promotions, en-passant) using bitboard attack helpers.
-// This avoids generating all legal moves and then filtering, which is slower.
-fn generate_pseudo_capture_moves(pos: &Position) -> Vec<ChessMove> {
-    use bitboard::bitboard::{
-        bishop_attacks_from, king_attacks, knight_attacks, pawn_attacks_to, rook_attacks_from,
-    };
-    use bitboard::mov::MoveType;
-    use bitboard::piece::PieceKind;
-
-    let mut moves = Vec::new();
-    let us = pos.side_to_move;
-    let their_occ = pos.their_pieces(us);
-    let occ = pos.all_pieces();
-
-    // Pawn captures (including promotions) — iterate target squares and find pawn attackers using pawn_attacks_to
-    let pawn_bb = pos.pieces.get(Piece::from_parts(us, Some(PieceKind::Pawn)));
-    for to in bitboard::Square::all_array() {
-        let attackers = pawn_attacks_to(to, us) & pawn_bb;
-        for from in attackers.squares() {
-            let is_promo =
-                (us == Color::White && to.rank() == 7) || (us == Color::Black && to.rank() == 0);
-            if is_promo {
-                for &promo in &[
-                    PieceKind::Queen,
-                    PieceKind::Rook,
-                    PieceKind::Bishop,
-                    PieceKind::Knight,
-                ] {
-                    moves.push(ChessMove::new(from, to, MoveType::Promotion(promo)));
-                }
-            } else {
-                moves.push(ChessMove::new(from, to, MoveType::Capture));
-            }
-        }
-    }
-
-    // Knight captures
-    let knight_bb = pos
-        .pieces
-        .get(Piece::from_parts(us, Some(PieceKind::Knight)));
-    for from in knight_bb.squares() {
-        let attacks = knight_attacks(from) & their_occ;
-        for to in attacks.squares() {
-            moves.push(ChessMove::new(from, to, MoveType::Capture));
-        }
-    }
-
-    // Bishop/queen captures (diagonals)
-    let bishop_like_bb = pos
-        .pieces
-        .get(Piece::from_parts(us, Some(PieceKind::Bishop)))
-        | pos
-            .pieces
-            .get(Piece::from_parts(us, Some(PieceKind::Queen)));
-    for from in bishop_like_bb.squares() {
-        let attacks = bishop_attacks_from(from, occ) & their_occ;
-        for to in attacks.squares() {
-            moves.push(ChessMove::new(from, to, MoveType::Capture));
-        }
-    }
-
-    // Rook/queen captures (files/ranks)
-    let rook_like_bb = pos.pieces.get(Piece::from_parts(us, Some(PieceKind::Rook)))
-        | pos
-            .pieces
-            .get(Piece::from_parts(us, Some(PieceKind::Queen)));
-    for from in rook_like_bb.squares() {
-        let attacks = rook_attacks_from(from, occ) & their_occ;
-        for to in attacks.squares() {
-            moves.push(ChessMove::new(from, to, MoveType::Capture));
-        }
-    }
-
-    // King captures
-    let king_bb = pos.pieces.get(Piece::from_parts(us, Some(PieceKind::King)));
-    if let Some(from) = king_bb.squares().next() {
-        let attacks = king_attacks(from) & their_occ;
-        for to in attacks.squares() {
-            moves.push(ChessMove::new(from, to, MoveType::Capture));
-        }
-    }
-
-    // En-passant captures
-    if let Some(ep_sq) = pos.ep_square {
-        let ep_attackers = pawn_attacks_to(ep_sq, us) & pawn_bb;
-        for from in ep_attackers.squares() {
-            moves.push(ChessMove::new(from, ep_sq, MoveType::EnPassant));
-        }
-    }
-
-    moves
-}
+// Capture generator moved into `bitboard::movegen::generate_pseudo_captures`.

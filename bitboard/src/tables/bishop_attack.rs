@@ -1,5 +1,5 @@
 // bitboard/src/tables/bishop_attack.rs
-use crate::{BitBoardMask, Square};
+use crate::BitBoardMask;
 
 pub const BISHOP_ATTACKS: [&[BitBoardMask]; 64] = [
     &[
@@ -71299,6 +71299,8 @@ pub const BISHOP_ATTACKS: [&[BitBoardMask]; 64] = [
         BitBoardMask(0x0040000000000000),
     ],
 ];
+
+use crate::Square;
 
 #[test]
 fn test_bishop_attacks_corner() {

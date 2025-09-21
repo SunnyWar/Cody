@@ -1,6 +1,7 @@
 // bitboard/src/tables/knight_attack.rs
 
-use crate::{BitBoardMask, Square};
+use crate::BitBoardMask;
+use crate::Square;
 
 pub const KNIGHT_ATTACKS: [BitBoardMask; 64] = [
     BitBoardMask(0x0000000000020400),
