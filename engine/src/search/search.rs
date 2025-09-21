@@ -1,6 +1,7 @@
 // src/search/search.rs
 
 use crate::core::arena::Arena;
+use crate::search::core::{INF, MATE_SCORE, NODE_COUNT, print_uci_info, search_node_with_arena};
 use crate::search::evaluator::Evaluator;
 use crate::search::quiescence::quiescence_with_arena;
 use bitboard::{
@@ -9,7 +10,6 @@ use bitboard::{
     position::Position,
 };
 use std::sync::atomic::Ordering;
-use crate::search::core::{NODE_COUNT, INF, MATE_SCORE, search_node_with_arena, print_uci_info};
 
 pub struct Engine<
     M: MoveGenerator + Clone + Send + Sync + 'static,
@@ -20,6 +20,7 @@ pub struct Engine<
     evaluator: E,
     arena_capacity: usize,
     num_threads: usize,
+    tt: Option<crate::core::tt::TranspositionTable>,
 }
 
 impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Send + Sync + 'static>
@@ -32,6 +33,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             evaluator,
             arena_capacity: arena_size,
             num_threads: 1,
+            tt: Some(crate::core::tt::TranspositionTable::new(20)),
         }
     }
 
@@ -63,6 +65,14 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
 
         if self.num_threads <= 1 {
             // Serial path
+            // Serial path: prepare a TT reference that points at our engine TT if present,
+            // otherwise to a temporary local table used only for this search.
+            let mut local_tt = crate::core::tt::TranspositionTable::new(1);
+            let tt_ref: &mut crate::core::tt::TranspositionTable = match self.tt.as_mut() {
+                Some(ref_mut) => ref_mut,
+                None => &mut local_tt,
+            };
+
             for m in moves {
                 {
                     let (parent, child) = self.arena.get_pair_mut(0, 1);
@@ -76,6 +86,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                     depth - 1,
                     -INF,
                     INF,
+                    tt_ref,
                 );
 
                 if score > best_score {
@@ -109,10 +120,14 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                         // Each thread gets its own arena to avoid synchronization
                         let mut local_arena = Arena::new(arena_cap);
                         local_arena.get_mut(0).position.copy_from(root);
+                        // If this Engine had a TT, we don't share it with threads for now.
+                        // Threads run without a TT to avoid synchronization.
                         {
                             let (parent, child) = local_arena.get_pair_mut(0, 1);
                             parent.position.apply_move_into(&m, &mut child.position);
                         }
+                        // Each thread gets its own TT instance (no shared access)
+                        let mut local_tt_thread = crate::core::tt::TranspositionTable::new(1);
                         let score = -search_node_with_arena(
                             &mg,
                             &ev,
@@ -121,6 +136,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                             depth - 1,
                             -INF,
                             INF,
+                            &mut local_tt_thread,
                         );
                         (m, score)
                     })

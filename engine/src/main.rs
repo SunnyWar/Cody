@@ -3,8 +3,8 @@
 
 mod api;
 
-use std::env;
 use engine::VERBOSE;
+use std::env;
 
 fn main() {
     // Simple CLI flag: --verbose enables runtime verbose logging (same as UCI setoption Verbose true)

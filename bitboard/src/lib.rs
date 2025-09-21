@@ -13,6 +13,7 @@ pub mod piecebitboards;
 pub mod position;
 pub mod square;
 pub mod tables;
+pub mod zobrist;
 
 pub use bitboardmask::BitBoardMask;
 pub use square::Square;

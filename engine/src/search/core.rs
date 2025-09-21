@@ -1,13 +1,13 @@
+use crate::VERBOSE;
 use crate::core::arena::Arena;
+use crate::core::tt::{TTFlag, TranspositionTable};
 use crate::search::evaluator::Evaluator;
 use crate::search::quiescence::quiescence_with_arena;
-use bitboard::{
-    movegen::{MoveGenerator, generate_legal_moves},
-};
+use bitboard::movegen::{MoveGenerator, generate_legal_moves};
+use bitboard::position::Position;
 use std::io::{self, Write};
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
-use crate::VERBOSE;
 
 pub static NODE_COUNT: AtomicU64 = AtomicU64::new(0);
 
@@ -50,6 +50,7 @@ pub fn print_uci_info(
 }
 
 // Helper recursive search that operates on a provided arena and components.
+
 pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     movegen: &M,
     evaluator: &E,
@@ -58,6 +59,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     remaining: usize,
     mut alpha: i32,
     beta: i32,
+    tt: &mut TranspositionTable,
 ) -> i32 {
     NODE_COUNT.fetch_add(1, Ordering::Relaxed);
 
@@ -77,6 +79,18 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         return quiescence_with_arena(movegen, evaluator, arena, ply, alpha, beta);
     }
 
+    // Probe TT if provided (tt is always present in serial path; for parallel we pass a local dummy)
+    let mut tt_entry_opt: Option<crate::core::tt::TTEntry> = None;
+    {
+        let key = arena.get(ply).position.zobrist_hash();
+        if let Some(e) = tt.probe(key, remaining as i8, alpha, beta) {
+            tt_entry_opt = Some(e);
+            if e.flag == crate::core::tt::TTFlag::Exact as u8 {
+                return e.value;
+            }
+        }
+    }
+
     let moves = {
         let (parent, _) = arena.get_pair_mut(ply, ply + 1);
         generate_legal_moves(&parent.position)
@@ -92,7 +106,21 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     }
 
     let mut best_score = i32::MIN;
-    for m in moves {
+    // Work with a local mutable vector so we can reorder based on TT best move
+    let mut moves_vec = moves;
+    if let Some(e) = tt_entry_opt {
+        let bmove = e.best_move;
+        if !bmove.is_null() {
+            if let Some(pos) = moves_vec
+                .iter()
+                .position(|mm| mm.from == bmove.from && mm.to == bmove.to)
+            {
+                moves_vec.swap(0, pos);
+            }
+        }
+    }
+
+    for m in moves_vec.iter().cloned() {
         {
             let (parent, child) = arena.get_pair_mut(ply, ply + 1);
             parent.position.apply_move_into(&m, &mut child.position);
@@ -107,6 +135,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
             remaining - 1,
             -beta,
             -alpha,
+            tt,
         );
 
         if score > best_score {
@@ -119,8 +148,25 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 
         // Beta cutoff
         if alpha >= beta {
+            // store upper bound in TT if available
+            {
+                let key = arena.get(ply).position.zobrist_hash();
+                tt.store(key, alpha, remaining as i8, TTFlag::Upper, m);
+            }
             break;
         }
+    }
+
+    // store final result in TT as exact
+    {
+        let key = arena.get(ply).position.zobrist_hash();
+        tt.store(
+            key,
+            best_score,
+            remaining as i8,
+            TTFlag::Exact,
+            bitboard::mov::ChessMove::null(),
+        );
     }
 
     best_score
