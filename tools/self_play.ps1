@@ -29,13 +29,13 @@ $stdout = $proc.StandardOutput
 # Initialize UCI
 $stdin.WriteLine('uci')
 # read until uciok
-while (($line = $stdout.ReadLine()) -ne $null) {
+while ($null -ne ($line = $stdout.ReadLine())) {
     Write-Host $line
     if ($line -eq 'uciok') { break }
 }
 
 $stdin.WriteLine('isready')
-while (($line = $stdout.ReadLine()) -ne $null) {
+while ($null -ne ($line = $stdout.ReadLine())) {
     Write-Host $line
     if ($line -eq 'readyok') { break }
 }
@@ -50,7 +50,7 @@ for ($ply = 0; $ply -lt $Plies; $ply++) {
 
     # Read until bestmove line
     $best = $null
-    while (($line = $stdout.ReadLine()) -ne $null) {
+    while ($null -ne ($line = $stdout.ReadLine())) {
         Write-Host $line
         if ($line.StartsWith('bestmove')) {
             $parts = $line.Split(' ')
