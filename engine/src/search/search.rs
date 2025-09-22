@@ -3,11 +3,13 @@
 use crate::core::arena::Arena;
 use crate::search::core::{INF, MATE_SCORE, NODE_COUNT, print_uci_info, search_node_with_arena};
 use crate::search::evaluator::Evaluator;
+use bitboard::Square;
 use bitboard::{
     mov::ChessMove,
     movegen::{MoveGenerator, generate_legal_moves},
     position::Position,
 };
+use rustc_hash::FxHashMap;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
@@ -84,20 +86,15 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             let mut best_score = i32::MIN;
             let mut best_move = ChessMove::null();
 
-            // If we have a persistent TT, try to probe it for a root best move to improve ordering.
-            if let Some(ttref) = self.tt.as_ref() {
-                let key = self.arena.get(0).position.zobrist_hash();
-                if let Some(e) = ttref.probe(key, d as i8, -INF, INF) {
-                    let bmove = e.best_move;
-                    if !bmove.is_null()
-                        && let Some(pos) = moves
-                            .iter()
-                            .position(|mm| mm.from == bmove.from && mm.to == bmove.to)
-                    {
-                        moves.swap(pos, 0);
-                    }
-                }
-            }
+            // Build a (from,to) → index map once
+            let move_index: FxHashMap<(Square, Square), usize> = moves
+                .iter()
+                .enumerate()
+                .map(|(i, m)| ((m.from, m.to), i))
+                .collect();
+
+            // Probe TT and reorder instantly if match found
+            self.probe_for_best_move(d, &mut moves, &move_index);
 
             if self.num_threads <= 1 {
                 // Serial path: prepare a TT reference that points at our engine TT if present,
@@ -205,6 +202,29 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         }
 
         (last_completed_move, last_completed_score)
+    }
+
+    fn probe_for_best_move(
+        &mut self,
+        d: usize,
+        moves: &mut Vec<ChessMove>,
+        move_index: &FxHashMap<(Square, Square), usize>,
+    ) {
+        let Some(ttref) = self.tt.as_ref() else {
+            return;
+        };
+
+        let key = self.arena.get(0).position.zobrist_hash();
+        if let Some(e) = ttref.probe(key, d as i8, -INF, INF) {
+            let bmove = e.best_move;
+            if !bmove.is_null() {
+                if let Some(&pos) = move_index.get(&(bmove.from, bmove.to)) {
+                    if pos != 0 {
+                        moves.swap(0, pos);
+                    }
+                }
+            }
+        }
     }
 
     pub fn clear_state(&mut self) {
