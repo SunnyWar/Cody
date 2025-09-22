@@ -89,13 +89,12 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                 let key = self.arena.get(0).position.zobrist_hash();
                 if let Some(e) = ttref.probe(key, d as i8, -INF, INF) {
                     let bmove = e.best_move;
-                    if !bmove.is_null() {
-                        if let Some(pos) = moves
+                    if !bmove.is_null()
+                        && let Some(pos) = moves
                             .iter()
                             .position(|mm| mm.from == bmove.from && mm.to == bmove.to)
-                        {
-                            moves.swap(pos, 0);
-                        }
+                    {
+                        moves.swap(pos, 0);
                     }
                 }
             }
@@ -193,15 +192,15 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             print_uci_info(d, last_completed_score, &pv_str, elapsed);
 
             // Stop if time budget exceeded or external stop requested
-            if let Some(mt) = time_budget_ms {
-                if elapsed >= mt {
-                    break;
-                }
+            if let Some(mt) = time_budget_ms
+                && elapsed >= mt
+            {
+                break;
             }
-            if let Some(stopflag) = stop {
-                if stopflag.load(Ordering::Relaxed) {
-                    break;
-                }
+            if let Some(stopflag) = stop
+                && stopflag.load(Ordering::Relaxed)
+            {
+                break;
             }
         }
 
@@ -215,10 +214,3 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         }
     }
 }
-
-// Helper functions like `search_node_with_arena` and `print_uci_info` live in `core.rs`.
-
-// MVV/LVA score: higher is better. Use victim material scaled minus attacker material.
-// quiescence, ordering and helpers live in `crate::search::quiescence` to keep this file focused.
-
-// Capture generator moved into `bitboard::movegen::generate_pseudo_captures`.
