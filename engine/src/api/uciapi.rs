@@ -113,25 +113,23 @@ impl CodyApi {
             }
         }
 
-        if let (Some(ni), Some(vi)) = (name_idx, value_idx) {
-            if ni + 1 <= vi {
-                let name = parts[ni + 1..vi].join(" ");
-                let value = parts.get(vi + 1).copied().unwrap_or("");
-                if name.eq_ignore_ascii_case("threads") {
-                    if let Ok(n) = value.parse::<usize>() {
-                        self.engine.set_num_threads(n.max(1));
-                    }
-                } else if name.eq_ignore_ascii_case("verbose")
-                    || name.eq_ignore_ascii_case("verbosE")
-                {
-                    // Accept "true"/"false" (case-insensitive) to toggle runtime verbose logging.
-                    let enable = value.eq_ignore_ascii_case("true");
-                    VERBOSE.store(enable, Ordering::Relaxed);
-                } else if name.eq_ignore_ascii_case("verbose") {
-                    // Fallback for oddly cased names
-                    let enable = value.eq_ignore_ascii_case("true");
-                    VERBOSE.store(enable, Ordering::Relaxed);
+        if let (Some(ni), Some(vi)) = (name_idx, value_idx)
+            && ni < vi
+        {
+            let name = parts[ni + 1..vi].join(" ");
+            let value = parts.get(vi + 1).copied().unwrap_or("");
+            if name.eq_ignore_ascii_case("threads") {
+                if let Ok(n) = value.parse::<usize>() {
+                    self.engine.set_num_threads(n.max(1));
                 }
+            } else if name.eq_ignore_ascii_case("verbose") || name.eq_ignore_ascii_case("verbosE") {
+                // Accept "true"/"false" (case-insensitive) to toggle runtime verbose logging.
+                let enable = value.eq_ignore_ascii_case("true");
+                VERBOSE.store(enable, Ordering::Relaxed);
+            } else if name.eq_ignore_ascii_case("verbose") {
+                // Fallback for oddly cased names
+                let enable = value.eq_ignore_ascii_case("true");
+                VERBOSE.store(enable, Ordering::Relaxed);
             }
         }
     }
@@ -284,7 +282,7 @@ impl CodyApi {
             let nps = (nodes as f64 / elapsed) as u64;
 
             self.writeln_and_log(out, "-----------------------------------------------");
-            self.writeln_and_log(out, &pos.fen);
+            self.writeln_and_log(out, pos.fen);
             self.writeln_and_log(out, &format!("Best move: {}", _score.0));
             self.writeln_and_log(
                 out,

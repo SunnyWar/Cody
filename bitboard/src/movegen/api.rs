@@ -191,4 +191,3 @@ mod tests {
     // ... remaining tests untouched ...
 }
 
-// --- End: original movegen.rs content ---
