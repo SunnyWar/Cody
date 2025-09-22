@@ -99,10 +99,13 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             if self.num_threads <= 1 {
                 // Serial path: prepare a TT reference that points at our engine TT if present,
                 // otherwise to a temporary local table used only for this search.
-                let mut local_tt = crate::core::tt::TranspositionTable::new(1);
+                let mut local_tt_storage;
                 let tt_ref: &mut crate::core::tt::TranspositionTable = match self.tt.as_mut() {
                     Some(ref_mut) => ref_mut,
-                    None => &mut local_tt,
+                    None => {
+                        local_tt_storage = crate::core::tt::TranspositionTable::new(1);
+                        &mut local_tt_storage
+                    }
                 };
 
                 for m in moves {
@@ -186,7 +189,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             } else {
                 last_completed_move.to_string()
             };
-            print_uci_info(d, last_completed_score, &pv_str, elapsed);
+            //print_uci_info(d, last_completed_score, &pv_str, elapsed);
 
             // Stop if time budget exceeded or external stop requested
             if let Some(mt) = time_budget_ms
