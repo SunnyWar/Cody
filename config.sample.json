@@ -1,0 +1,7 @@
+{
+    "branch_prefix": "ai-feature-",
+    "model": "deepseek-coder-v2",
+    "api_base": "http://localhost:11434/v1",
+    "use_local": true,
+    "github_repo": "your-username/cody"
+}
