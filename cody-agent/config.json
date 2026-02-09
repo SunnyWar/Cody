@@ -1,0 +1,7 @@
+{
+  "github_repo": "SunnyWar/Cody",
+  "github_token": "YOUR_GITHUB_PAT",
+  "openai_api_key": "YOUR_OPENAI_KEY",
+  "branch_prefix": "cody-ai-",
+  "model": "gpt-4.1"
+}
