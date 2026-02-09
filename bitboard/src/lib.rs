@@ -8,6 +8,7 @@ pub mod constants;
 pub mod mov;
 pub mod movegen;
 pub mod occupancy;
+pub mod perft;
 pub mod piece;
 pub mod piecebitboards;
 pub mod position;
@@ -16,4 +17,5 @@ pub mod tables;
 pub mod zobrist;
 
 pub use bitboardmask::BitBoardMask;
+pub use perft::{perft, perft_divide};
 pub use square::Square;
