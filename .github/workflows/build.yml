@@ -21,3 +21,6 @@ jobs:
 
     - name: Run unit tests
       run: cargo test --all
+
+    - name: Run perft tests
+      run: cargo run --release -- perft
