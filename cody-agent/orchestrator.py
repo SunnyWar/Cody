@@ -1,12 +1,21 @@
 """
 Master Orchestrator for Cody AI Improvement Workflow
 
-Coordinates the complete workflow:
-1. Refactoring analysis → execution → loop until done
-2. Performance analysis → execution → loop until done  
-3. Features analysis → execute up to 3 items (rerun 1&2 if large diff)
+Coordinates the improvement workflow with one merge per invocation:
+1. Each run performs exactly ONE code improvement and exits
+2. State tracks current phase (refactoring → performance → features)
+3. Scheduled tasks can be run multiple times daily, each producing one change
 
-This script manages the multi-step automated improvement process.
+IMPORTANT: Only real code changes count (.rs files, data files). TODO list changes
+do not count as code changes. Tasks that only modify TODO files are skipped, and 
+the orchestrator moves to the next task in sequence.
+
+Workflow progression:
+- Refactoring phase: analyze once, then execute tasks one per run (only code changes)
+- Performance phase: analyze once, then execute tasks one per run (only code changes)
+- Features phase: execute up to 3 features (one per run), rerun earlier phases if large diffs
+
+State file tracks: current_phase, phase_started (datetime), features_completed
 """
 
 import os
@@ -15,7 +24,7 @@ import json
 import subprocess
 from pathlib import Path
 from datetime import datetime
-from typing import List, Tuple
+from typing import Optional, Dict, Any
 
 # Import our modules
 from todo_manager import TodoList
@@ -28,12 +37,17 @@ import features_executor
 
 
 class Orchestrator:
-    """Master orchestrator for the improvement workflow."""
+    """Master orchestrator for single-merge-per-run workflow."""
+    
+    STATE_FILE = "orchestrator_state.json"
+    PHASES = ["refactoring", "performance", "features"]
     
     def __init__(self, repo_root: Path, config: dict):
         self.repo_root = repo_root
         self.config = config
         self.log_file = repo_root / "orchestrator.log"
+        self.state_file = repo_root / self.STATE_FILE
+        self.state = self._load_state()
         
     def log(self, message: str):
         """Log a message to both console and file."""
@@ -44,179 +58,91 @@ class Orchestrator:
         with open(self.log_file, 'a') as f:
             f.write(log_line + "\n")
     
-    def create_checkpoint(self, name: str):
-        """Create a git checkpoint."""
-        self.log(f"📌 Creating checkpoint: {name}")
-        subprocess.run(
-            ["git", "add", "."],
-            cwd=self.repo_root,
-            check=False
-        )
-        subprocess.run(
-            ["git", "commit", "-m", f"Checkpoint: {name}"],
-            cwd=self.repo_root,
-            check=False
-        )
+    def _load_state(self) -> Dict[str, Any]:
+        """Load orchestration state, Initialize if missing."""
+        if self.state_file.exists():
+            with open(self.state_file) as f:
+                return json.load(f)
+        
+        # Initialize new state
+        return {
+            "current_phase": "refactoring",      # which phase we're in
+            "phase_started": datetime.now().isoformat(),  # when we started this phase
+            "analysis_done": False,              # have we analyzed current phase?
+            "features_completed": 0,             # count of features done (for 3-feature limit)
+            "last_run": None,
+            "run_count": 0
+        }
     
-    def step_1_refactoring(self) -> bool:
-        """Step 1: Refactoring analysis and execution loop."""
-        self.log("\n" + "=" * 70)
-        self.log("STEP 1: REFACTORING")
-        self.log("=" * 70)
+    def _save_state(self):
+        """Persist state to file."""
+        self.state["last_run"] = datetime.now().isoformat()
+        self.state["run_count"] = self.state.get("run_count", 0) + 1
+        with open(self.state_file, 'w') as f:
+            json.dump(self.state, f, indent=2)
+    
+    def _advance_phase(self):
+        """Move to next phase in workflow."""
+        current_idx = self.PHASES.index(self.state["current_phase"])
+        if current_idx < len(self.PHASES) - 1:
+            self.state["current_phase"] = self.PHASES[current_idx + 1]
+        # else: we're done (features)
+        self.state["analysis_done"] = False
+        self.state["phase_started"] = datetime.now().isoformat()
+        self._save_state()
+    
+    def _has_code_changes(self) -> bool:
+        """Check if git diff contains actual code changes (not just TODO files).
         
-        # 1a. Analysis
-        self.log("\n1a. Running refactoring analysis...")
-        added = refactoring_analyzer.analyze(self.repo_root, self.config)
-        self.log(f"   Added {added} refactoring opportunities")
-        
-        # 1b. Execution loop
-        self.log("\n1b. Executing refactoring tasks...")
-        todo_list = TodoList("refactoring", self.repo_root)
-        
-        completed = 0
-        while True:
-            next_item = todo_list.get_next_item()
-            if not next_item:
-                self.log("   ✅ All refactoring tasks completed")
-                break
-            
-            self.log(f"\n   Working on: {next_item.id} - {next_item.title}")
-            success = refactoring_executor.execute_refactoring(
-                next_item.id, 
-                self.repo_root, 
-                self.config
+        Returns True if .rs files or data files (not TODO lists) were modified.
+        """
+        try:
+            # Get list of modified files
+            result = subprocess.run(
+                ["git", "diff", "--name-only", "--cached"],
+                cwd=self.repo_root,
+                capture_output=True,
+                text=True,
+                check=False
             )
             
-            if success:
-                completed += 1
-                self.create_checkpoint(f"Refactoring: {next_item.id}")
-            else:
-                self.log(f"   ❌ Failed to complete {next_item.id}")
-                # Continue with other items
+            if result.returncode != 0:
+                return False
             
-            # Reload TODO list
-            todo_list = TodoList("refactoring", self.repo_root)
-        
-        self.log(f"\nStep 1 complete: {completed} refactorings applied")
-        return completed > 0
+            changed_files = result.stdout.strip().split('\n')
+            
+            # Check if any non-TODO files were changed
+            for file in changed_files:
+                if not file:
+                    continue
+                # Include .rs files and any non-todo data files
+                if file.endswith('.rs'):
+                    return True
+                if file.endswith('.json') and 'todo' not in file.lower():
+                    return True
+                if file.endswith('.toml') and 'todo' not in file.lower():
+                    return True
+                if file.endswith('.yaml') and 'todo' not in file.lower():
+                    return True
+                if file.endswith('.yml') and 'todo' not in file.lower():
+                    return True
+                # Data files in specific directories
+                if '.rs' in file or ('data' in file and 'todo' not in file.lower()):
+                    return True
+            
+            return False
+        except Exception as e:
+            self.log(f"⚠️ Could not check for code changes: {e}")
+            return False
     
-    def step_2_performance(self) -> bool:
-        """Step 2: Performance analysis and execution loop."""
-        self.log("\n" + "=" * 70)
-        self.log("STEP 2: PERFORMANCE OPTIMIZATION")
-        self.log("=" * 70)
+    def run_single_improvement(self) -> bool:
+        """Execute a single improvement task and exit.
         
-        # 2a. Analysis
-        self.log("\n2a. Running performance analysis...")
-        added = performance_analyzer.analyze(self.repo_root, self.config)
-        self.log(f"   Added {added} performance opportunities")
-        
-        # 2b. Execution loop
-        self.log("\n2b. Executing performance optimizations...")
-        todo_list = TodoList("performance", self.repo_root)
-        
-        completed = 0
-        while True:
-            next_item = todo_list.get_next_item()
-            if not next_item:
-                self.log("   ✅ All performance tasks completed")
-                break
-            
-            self.log(f"\n   Working on: {next_item.id} - {next_item.title}")
-            success = performance_executor.execute_optimization(
-                next_item.id,
-                self.repo_root,
-                self.config
-            )
-            
-            if success:
-                completed += 1
-                self.create_checkpoint(f"Performance: {next_item.id}")
-            else:
-                self.log(f"   ❌ Failed to complete {next_item.id}")
-            
-            # Reload TODO list
-            todo_list = TodoList("performance", self.repo_root)
-        
-        self.log(f"\nStep 2 complete: {completed} optimizations applied")
-        return completed > 0
-    
-    def step_3_features(self, max_features: int = 3) -> int:
-        """Step 3: Features analysis and limited execution."""
-        self.log("\n" + "=" * 70)
-        self.log("STEP 3: WORLD-CLASS FEATURES")
-        self.log("=" * 70)
-        
-        # 3a. Analysis
-        self.log("\n3a. Running features analysis...")
-        added = features_analyzer.analyze(self.repo_root, self.config)
-        self.log(f"   Added {added} feature opportunities")
-        
-        # 3b. Execute up to max_features items
-        self.log(f"\n3b. Executing up to {max_features} features...")
-        todo_list = TodoList("features", self.repo_root)
-        
-        completed = 0
-        large_diff_count = 0
-        
-        for i in range(max_features):
-            next_item = todo_list.get_next_item()
-            if not next_item:
-                self.log("   ℹ️ No more features available")
-                break
-            
-            self.log(f"\n   Working on feature {i+1}/{max_features}: {next_item.id} - {next_item.title}")
-            success, diff_size = features_executor.execute_feature(
-                next_item.id,
-                self.repo_root,
-                self.config
-            )
-            
-            if success:
-                completed += 1
-                self.create_checkpoint(f"Feature: {next_item.id}")
-                
-                # Check if diff is large
-                if diff_size == "large":
-                    large_diff_count += 1
-                    self.log(f"   📏 Large diff detected for {next_item.id}")
-                    
-                    # Rerun steps 1 and 2
-                    self.log("\n   🔄 Large diff detected, rerunning refactoring and performance...")
-                    self.step_1_refactoring()
-                    self.step_2_performance()
-            else:
-                self.log(f"   ❌ Failed to complete {next_item.id}")
-            
-            # Reload TODO list
-            todo_list = TodoList("features", self.repo_root)
-        
-        self.log(f"\nStep 3 complete: {completed} features implemented ({large_diff_count} triggered refactor/perf cycles)")
-        return completed
-    
-    def validate_todos(self):
-        """Validate existing TODO items are still relevant."""
-        self.log("\n" + "=" * 70)
-        self.log("VALIDATING TODO LISTS")
-        self.log("=" * 70)
-        
-        for category in ["refactoring", "performance", "features"]:
-            self.log(f"\nValidating {category} TODO list...")
-            todo_list = TodoList(category, self.repo_root)
-            
-            # Simple validation: just report stats
-            total = len(todo_list.items)
-            not_started = todo_list.count_by_status("not-started")
-            in_progress = todo_list.count_by_status("in-progress")
-            completed = todo_list.count_by_status("completed")
-            
-            self.log(f"  Total: {total}, Not Started: {not_started}, In Progress: {in_progress}, Completed: {completed}")
-    
-    def run_full_workflow(self):
-        """Execute the complete improvement workflow."""
+        Returns True if an improvement was made, False if workflow is complete.
+        """
         self.log("\n" + "#" * 70)
-        self.log("# CODY AI IMPROVEMENT ORCHESTRATOR")
-        self.log(f"# Started: {datetime.now()}")
+        self.log(f"# ORCHESTRATOR RUN #{self.state['run_count'] + 1}")
+        self.log(f"# Phase: {self.state['current_phase'].upper()}")
         self.log("#" * 70)
         
         try:
@@ -224,40 +150,206 @@ class Orchestrator:
             self.log("\n🔧 Preparing workspace...")
             subprocess.run(["git", "checkout", "main"], cwd=self.repo_root, check=False)
             
-            # Validate existing TODOs
-            self.validate_todos()
+            phase = self.state["current_phase"]
             
-            # Run the workflow
-            self.step_1_refactoring()
-            self.step_2_performance()
-            features_completed = self.step_3_features(max_features=3)
-            
-            # Final summary
-            self.log("\n" + "#" * 70)
-            self.log("# WORKFLOW COMPLETE")
-            self.log(f"# Finished: {datetime.now()}")
-            self.log("#" * 70)
-            
-            # Print TODO stats
-            self.log("\n📊 Final TODO Statistics:")
-            for category in ["refactoring", "performance", "features"]:
-                todo_list = TodoList(category, self.repo_root)
-                self.log(f"\n{category.upper()}:")
-                self.log(f"  Total: {len(todo_list.items)}")
-                self.log(f"  Not Started: {todo_list.count_by_status('not-started')}")
-                self.log(f"  In Progress: {todo_list.count_by_status('in-progress')}")
-                self.log(f"  Completed: {todo_list.count_by_status('completed')}")
-            
-            self.log("\n✅ Orchestrator finished successfully")
-            
+            if phase == "refactoring":
+                return self._run_refactoring_task()
+            elif phase == "performance":
+                return self._run_performance_task()
+            elif phase == "features":
+                return self._run_features_task()
+            else:
+                self.log(f"\n✅ WORKFLOW COMPLETE!")
+                self.log(f"   All phases finished. Run count: {self.state['run_count']}")
+                self._save_state()
+                return False
+                
         except KeyboardInterrupt:
-            self.log("\n⚠️ Workflow interrupted by user")
+            self.log("\n⚠️ Run interrupted by user")
             sys.exit(1)
         except Exception as e:
-            self.log(f"\n❌ Workflow failed with error: {e}")
+            self.log(f"\n❌ Run failed with error: {e}")
             import traceback
             self.log(traceback.format_exc())
             sys.exit(1)
+    
+    def _run_refactoring_task(self) -> bool:
+        """Run one refactoring task. Return True if actual code was merged, False if phase changed."""
+        self.log("\n" + "=" * 70)
+        self.log("REFACTORING PHASE")
+        self.log("=" * 70)
+        
+        # Analyze if not yet done
+        if not self.state["analysis_done"]:
+            self.log("\nAnalyzing refactoring opportunities...")
+            added = refactoring_analyzer.analyze(self.repo_root, self.config)
+            self.log(f"Found {added} refactoring opportunities")
+            self.state["analysis_done"] = True
+            self._save_state()
+        
+        # Get next task
+        todo_list = TodoList("refactoring", self.repo_root)
+        next_item = todo_list.get_next_item()
+        
+        if not next_item:
+            self.log("\n✅ Refactoring phase complete, moving to performance...")
+            self._advance_phase()
+            # Recursively execute next phase
+            return self.run_single_improvement()
+        
+        # Execute the single task
+        self.log(f"\n📝 Working on: {next_item.id} - {next_item.title}")
+        success = refactoring_executor.execute_refactoring(
+            next_item.id,
+            self.repo_root,
+            self.config
+        )
+        
+        if success:
+            # Check for actual code changes (exclude TODO files)
+            if self._has_code_changes():
+                self.log(f"✅ Successfully completed: {next_item.id}")
+                self._create_checkpoint(f"Refactoring: {next_item.id}")
+                self._save_state()
+                return True
+            else:
+                self.log(f"ℹ️ Task completed but no code changes made (TODO-only): {next_item.id}")
+                # Mark as done in TODO but continue to next task
+                return self._run_refactoring_task()
+        else:
+            self.log(f"❌ Failed: {next_item.id}")
+            self._save_state()
+            return False
+    
+    def _run_performance_task(self) -> bool:
+        """Run one performance task. Return True if actual code was merged, False if phase changed."""
+        self.log("\n" + "=" * 70)
+        self.log("PERFORMANCE OPTIMIZATION PHASE")
+        self.log("=" * 70)
+        
+        # Analyze if not yet done
+        if not self.state["analysis_done"]:
+            self.log("\nAnalyzing performance opportunities...")
+            added = performance_analyzer.analyze(self.repo_root, self.config)
+            self.log(f"Found {added} performance opportunities")
+            self.state["analysis_done"] = True
+            self._save_state()
+        
+        # Get next task
+        todo_list = TodoList("performance", self.repo_root)
+        next_item = todo_list.get_next_item()
+        
+        if not next_item:
+            self.log("\n✅ Performance phase complete, moving to features...")
+            self._advance_phase()
+            # Recursively execute next phase
+            return self.run_single_improvement()
+        
+        # Execute the single task
+        self.log(f"\n📝 Working on: {next_item.id} - {next_item.title}")
+        success = performance_executor.execute_optimization(
+            next_item.id,
+            self.repo_root,
+            self.config
+        )
+        
+        if success:
+            # Check for actual code changes (exclude TODO files)
+            if self._has_code_changes():
+                self.log(f"✅ Successfully completed: {next_item.id}")
+                self._create_checkpoint(f"Performance: {next_item.id}")
+                self._save_state()
+                return True
+            else:
+                self.log(f"ℹ️ Task completed but no code changes made (TODO-only): {next_item.id}")
+                # Mark as done in TODO but continue to next task
+                return self._run_performance_task()
+        else:
+            self.log(f"❌ Failed: {next_item.id}")
+            self._save_state()
+            return False
+    
+    def _run_features_task(self) -> bool:
+        """Run one feature task. Return True if actual code was merged, False if workflow done."""
+        self.log("\n" + "=" * 70)
+        self.log("WORLD-CLASS FEATURES PHASE")
+        self.log("=" * 70)
+        
+        features_done = self.state.get("features_completed", 0)
+        max_features = 3
+        
+        # Check if we've hit feature limit
+        if features_done >= max_features:
+            self.log(f"\n✅ Features phase complete (executed {features_done}/{max_features})")
+            self.log("✅ WORKFLOW COMPLETE!")
+            self._save_state()
+            return False
+        
+        # Analyze if not yet done
+        if not self.state["analysis_done"]:
+            self.log("\nAnalyzing feature opportunities...")
+            added = features_analyzer.analyze(self.repo_root, self.config)
+            self.log(f"Found {added} feature opportunities")
+            self.state["analysis_done"] = True
+            self._save_state()
+        
+        # Get next task
+        todo_list = TodoList("features", self.repo_root)
+        next_item = todo_list.get_next_item()
+        
+        if not next_item:
+            self.log(f"\n✅ No more features available ({features_done}/{max_features})")
+            self.log("✅ WORKFLOW COMPLETE!")
+            self._save_state()
+            return False
+        
+        # Execute the single feature
+        self.log(f"\n📝 Feature {features_done + 1}/{max_features}: {next_item.id} - {next_item.title}")
+        success, diff_size = features_executor.execute_feature(
+            next_item.id,
+            self.repo_root,
+            self.config
+        )
+        
+        if success:
+            # Check for actual code changes (exclude TODO files)
+            if self._has_code_changes():
+                self.log(f"✅ Successfully completed: {next_item.id}")
+                self._create_checkpoint(f"Feature: {next_item.id}")
+                self.state["features_completed"] = features_done + 1
+                
+                # If large diff, trigger refactoring and performance passes
+                if diff_size == "large":
+                    self.log(f"\n📏 Large diff detected - queueing refactoring & performance passes")
+                    self.log("   Reset state to refactoring phase for quality improvements")
+                    self.state["current_phase"] = "refactoring"
+                    self.state["analysis_done"] = False
+                    self.state["phase_started"] = datetime.now().isoformat()
+                
+                self._save_state()
+                return True
+            else:
+                self.log(f"ℹ️ Task completed but no code changes made (TODO-only): {next_item.id}")
+                # Continue to next feature
+                return self._run_features_task()
+        else:
+            self.log(f"❌ Failed: {next_item.id}")
+            self._save_state()
+            return False
+    
+    def _create_checkpoint(self, name: str):
+        """Create a git checkpoint."""
+        self.log(f"📌 Committing: {name}")
+        subprocess.run(
+            ["git", "add", "."],
+            cwd=self.repo_root,
+            check=False
+        )
+        subprocess.run(
+            ["git", "commit", "-m", f"{name}"],
+            cwd=self.repo_root,
+            check=False
+        )
 
 
 def main():
@@ -272,8 +364,13 @@ def main():
     # Create orchestrator
     orchestrator = Orchestrator(repo_root, config)
     
-    # Run the workflow
-    orchestrator.run_full_workflow()
+    # Run a single improvement task
+    improvement_made = orchestrator.run_single_improvement()
+    
+    if improvement_made:
+        print("\n✅ Run completed - one code change merged")
+    else:
+        print("\n✅ Workflow complete - all tasks finished")
 
 
 if __name__ == "__main__":
