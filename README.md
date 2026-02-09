@@ -103,9 +103,22 @@ def call_ai(prompt):
 
 ## Human TODO items
 1. Need PGO optimization
+  * add a PGO build profile
+  * add a PGO workflow
+  * add a PGO training harness
+  * add a PGO FEN suite
+  * add a PGO merge rule (“only merge if PGO improves speed”)
 2. Need parameter tuning
+  * a parameter registry
+  * a tuning harness
+  * a tuning dataset
+  * a tuning workflow
 3. Need SPRT testing
+  * pick a harness
+  * configure it
+  * register machines
 4. Need strong AI evaluation (premium models)
+  * secure funding
 
 ## 🛠 License
 MIT License — see `LICENSE` for details.
