@@ -123,12 +123,33 @@ def generate_patch(repo_path):
     return call_ai(prompt)
 
 def apply_patch(repo_path, patch_content):
-    """Applies the AI's patch to the local files."""
-    patch_file = repo_path / "improvement.patch"
-    patch_file.write_text(patch_content)
-    _, ok = run(f"git apply improvement.patch", cwd=repo_path)
-    patch_file.unlink() # Cleanup
-    return ok
+    """Saves the patch and attempts to apply it with better diagnostics."""
+    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d-%H%M%S")
+    temp_patch = repo_path / f"ai_improvement_{timestamp}.patch"
+    
+    # Save the patch first so it's available for manual inspection
+    temp_patch.write_text(patch_content)
+    print(f"📄 Patch saved to: {temp_patch}")
+
+    # Create a local branch BEFORE applying so the failure is contained
+    debug_branch = f"debug-ai-{timestamp}"
+    run(f"git checkout -b {debug_branch}", cwd=repo_path)
+
+    # Use --verbose to get detailed error messages from git
+    print(f"Attempting to apply patch to branch {debug_branch}...")
+    stdout, ok = run(f"git apply --verbose {temp_patch.name}", cwd=repo_path)
+    
+    if not ok:
+        print(f"❌ PATCH FAILED. Diagnostics:")
+        print(f"   1. Detailed log: {stdout}")
+        print(f"   2. You can inspect the failure in branch: {debug_branch}")
+        print(f"   3. The raw patch is available at: {temp_patch.name}")
+        # We DO NOT delete the patch or switch branches so you can debug
+        return False
+
+    # If it worked, we can delete the temp file but keep the branch
+    temp_patch.unlink()
+    return True
 
 def create_pr(repo_path):
     """Validates code locally, then pushes to GitHub and opens a PR."""
