@@ -232,10 +232,9 @@ temp_*.patch         # Failed patches (for review)
 ## Need Help?
 
 1. Check `cody-agent/README.md` for full docs
-2. Check `ORCHESTRATION_SUMMARY.md` for overview
-3. Review prompt files in `.github/ai/prompts/`
-4. Check `orchestrator.log` for errors
-5. Review git history: `git log`
+2. Review prompt files in `.github/ai/prompts/`
+3. Check `orchestrator.log` for errors
+4. Review git history: `git log`
 
 ## Key URLs
 
