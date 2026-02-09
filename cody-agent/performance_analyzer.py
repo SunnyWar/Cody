@@ -42,7 +42,7 @@ def get_prompt_template():
     """Load the performance analysis prompt."""
     repo_root = Path(__file__).parent.parent
     prompt_path = repo_root / ".github" / "ai" / "prompts" / "performance_analysis.md"
-    return prompt_path.read_text()
+    return prompt_path.read_text(encoding='utf-8')
 
 
 def gather_code_context(repo_root: Path) -> str:
@@ -60,7 +60,7 @@ def gather_code_context(repo_root: Path) -> str:
     for pattern in priority_paths:
         for rs_file in repo_root.glob(pattern):
             rel_path = rs_file.relative_to(repo_root)
-            content = rs_file.read_text()
+            content = rs_file.read_text(encoding='utf-8')
             code_context.append(f"\n// ========== HOT PATH FILE: {rel_path} ==========\n{content}")
     
     # Add other Rust files
@@ -70,7 +70,7 @@ def gather_code_context(repo_root: Path) -> str:
         
         rel_path = rs_file.relative_to(repo_root)
         if not any(str(rel_path) in ctx for ctx in code_context):
-            content = rs_file.read_text()
+            content = rs_file.read_text(encoding='utf-8')
             code_context.append(f"\n// ========== FILE: {rel_path} ==========\n{content}")
     
     return "\n".join(code_context)

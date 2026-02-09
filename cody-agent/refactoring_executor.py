@@ -42,7 +42,7 @@ def get_prompt_template():
     """Load the refactoring execution prompt."""
     repo_root = Path(__file__).parent.parent
     prompt_path = repo_root / ".github" / "ai" / "prompts" / "refactoring_execution.md"
-    return prompt_path.read_text()
+    return prompt_path.read_text(encoding='utf-8')
 
 
 def gather_relevant_code(repo_root: Path, files: list) -> str:
@@ -52,7 +52,7 @@ def gather_relevant_code(repo_root: Path, files: list) -> str:
     for file_path in files:
         full_path = repo_root / file_path
         if full_path.exists():
-            content = full_path.read_text()
+            content = full_path.read_text(encoding='utf-8')
             code_context.append(f"\n// ========== FILE: {file_path} ==========\n{content}")
         else:
             print(f"⚠️ File not found: {file_path}")
@@ -218,7 +218,7 @@ Files Affected: {', '.join(item.files_affected)}
         for rs_file in repo_root.rglob("*.rs"):
             if "target" not in str(rs_file) and "flycheck" not in str(rs_file):
                 rel_path = rs_file.relative_to(repo_root)
-                content = rs_file.read_text()
+                content = rs_file.read_text(encoding='utf-8')
                 code_context += f"\n// ========== FILE: {rel_path} ==========\n{content}"
     
     full_prompt = prompt_template.replace("{REFACTORING_DETAILS}", refactoring_details)
