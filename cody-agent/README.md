@@ -16,7 +16,7 @@ A sophisticated multi-agent system for **automated, iterative improvement** of t
 
 ## Quick Start
 
-### One-Command Full Improvement Cycle
+### One-Command Single Improvement (Run Repeatedly)
 
 ```powershell
 # Windows/PowerShell (recommended)
@@ -27,10 +27,12 @@ cd cody-agent
 python orchestrator.py
 ```
 
-This automatically:
-1. 🔧 Analyzes & executes all refactorings
-2. ⚡ Analyzes & executes all performance optimizations
-3. ✨ Analyzes & implements up to 3 new features
+**Key point:** Each run produces **exactly one code improvement** and exits. 
+Call this script repeatedly (via scheduled task, cron, etc.) to make continuous progress.
+
+- First run: One refactoring committed
+- Second run: Next refactoring committed
+- ...iterate until all refactorings done, then performance, then features
 
 All changes are validated, tested, and committed automatically.
 
@@ -164,12 +166,41 @@ cd cody-agent
 python orchestrator.py
 ```
 
+#### Important: Run the Script Repeatedly
+
+The orchestrator is **designed to run repeatedly** (e.g., via scheduled task). Here's how it works:
+
+- **Each invocation produces exactly ONE code change**
+- The script analyzes, executes one task, commits, and **exits**
+- State is preserved in `orchestrator_state.json` between runs
+- The next invocation continues from where the previous one left off
+
+**Example: Scheduled daily runs:**
+```powershell
+# Schedule this PowerShell script to run N times per day (e.g., every 8 hours)
+.\run_orchestrator.ps1
+
+# Result after each run:
+# ✅ One refactoring/optimization/feature merged to git
+# ✅ Log updated with progress
+# ✅ State saved for next run
+```
+
+**Progress through phases:**
+1. First run: Executes one refactoring (if any exist)
+2. Second run: Executes next refactoring (or moves to performance phase)
+3. ...continues until all refactorings done
+4. Then proceeds to performance optimizations (one per run)
+5. Then proceeds to features (up to 3 total, one per run)
+
+**Note:** Only actual code changes (.rs files, config files) count. Tasks that only update TODO lists are automatically skipped and the orchestrator continues to the next task.
+
 The orchestrator will:
-- Validate existing TODO lists
-- Run all three phases automatically
-- Create git checkpoints after each change
+- Track which phase you're in (refactoring → performance → features)
+- Execute one improvement per invocation
+- Create git checkpoints after each code change
 - Log all actions to `orchestrator.log`
-- Report final statistics
+- Exit cleanly after each merge
 
 ### Manual Workflow (Fine-Grained Control)
 
