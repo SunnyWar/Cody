@@ -5,6 +5,7 @@ Implements a world-class chess engine feature from the TODO list.
 """
 
 import os
+import sys
 import json
 import subprocess
 from pathlib import Path
@@ -15,8 +16,26 @@ from todo_manager import TodoList
 def load_config():
     """Load configuration."""
     config_path = Path(__file__).parent / "config.json"
-    with open(config_path) as f:
-        return json.load(f)
+    
+    if not config_path.exists():
+        print(f"❌ Error: Configuration file not found at {config_path}")
+        print(f"\n   Please create config.json by copying config.sample.json:")
+        print(f"   cp {Path(__file__).parent / 'config.sample.json'} {config_path}")
+        sys.exit(1)
+    
+    try:
+        with open(config_path) as f:
+            config = json.load(f)
+        if not config:
+            raise ValueError("Config file is empty")
+        return config
+    except json.JSONDecodeError as e:
+        print(f"❌ Error: Invalid JSON in {config_path}")
+        print(f"   {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Error reading config file: {e}")
+        sys.exit(1)
 
 
 def get_prompt_template():
