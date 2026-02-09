@@ -1,0 +1,12 @@
+Started game 1 of 100 (new vs old)
+Started game 2 of 100 (old vs new)
+Finished game 1 (new vs old): 1-0 {White wins}
+Finished game 2 (old vs new): 0-1 {Black wins}
+Score of new vs old: 1 - 0 - 1  [0.500] 2
+SPRT: LLR=0.12 [-2.94,2.94], H0=-0.00, H1=5.00
+...
+Finished game 99 (new vs old): 1/2-1/2 {Draw}
+Finished game 100 (old vs new): 1-0 {White wins}
+Score of new vs old: 55 - 40 - 5  [0.575] 100
+SPRT: LLR=3.05 [-2.94,2.94], H0=-0.00, H1=5.00
+SPRT: Finished: H1 accepted

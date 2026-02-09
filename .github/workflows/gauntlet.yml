@@ -29,12 +29,18 @@ jobs:
         cd base
         cargo build --release
 
+    - name: Install cutechess-cli
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cutechess-cli
+
     - name: Run gauntlet
       run: |
         mkdir results
+        chmod +x scripts/run_gauntlet.sh
         ./scripts/run_gauntlet.sh \
-          --engine-new target/release/cody \
-          --engine-old base/target/release/cody \
+          --engine-new target/release/engine \
+          --engine-old base/target/release/engine \
           --games 100 \
           --output results/out.json
 

@@ -23,4 +23,4 @@ jobs:
       run: cargo test --all
 
     - name: Run perft tests
-      run: cargo run --release -- perft
+      run: cargo run --release -p engine -- perft 5
