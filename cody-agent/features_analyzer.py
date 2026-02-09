@@ -42,7 +42,7 @@ def get_prompt_template():
     """Load the features analysis prompt."""
     repo_root = Path(__file__).parent.parent
     prompt_path = repo_root / ".github" / "ai" / "prompts" / "features_analysis.md"
-    return prompt_path.read_text()
+    return prompt_path.read_text(encoding='utf-8')
 
 
 def gather_project_context(repo_root: Path) -> str:
@@ -53,7 +53,7 @@ def gather_project_context(repo_root: Path) -> str:
     for doc_file in ["architecture.md", "README.md", "TODO.md"]:
         doc_path = repo_root / doc_file
         if doc_path.exists():
-            context.append(f"\n// ========== {doc_file} ==========\n{doc_path.read_text()}")
+            context.append(f"\n// ========== {doc_file} ==========\n{doc_path.read_text(encoding='utf-8')}")
     
     # Gather all Rust source files (not just key ones, to handle future expansion)
     # Prioritize certain files by processing them first
@@ -73,7 +73,7 @@ def gather_project_context(repo_root: Path) -> str:
         full_path = repo_root / pattern
         if full_path.exists():
             rel_path = pattern
-            content = full_path.read_text()
+            content = full_path.read_text(encoding='utf-8')
             context.append(f"\n// ========== {rel_path} ==========\n{content[:2000]}")
             processed_files.add(full_path)
     
@@ -85,7 +85,7 @@ def gather_project_context(repo_root: Path) -> str:
             continue
         
         rel_path = rs_file.relative_to(repo_root)
-        content = rs_file.read_text()
+        content = rs_file.read_text(encoding='utf-8')
         context.append(f"\n// ========== {rel_path} ==========\n{content[:1500]}")
         processed_files.add(rs_file)
     

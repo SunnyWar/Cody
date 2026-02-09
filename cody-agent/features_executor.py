@@ -42,7 +42,7 @@ def get_prompt_template():
     """Load the features execution prompt."""
     repo_root = Path(__file__).parent.parent
     prompt_path = repo_root / ".github" / "ai" / "prompts" / "features_execution.md"
-    return prompt_path.read_text()
+    return prompt_path.read_text(encoding='utf-8')
 
 
 def gather_relevant_code(repo_root: Path, files: list) -> str:
@@ -52,7 +52,7 @@ def gather_relevant_code(repo_root: Path, files: list) -> str:
     for file_path in files:
         full_path = repo_root / file_path
         if full_path.exists():
-            content = full_path.read_text()
+            content = full_path.read_text(encoding='utf-8')
             code_context.append(f"\n// ========== FILE: {file_path} ==========\n{content}")
         else:
             print(f"⚠️ File not found: {file_path}")
@@ -67,7 +67,7 @@ def gather_architecture_context(repo_root: Path) -> str:
     for doc in ["architecture.md", ".github/copilot-instructions.md"]:
         doc_path = repo_root / doc
         if doc_path.exists():
-            context.append(f"\n// ========== {doc} ==========\n{doc_path.read_text()}")
+            context.append(f"\n// ========== {doc} ==========\n{doc_path.read_text(encoding='utf-8')}")
     
     return "\n".join(context)
 

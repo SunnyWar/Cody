@@ -57,7 +57,7 @@ def get_prompt_template():
     """Load the clippy analysis prompt."""
     repo_root = Path(__file__).parent.parent
     prompt_path = repo_root / ".github" / "ai" / "prompts" / "clippy_analysis.md"
-    return prompt_path.read_text()
+    return prompt_path.read_text(encoding='utf-8')
 
 
 def run_clippy(repo_root: Path) -> dict:
