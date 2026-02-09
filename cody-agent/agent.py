@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import subprocess
 import datetime
@@ -20,7 +21,7 @@ if not CONFIG_PATH.exists():
         print(f"👉 Please copy '{SAMPLE_PATH.name}' to 'config.json' and edit your settings.")
     else:
         print("❌ Error: No configuration files found.")
-    exit(1)
+    sys.exit(1)
 
 CONFIG = json.load(open(CONFIG_PATH))
 
@@ -29,9 +30,16 @@ GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 GITHUB_REPO = CONFIG.get("github_repo", "yourusername/cody") 
 
 if not CONFIG.get("use_local") and not OPENAI_KEY:
-    raise RuntimeError("Missing OPENAI_API_KEY for cloud mode.")
+    print(f"\n❌ Error: OPENAI_API_KEY environment variable not set")
+    print(f"\n   Set your API key:")
+    print(f"   export OPENAI_API_KEY=sk-...")
+    print(f"\n   Or configure 'use_local': true in config.json to use a local LLM.\n")
+    sys.exit(1)
 if not GITHUB_TOKEN:
-    raise RuntimeError("Missing GITHUB_TOKEN environment variable.")
+    print(f"\n❌ Error: GITHUB_TOKEN environment variable not set")
+    print(f"\n   Set your GitHub token:")
+    print(f"   export GITHUB_TOKEN=ghp_...\n")
+    sys.exit(1)
 
 BRANCH_PREFIX = CONFIG["branch_prefix"]
 MODEL = CONFIG["model"]
@@ -65,6 +73,12 @@ def call_ai(prompt):
     if CONFIG.get("use_local"):
         client = OpenAI(api_key="ollama", base_url=CONFIG.get("api_base", "http://localhost:11434/v1"))
     else:
+        if not OPENAI_KEY:
+            print(f"\n❌ Error: OPENAI_API_KEY environment variable not set")
+            print(f"\n   Set your API key:")
+            print(f"   export OPENAI_API_KEY=sk-...")
+            print(f"\n   Or configure 'use_local': true in config.json to use a local LLM.\n")
+            sys.exit(1)
         client = OpenAI(api_key=OPENAI_KEY)
 
     print(f"🤖 AI is thinking (Model: {MODEL})...")
