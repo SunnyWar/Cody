@@ -61,12 +61,13 @@ def get_prompt_template():
 
 
 def run_clippy(repo_root: Path) -> dict:
-    """Run cargo clippy and return results."""
+    """Run cargo clippy with JSON output and filter for warnings."""
     command = [
         "cargo",
         "clippy",
         "--all-targets",
         "--all-features",
+        "--message-format=json",
         "--",
         *CLIPPY_LINT_ARGS,
     ]
@@ -78,28 +79,41 @@ def run_clippy(repo_root: Path) -> dict:
         text=True
     )
 
-    output = "\n".join([
-        "# --- STDOUT ---",
-        result.stdout.strip(),
-        "# --- STDERR ---",
-        result.stderr.strip()
-    ]).strip()
+    # Parse JSON output and filter for warning-level diagnostics
+    warnings = []
+    for line in result.stdout.strip().split('\n'):
+        if not line.strip():
+            continue
+        try:
+            msg = json.loads(line)
+            # Extract compiler/clippy messages
+            if msg.get("level") == "warning" and "message" in msg:
+                warnings.append({
+                    "file": msg.get("message", {}).get("message", "unknown"),
+                    "code": msg.get("message", {}).get("code", {}).get("code", ""),
+                    "spans": msg.get("message", {}).get("spans", [])
+                })
+        except json.JSONDecodeError:
+            pass
+    
+    # Format warnings compactly for AI
+    warning_text = ""
+    if warnings:
+        warning_text = f"Found {len(warnings)} clippy warnings:\n\n"
+        for i, warning in enumerate(warnings[:50], 1):  # Limit to first 50
+            warning_text += f"{i}. {warning['code']}: {warning['file']}\n"
+        if len(warnings) > 50:
+            warning_text += f"\n... and {len(warnings) - 50} more warnings\n"
+    else:
+        warning_text = "No clippy warnings found."
 
     return {
         "command": " ".join(command),
         "returncode": result.returncode,
-        "output": output
+        "output": warning_text,
+        "warning_count": len(warnings),
+        "raw_warnings": warnings
     }
-
-
-def trim_output(output: str, limit: int = 12000) -> str:
-    """Trim long outputs to a reasonable size."""
-    if len(output) <= limit:
-        return output
-
-    head = output[:6000]
-    tail = output[-4000:]
-    return f"{head}\n\n... [truncated] ...\n\n{tail}"
 
 
 def call_ai(prompt: str, config: dict) -> str:
@@ -174,7 +188,11 @@ def analyze(repo_root: Path, config: dict) -> int:
     prompt_template = get_prompt_template()
 
     clippy_result = run_clippy(repo_root)
-    clippy_output = trim_output(clippy_result["output"])
+    clippy_output = clippy_result["output"]
+
+    # Show warning summary
+    warning_count = clippy_result["warning_count"]
+    print(f"\n📊 Found {warning_count} clippy warnings")
 
     existing_todos_info = ""
     if todo_list.items:
