@@ -234,7 +234,8 @@ def generate_unique_id(category: str, existing_ids: List[str]) -> str:
     prefix_map = {
         "refactoring": "REF",
         "performance": "PERF",
-        "features": "FEAT"
+        "features": "FEAT",
+        "clippy": "CLIP"
     }
     prefix = prefix_map.get(category, "TODO")
     
