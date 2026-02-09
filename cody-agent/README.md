@@ -635,8 +635,6 @@ $ python features_executor.py next
 cody-agent/
 ├── README.md                       This file
 ├── config.json                     AI configuration
-├── agent.py                        Legacy (preserved, not used)
-│
 ├── orchestrator.py                 Master orchestrator
 ├── todo_manager.py                 TODO list utilities
 │
