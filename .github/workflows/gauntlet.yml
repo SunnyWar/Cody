@@ -1,0 +1,45 @@
+name: Self-Play Gauntlet
+
+on:
+  pull_request:
+
+jobs:
+  gauntlet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+    - name: Checkout PR code
+      uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Build PR version
+      run: cargo build --release
+
+    - name: Checkout base version
+      uses: actions/checkout@v4
+      with:
+        ref: main
+        path: base
+
+    - name: Build base version
+      run: |
+        cd base
+        cargo build --release
+
+    - name: Run gauntlet
+      run: |
+        mkdir results
+        ./scripts/run_gauntlet.sh \
+          --engine-new target/release/cody \
+          --engine-old base/target/release/cody \
+          --games 100 \
+          --output results/out.json
+
+    - name: Upload results
+      uses: actions/upload-artifact@v4
+      with:
+        name: gauntlet-results
+        path: results/out.json
