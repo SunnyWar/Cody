@@ -26,6 +26,10 @@ Evaluation: Hand-crafted AI heuristics including Piece-Square Tables (PST) and m
 
 How it works.
 Currently a local script is run. This script instructs an AI to find a change to the code. It is run as a scheduled task.
+1. install openai
+pip install openai
+
+2. run script whenever you want to update Cody
 python .\cody-agent\agent.py
 
 
