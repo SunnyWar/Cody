@@ -205,11 +205,10 @@ impl CodyApi {
         NODE_COUNT.store(0, Ordering::Relaxed);
 
         let time_budget = self.limits.movetime_ms;
-        let stop_flag = &self.stop;
 
         let (bm, _sc) =
             self.engine
-                .search(&self.current_pos, max_depth, time_budget, Some(stop_flag));
+                .search(&self.current_pos, max_depth, time_budget, Some(&*self.stop));
 
         let bm_str = if bm.is_null() {
             "0000".to_string()
@@ -253,6 +252,11 @@ impl CodyApi {
             };
             let budget = (my_time / 30).max(5) + my_inc.min(100); // cap inc use a bit
             limits.movetime_ms = Some(budget);
+        }
+
+        // Fallback: if still no limits and not infinite, use a sensible default
+        if limits.depth.is_none() && limits.movetime_ms.is_none() && !limits.infinite {
+            limits.movetime_ms = Some(1000); // 1 second default for bare "go" command
         }
 
         limits
