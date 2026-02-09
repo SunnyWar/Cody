@@ -1,0 +1,49 @@
+name: Auto Merge or Close
+
+on:
+  workflow_run:
+    workflows: ["Self-Play Gauntlet"]
+    types:
+      - completed
+
+jobs:
+  decide:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download gauntlet results
+      uses: actions/download-artifact@v4
+      with:
+        name: gauntlet-results
+        path: results
+
+    - name: Read results
+      id: parse
+      run: |
+        LOG=$(cat results/out.json)
+        echo "log<<EOF" >> $GITHUB_OUTPUT
+        echo "$LOG" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Decide outcome
+      id: decision
+      run: |
+        if grep -q "SPRT: accepted" results/out.json; then
+          echo "result=improvement" >> $GITHUB_OUTPUT
+        else
+          echo "result=regression" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Merge or close PR
+      uses: peter-evans/enable-pull-request-automerge@v3
+      if: steps.decision.outputs.result == 'improvement'
+      with:
+        pull-request-number: ${{ github.event.workflow_run.pull_requests[0].number }}
+        merge-method: squash
+
+    - name: Close PR
+      uses: peter-evans/close-pull@v3
+      if: steps.decision.outputs.result == 'regression'
+      with:
+        pull-request-number: ${{ github.event.workflow_run.pull_requests[0].number }}
+        comment: "Regression detected. Closing PR."
