@@ -10,12 +10,15 @@ from pathlib import Path
 # -----------------------------
 # Load config
 # -----------------------------
-CONFIG = json.load(open("config.json"))
+AGENT_DIR = Path(__file__).resolve().parent
+CONFIG_PATH = AGENT_DIR / "config.json"
+CONFIG = json.load(open(CONFIG_PATH))
 GITHUB_REPO = CONFIG["github_repo"]
 GITHUB_TOKEN = CONFIG["github_token"]
 OPENAI_KEY = CONFIG["openai_api_key"]
 BRANCH_PREFIX = CONFIG["branch_prefix"]
 MODEL = CONFIG["model"]
+
 
 # Path to the system prompt inside the Cody repo
 SYSTEM_PROMPT_PATH = Path(__file__).resolve().parents[1] / ".github" / "ai" / "system.md"
