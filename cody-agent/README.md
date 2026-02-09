@@ -43,6 +43,7 @@ cd cody-agent
 python todo_manager.py refactoring    # Show refactoring progress
 python todo_manager.py performance    # Show optimization progress
 python todo_manager.py features       # Show feature progress
+python todo_manager.py clippy         # Show clippy warnings progress
 ```
 
 ### Check Results
@@ -51,13 +52,14 @@ python todo_manager.py features       # Show feature progress
 cat TODO_REFACTORING.md    # Review refactoring opportunities
 cat TODO_PERFORMANCE.md    # Review optimization opportunities
 cat TODO_FEATURES.md       # Review feature opportunities
+cat TODO_CLIPPY.md         # Review clippy warnings
 cat orchestrator.log       # Complete execution log
 git log --oneline          # View git checkpoints
 ```
 
 ## How It Works
 
-The orchestration system implements a **three-phase improvement workflow**:
+The orchestration system implements a **multi-phase improvement workflow** with Clippy integration:
 
 ### Phase 1: Refactoring ♻️
 
@@ -76,6 +78,8 @@ The orchestration system implements a **three-phase improvement workflow**:
 
 3. **Repeat** until all refactorings complete
 
+4. **Clippy Check** - Fix any clippy warnings introduced
+
 ### Phase 2: Performance Optimization ⚡
 
 1. **Analyze** for performance improvements
@@ -93,6 +97,8 @@ The orchestration system implements a **three-phase improvement workflow**:
 
 3. **Repeat** until all optimizations complete
 
+4. **Clippy Check** - Fix any clippy warnings introduced
+
 ### Phase 3: World-Class Features ✨
 
 1. **Analyze** what features are needed
@@ -108,6 +114,16 @@ The orchestration system implements a **three-phase improvement workflow**:
      - If diff ≤ 100 lines: Continue to next feature
 
 3. **Stop** after 3 features or no more left
+
+4. **Clippy Check** - Fix any clippy warnings introduced
+
+### Clippy Integration 🔧
+
+After each main phase, the system runs `cargo clippy` and:
+- Analyzes warnings with focus on performance and memory
+- Creates TODO items for actionable fixes
+- Executes fixes one at a time
+- Validates each fix passes all quality gates
 
 ## Installation
 
@@ -210,6 +226,7 @@ cd cody-agent
 python refactoring_analyzer.py    # → TODO_REFACTORING.md
 python performance_analyzer.py    # → TODO_PERFORMANCE.md
 python features_analyzer.py       # → TODO_FEATURES.md
+python clippy_analyzer.py         # → TODO_CLIPPY.md
 ```
 
 **Execute specific item:**
@@ -218,6 +235,7 @@ cd cody-agent
 python refactoring_executor.py REF-001     # Execute specific refactoring
 python performance_executor.py PERF-003    # Execute specific optimization
 python features_executor.py FEAT-005       # Execute specific feature
+python clippy_executor.py CLIPPY-001       # Execute specific clippy fix
 ```
 
 **Execute next available item:**
@@ -226,6 +244,7 @@ cd cody-agent
 python refactoring_executor.py next        # Next refactoring
 python performance_executor.py next        # Next optimization
 python features_executor.py next           # Next feature
+python clippy_executor.py next             # Next clippy fix
 ```
 
 **View TODO statistics:**
@@ -234,6 +253,7 @@ cd cody-agent
 python todo_manager.py refactoring
 python todo_manager.py performance
 python todo_manager.py features
+python todo_manager.py clippy
 ```
 
 ## Architecture
@@ -242,13 +262,15 @@ python todo_manager.py features
 
 | Component | Purpose |
 |-----------|---------|
-| **orchestrator.py** | Master coordinator - runs all three phases |
+| **orchestrator.py** | Master coordinator - runs all phases |
 | **refactoring_analyzer.py** | Analyzes code for refactoring opportunities |
 | **refactoring_executor.py** | Implements specific refactorings |
 | **performance_analyzer.py** | Analyzes code for performance improvements |
 | **performance_executor.py** | Implements specific optimizations |
 | **features_analyzer.py** | Analyzes missing world-class features |
 | **features_executor.py** | Implements specific features |
+| **clippy_analyzer.py** | Analyzes clippy warnings for actionable fixes |
+| **clippy_executor.py** | Fixes specific clippy warnings |
 | **todo_manager.py** | Manages TODO lists (load, save, validate, track) |
 
 ### Prompt Templates
@@ -263,8 +285,8 @@ Located in `.github/ai/prompts/` (beside `system.md`):
 | **performance_analysis.md** | How to identify performance improvements |
 | **performance_execution.md** | How to implement optimizations |
 | **features_analysis.md** | How to identify missing features |
-| **features_execution.md** | How to implement features |
-
+| **features_execution.md** | How to implement features || **clippy_analysis.md** | How to analyze clippy warnings |
+| **clippy_execution.md** | How to fix clippy warnings |
 ## Workflow Details
 
 ### Phase 1: Refactoring (Complete Until Done)
@@ -350,6 +372,9 @@ TODO_PERFORMANCE.md        Human-readable optimization TODO list
 
 TODO_FEATURES.md           Human-readable features TODO list
 .todo_features.json        Machine-readable version
+
+TODO_CLIPPY.md             Human-readable clippy warnings TODO list
+.todo_clippy.json          Machine-readable version
 ```
 
 ### TODO Item Structure
@@ -634,6 +659,10 @@ FEATURES:
   Total: 8
   Completed: 3
 
+CLIPPY:
+  Total: 12
+  Completed: 12
+
 ✅ Orchestrator finished successfully
 ```
 
@@ -644,11 +673,13 @@ FEATURES:
 $ python refactoring_analyzer.py
 $ python performance_analyzer.py
 $ python features_analyzer.py
+$ python clippy_analyzer.py
 
 # Review what was found
 $ cat TODO_REFACTORING.md
 $ cat TODO_PERFORMANCE.md
 $ cat TODO_FEATURES.md
+$ cat TODO_CLIPPY.md
 
 # Execute just one refactoring
 $ python refactoring_executor.py REF-001
@@ -658,6 +689,7 @@ $ python refactoring_executor.py REF-001
 $ python refactoring_executor.py next
 $ python performance_executor.py next
 $ python features_executor.py next
+$ python clippy_executor.py next
 ```
 
 ## File Structure
@@ -666,6 +698,7 @@ $ python features_executor.py next
 cody-agent/
 ├── README.md                       This file
 ├── config.json                     AI configuration
+├── agent.py                        Legacy agent (not used)
 ├── orchestrator.py                 Master orchestrator
 ├── todo_manager.py                 TODO list utilities
 │
@@ -674,15 +707,19 @@ cody-agent/
 ├── performance_analyzer.py         Find performance improvements
 ├── performance_executor.py         Execute optimizations
 ├── features_analyzer.py            Find missing features
-└── features_executor.py            Implement features
+├── features_executor.py            Implement features
+├── clippy_analyzer.py              Analyze clippy warnings
+└── clippy_executor.py              Fix clippy warnings
 
 (Generated at runtime)
 ├── TODO_REFACTORING.md
 ├── TODO_PERFORMANCE.md
 ├── TODO_FEATURES.md
+├── TODO_CLIPPY.md
 ├── .todo_refactoring.json
 ├── .todo_performance.json
 ├── .todo_features.json
+├── .todo_clippy.json
 └── orchestrator.log
 ```
 
@@ -711,6 +748,6 @@ Same as Cody chess engine (see root LICENSE).
 
 ---
 
-**Last Updated:** 2026-02-08  
+**Last Updated:** 2026-02-09  
 **Orchestrator Version:** 1.0  
 **Compatible with:** Cody chess engine (fixed-block arena architecture)
