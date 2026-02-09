@@ -168,13 +168,22 @@ def analyze(repo_root: Path, config: dict) -> int:
     response = call_ai(full_prompt, config)
 
     new_items = extract_json_from_response(response)
+    
+    # Validate that new_items is a list of dicts
+    if not isinstance(new_items, list):
+        print(f"⚠️ Expected list of items, got {type(new_items).__name__}")
+        return 0
+    
+    # Filter out non-dict items
+    new_items = [item for item in new_items if isinstance(item, dict)]
     if not new_items:
         print("⚠️ No clippy opportunities found or failed to parse response")
         return 0
 
     for item in new_items:
         if "id" not in item or not item["id"]:
-            item["id"] = generate_unique_id("clippy", existing_ids + [i["id"] for i in new_items])
+            existing_new_ids = [i.get("id") for i in new_items if isinstance(i, dict) and i.get("id")]
+            item["id"] = generate_unique_id("clippy", existing_ids + existing_new_ids)
 
     added = todo_list.add_items(new_items, check_duplicates=True)
 

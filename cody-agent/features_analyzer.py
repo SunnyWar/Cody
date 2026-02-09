@@ -158,14 +158,22 @@ Before adding any feature:
     # Parse response
     new_items = extract_json_from_response(response)
     
+    # Validate that new_items is a list of dicts
+    if not isinstance(new_items, list):
+        print(f"⚠️ Expected list of items, got {type(new_items).__name__}")
+        return 0
+    
+    # Filter out non-dict items
+    new_items = [item for item in new_items if isinstance(item, dict)]
     if not new_items:
-        print("⚠️ No features found or failed to parse response")
+        print("⚠️ No feature ideas found or failed to parse response")
         return 0
     
     # Generate unique IDs
     for item in new_items:
         if "id" not in item or not item["id"]:
-            item["id"] = generate_unique_id("features", existing_ids + [i["id"] for i in new_items])
+            existing_new_ids = [i.get("id") for i in new_items if isinstance(i, dict) and i.get("id")]
+            item["id"] = generate_unique_id("features", existing_ids + existing_new_ids)
     
     # Add to TODO list
     added = todo_list.add_items(new_items, check_duplicates=True)
