@@ -29,6 +29,10 @@ Currently a local script is run. This script instructs an AI to find a change to
 1. install openai
 pip install openai
 
+2. set api keys as environment variables
+SET OPENAI_API_KEY	sk-xxxxxxx...
+SET GITHUB_TOKEN	ghp_xxxxxxx...
+
 2. run script whenever you want to update Cody
 python .\cody-agent\agent.py
 

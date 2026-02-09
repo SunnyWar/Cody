@@ -10,12 +10,25 @@ from pathlib import Path
 # -----------------------------
 # Load config
 # -----------------------------
+from pathlib import Path
+import json
+import os
+
 AGENT_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = AGENT_DIR / "config.json"
 CONFIG = json.load(open(CONFIG_PATH))
-GITHUB_REPO = CONFIG["github_repo"]
-GITHUB_TOKEN = CONFIG["github_token"]
-OPENAI_KEY = CONFIG["openai_api_key"]
+
+# Load secrets from environment variables
+OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
+
+if not OPENAI_KEY:
+    raise RuntimeError("Missing OPENAI_API_KEY environment variable")
+
+if not GITHUB_TOKEN:
+    raise RuntimeError("Missing GITHUB_TOKEN environment variable")
+
+
 BRANCH_PREFIX = CONFIG["branch_prefix"]
 MODEL = CONFIG["model"]
 
