@@ -28,11 +28,12 @@ SYSTEM_PROMPT = SYSTEM_PROMPT_PATH.read_text()
 # -----------------------------
 # Helper: call OpenAI
 # -----------------------------
-def call_ai(prompt):
-    import openai
-    openai.api_key = OPENAI_KEY
+from openai import OpenAI
 
-    response = openai.ChatCompletion.create(
+def call_ai(prompt):
+    client = OpenAI(api_key=OPENAI_KEY)
+
+    response = client.chat.completions.create(
         model=MODEL,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -41,7 +42,7 @@ def call_ai(prompt):
         temperature=0.4
     )
 
-    return response["choices"][0]["message"]["content"]
+    return response.choices[0].message.content
 
 
 # -----------------------------
