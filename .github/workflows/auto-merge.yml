@@ -16,6 +16,8 @@ jobs:
       with:
         name: gauntlet-results
         path: results
+        run-id: ${{ github.event.workflow_run.id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Read results
       id: parse
@@ -28,10 +30,15 @@ jobs:
     - name: Decide outcome
       id: decision
       run: |
-        if grep -q "SPRT: accepted" results/out.json; then
+        # Parse JSON and check SPRT status
+        SPRT_STATUS=$(jq -r '.sprt_status // "unknown"' results/out.json)
+        if [ "$SPRT_STATUS" = "accepted" ]; then
           echo "result=improvement" >> $GITHUB_OUTPUT
-        else
+        elif [ "$SPRT_STATUS" = "rejected" ]; then
           echo "result=regression" >> $GITHUB_OUTPUT
+        else
+          # If no SPRT decision yet, treat as neutral (don't auto-merge or close)
+          echo "result=neutral" >> $GITHUB_OUTPUT
         fi
 
     - name: Merge or close PR
