@@ -1,0 +1,267 @@
+"""
+Refactoring Executor Agent
+
+Executes a specific refactoring task from the TODO list.
+"""
+
+import os
+import json
+import subprocess
+from pathlib import Path
+from openai import OpenAI
+from todo_manager import TodoList
+
+
+def load_config():
+    """Load configuration."""
+    config_path = Path(__file__).parent / "config.json"
+    with open(config_path) as f:
+        return json.load(f)
+
+
+def get_prompt_template():
+    """Load the refactoring execution prompt."""
+    repo_root = Path(__file__).parent.parent
+    prompt_path = repo_root / ".github" / "ai" / "prompts" / "refactoring_execution.md"
+    return prompt_path.read_text()
+
+
+def gather_relevant_code(repo_root: Path, files: list) -> str:
+    """Gather code from specific files."""
+    code_context = []
+    
+    for file_path in files:
+        full_path = repo_root / file_path
+        if full_path.exists():
+            content = full_path.read_text()
+            code_context.append(f"\n// ========== FILE: {file_path} ==========\n{content}")
+        else:
+            print(f"⚠️ File not found: {file_path}")
+    
+    return "\n".join(code_context)
+
+
+def call_ai(prompt: str, config: dict) -> str:
+    """Call the AI with the prompt."""
+    if config.get("use_local"):
+        client = OpenAI(
+            api_key="ollama", 
+            base_url=config.get("api_base", "http://localhost:11434/v1")
+        )
+    else:
+        client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    
+    model = config["model"]
+    print(f"🤖 Implementing with {model}...")
+    
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": "You are a senior Rust engineer implementing refactorings."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.2
+    )
+    
+    return response.choices[0].message.content
+
+
+def extract_patch(response: str) -> str:
+    """Extract the patch from AI response."""
+    # Look for diff block
+    if "```diff" in response:
+        start = response.find("```diff") + 7
+        end = response.find("```", start)
+        return response[start:end].strip()
+    elif "diff --git" in response:
+        # Find the first diff and take everything from there
+        start = response.find("diff --git")
+        # Find the last occurrence of diff or end of likely diff content
+        return response[start:].strip()
+    else:
+        print("⚠️ No clear diff block found in response")
+        return response
+
+
+def apply_patch(repo_root: Path, patch: str) -> bool:
+    """Apply the patch to the repository."""
+    patch_file = repo_root / "temp_refactoring.patch"
+    
+    try:
+        patch_file.write_text(patch)
+        print(f"📄 Patch saved to: {patch_file}")
+        
+        # Try to apply
+        result = subprocess.run(
+            ["git", "apply", "--verbose", str(patch_file)],
+            cwd=repo_root,
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode == 0:
+            print("✅ Patch applied successfully")
+            patch_file.unlink()  # Clean up
+            return True
+        else:
+            print(f"❌ Failed to apply patch:")
+            print(result.stderr)
+            print(f"Patch saved at {patch_file} for manual review")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error applying patch: {e}")
+        return False
+
+
+def validate_changes(repo_root: Path) -> bool:
+    """Run tests to validate the refactoring."""
+    print("\n🛡️ Validating refactoring...")
+    
+    steps = [
+        ("Format check", ["cargo", "fmt", "--", "--check"]),
+        ("Build", ["cargo", "build", "--release"]),
+        ("Test", ["cargo", "test"]),
+    ]
+    
+    for step_name, command in steps:
+        print(f"\n  Running: {step_name}...")
+        result = subprocess.run(
+            command,
+            cwd=repo_root,
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode != 0:
+            print(f"  ❌ {step_name} failed:")
+            print(result.stderr)
+            return False
+        else:
+            print(f"  ✅ {step_name} passed")
+    
+    return True
+
+
+def execute_refactoring(item_id: str, repo_root: Path, config: dict) -> bool:
+    """Execute a specific refactoring task."""
+    print("=" * 60)
+    print(f"EXECUTING REFACTORING: {item_id}")
+    print("=" * 60)
+    
+    # Load TODO list and find the item
+    todo_list = TodoList("refactoring", repo_root)
+    
+    item = None
+    for todo_item in todo_list.items:
+        if todo_item.id == item_id:
+            item = todo_item
+            break
+    
+    if not item:
+        print(f"❌ Item {item_id} not found in TODO list")
+        return False
+    
+    if item.status == "completed":
+        print(f"⏭️ Item {item_id} is already completed")
+        return True
+    
+    # Mark as in progress
+    todo_list.mark_in_progress(item_id)
+    todo_list.save()
+    
+    # Build the prompt
+    prompt_template = get_prompt_template()
+    
+    refactoring_details = f"""
+ID: {item.id}
+Title: {item.title}
+Priority: {item.priority}
+Category: {item.category}
+Description: {item.description}
+Proposed Solution: {item.metadata.get('proposed_solution', 'See description')}
+Files Affected: {', '.join(item.files_affected)}
+"""
+    
+    # Gather relevant code
+    code_context = ""
+    if item.files_affected:
+        code_context = gather_relevant_code(repo_root, item.files_affected)
+    else:
+        # Gather all code if no specific files
+        for rs_file in repo_root.rglob("*.rs"):
+            if "target" not in str(rs_file) and "flycheck" not in str(rs_file):
+                rel_path = rs_file.relative_to(repo_root)
+                content = rs_file.read_text()
+                code_context += f"\n// ========== FILE: {rel_path} ==========\n{content}"
+    
+    full_prompt = prompt_template.replace("{REFACTORING_DETAILS}", refactoring_details)
+    full_prompt += f"\n\n## CODE CONTEXT\n\n{code_context}"
+    
+    # Call AI
+    response = call_ai(full_prompt, config)
+    
+    # Extract and apply patch
+    patch = extract_patch(response)
+    
+    if not patch:
+        print("❌ Failed to extract patch from response")
+        return False
+    
+    if not apply_patch(repo_root, patch):
+        print("❌ Failed to apply patch")
+        return False
+    
+    # Validate
+    if not validate_changes(repo_root):
+        print("❌ Validation failed, rolling back...")
+        subprocess.run(["git", "checkout", "."], cwd=repo_root)
+        return False
+    
+    # Mark as completed
+    todo_list.mark_completed(item_id)
+    todo_list.save()
+    
+    print(f"\n✅ Refactoring {item_id} completed successfully")
+    return True
+
+
+def main():
+    """Main entry point."""
+    import sys
+    
+    if len(sys.argv) < 2:
+        print("Usage: python refactoring_executor.py <item_id>")
+        print("   or: python refactoring_executor.py next")
+        sys.exit(1)
+    
+    config = load_config()
+    repo_root = Path(__file__).parent.parent
+    
+    item_id = sys.argv[1]
+    
+    if item_id == "next":
+        # Get next item
+        todo_list = TodoList("refactoring", repo_root)
+        next_item = todo_list.get_next_item()
+        if not next_item:
+            print("No items available to work on")
+            sys.exit(0)
+        item_id = next_item.id
+        print(f"Working on next item: {item_id}")
+    
+    success = execute_refactoring(item_id, repo_root, config)
+    
+    if success:
+        print(f"\n{'=' * 60}")
+        print("Refactoring completed successfully")
+        print(f"{'=' * 60}")
+    else:
+        print(f"\n{'=' * 60}")
+        print("Refactoring failed")
+        print(f"{'=' * 60}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
