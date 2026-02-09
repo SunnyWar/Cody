@@ -1,58 +1,51 @@
 import os
 import json
 import subprocess
-import tempfile
 import datetime
 import requests
-
 from pathlib import Path
+from openai import OpenAI
 
 # -----------------------------
 # Load config
 # -----------------------------
-from pathlib import Path
-import json
-import os
-
 AGENT_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = AGENT_DIR / "config.json"
 CONFIG = json.load(open(CONFIG_PATH))
 
-# Load secrets from environment variables
+# Load secrets
 OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
+# ADD THIS: You need your repo name here (e.g., "yourusername/cody")
+GITHUB_REPO = CONFIG.get("github_repo", "yourusername/cody") 
 
-if not OPENAI_KEY:
-    raise RuntimeError("Missing OPENAI_API_KEY environment variable")
+# FIX: Check for keys only if they are actually needed
+if not CONFIG.get("use_local") and not OPENAI_KEY:
+    raise RuntimeError("Missing OPENAI_API_KEY for non-local mode")
 
 if not GITHUB_TOKEN:
     raise RuntimeError("Missing GITHUB_TOKEN environment variable")
 
-
 BRANCH_PREFIX = CONFIG["branch_prefix"]
 MODEL = CONFIG["model"]
 
-
-# Path to the system prompt inside the Cody repo
+# Path to system prompt
 SYSTEM_PROMPT_PATH = Path(__file__).resolve().parents[1] / ".github" / "ai" / "system.md"
-SYSTEM_PROMPT = SYSTEM_PROMPT_PATH.read_text()
-
+SYSTEM_PROMPT = SYSTEM_PROMPT_PATH.read_text() if SYSTEM_PROMPT_PATH.exists() else "You are a helpful coding assistant."
 
 # -----------------------------
 # Updated Helper: call AI (Local or Cloud)
 # -----------------------------
-from openai import OpenAI
-
 def call_ai(prompt):
-    # Use the local URL if provided, otherwise default to OpenAI
-    # api_key is required by the library but ignored by Ollama
-    client = OpenAI(
-        api_key=OPENAI_KEY if OPENAI_KEY else "ollama",
-        base_url=CONFIG.get("api_base", "https://api.openai.com/v1")
-    )
+    if CONFIG.get("use_local"):
+        client = OpenAI(
+            api_key="ollama", 
+            base_url=CONFIG.get("api_base", "http://localhost:11434/v1")
+        )
+    else:
+        client = OpenAI(api_key=OPENAI_KEY)
 
-    print(f"Sending request to {CONFIG.get('model')} at {client.base_url}...")
-
+    print(f"Requesting improvement from {MODEL}...")
     response = client.chat.completions.create(
         model=MODEL,
         messages=[
@@ -63,96 +56,20 @@ def call_ai(prompt):
     )
     return response.choices[0].message.content
 
+# ... [Keep your run, get_repo_root, and ensure_clean_repo functions as they are] ...
 
 # -----------------------------
-# Helper: run shell commands
-# -----------------------------
-def run(cmd, cwd=None):
-    print(f"Running: {cmd}")
-    result = subprocess.run(cmd, shell=True, cwd=cwd,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE,
-                            text=True)
-    if result.returncode != 0:
-        print(result.stdout)
-        print(result.stderr)
-        raise RuntimeError(f"Command failed: {cmd}")
-    return result.stdout
-
-
-def get_repo_root():
-    # agent.py is in Cody/cody-agent/
-    # repo root is one directory up
-    return Path(__file__).resolve().parents[1]
-
-
-def ensure_clean_repo(repo_path):
-    status = run("git status --porcelain", cwd=repo_path)
-    if status.strip():
-        raise RuntimeError("Repo has uncommitted changes. Agent will not proceed.")
-
-
-# -----------------------------
-# Step 2: Ask AI for a patch
-# -----------------------------
-def generate_patch(repo_path):
-    # Read all Rust files
-    code = ""
-    for path in repo_path.rglob("*.rs"):
-        rel = path.relative_to(repo_path)
-        code += f"\n\n// FILE: {rel}\n"
-        code += path.read_text()
-
-    prompt = f"""
-You are Cody's autonomous improvement agent.
-
-Here is the current codebase:
-
-{code}
-
-Generate a unified diff patch (git format) that improves the engine.
-Follow these rules:
-- Only output the patch, nothing else.
-- The patch must apply cleanly with `git apply`.
-- Keep changes focused and incremental.
-- Follow idiomatic Rust.
-- Use best-practice crates when appropriate.
-- Maintain correctness.
-- Do not break build or tests.
-"""
-
-    return call_ai(prompt)
-
-
-# -----------------------------
-# Step 3: Apply patch
-# -----------------------------
-def apply_patch(repo_path, patch_text):
-    patch_file = repo_path / "patch.diff"
-    patch_file.write_text(patch_text)
-
-    try:
-        run(f"git apply patch.diff", cwd=repo_path)
-    except Exception:
-        print("Patch failed to apply.")
-        return False
-
-    return True
-
-
-# -----------------------------
-# Step 4: Commit, push, PR
+# Step 4: Commit, push, PR (Fixed GITHUB_REPO usage)
 # -----------------------------
 def create_pr(repo_path):
-    timestamp = datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d-%H%M%S")
     branch = f"{BRANCH_PREFIX}{timestamp}"
 
     run(f"git checkout -b {branch}", cwd=repo_path)
     run("git add .", cwd=repo_path)
-    run(f'git commit -m "AI-generated improvement {timestamp}"', cwd=repo_path)
+    run(f'git commit -m "AI improvement {timestamp}"', cwd=repo_path)
     run(f"git push origin {branch}", cwd=repo_path)
 
-    # Create PR via GitHub API
     url = f"https://api.github.com/repos/{GITHUB_REPO}/pulls"
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
@@ -162,7 +79,7 @@ def create_pr(repo_path):
         "title": f"AI Improvement {timestamp}",
         "head": branch,
         "base": "main",
-        "body": "Automated AI-generated improvement."
+        "body": "Automated AI-generated improvement using local LLM."
     }
 
     r = requests.post(url, headers=headers, json=data)
@@ -171,21 +88,4 @@ def create_pr(repo_path):
 
     print("PR created:", r.json()["html_url"])
 
-
-# -----------------------------
-# Main
-# -----------------------------
-def main():
-    repo = get_repo_root()
-    ensure_clean_repo(repo)
-    patch = generate_patch(repo)
-
-    if not apply_patch(repo, patch):
-        print("Skipping PR due to patch failure.")
-        return
-
-    create_pr(repo)
-
-
-if __name__ == "__main__":
-    main()
+# ... [Keep main function as it is] ...

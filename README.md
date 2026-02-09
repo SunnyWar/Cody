@@ -24,14 +24,22 @@ Quiescence Search to avoid the "horizon effect."
 Evaluation: Hand-crafted AI heuristics including Piece-Square Tables (PST) and material imbalance weights.
 ---
 
-How it works.
-Running Locally (Zero Cost & Private)
-If you want to run Cody's improvement agent without an OpenAI API key, you can run a local LLM using Ollama.
+How it works
 
-Install Ollama: Download and install from ollama.com.
-https://ollama.com/
+Set environment variables:
+SET OPENAI_KEY = "OPENAI_API_KEY"
+SET GITHUB_TOKEN = "GITHUB_TOKEN"
 
-Pull a Coding Model: Open your terminal and download a model optimized for programming (we recommend deepseek-coder-v2 or llama3.1).
+## 🏠 Running Locally (Zero Cost & Private)
+If you want to run Cody's improvement agent without an OpenAI account, you can use **Ollama**.
+
+1.  **Install Ollama:** Download from [ollama.com](https://ollama.com/).
+2.  **Pull a Model:**
+    ```bash
+    ollama pull deepseek-coder-v2:16b-lite-instruct-q4_K_M
+    ```
+3.  **Local Configuration:** In `config.json`, set `"use_local": true`. 
+4.  **No API Key Needed:** When `use_local` is true, the agent uses a placeholder key to bypass the OpenAI login requirement.
 
 Bash
 ollama pull deepseek-coder-v2:16b-lite-instruct-q4_K_M
