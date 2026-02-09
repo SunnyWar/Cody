@@ -31,3 +31,4 @@ gauntlet.pgn
 
 # Local configuration (never commit this)
 config.json
+cody-agent/__pycache__/
