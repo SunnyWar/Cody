@@ -60,7 +60,7 @@ class Orchestrator:
         log_line = f"[{timestamp}] {message}"
         print(log_line)
         
-        with open(self.log_file, 'a') as f:
+        with open(self.log_file, 'a', encoding='utf-8') as f:
             f.write(log_line + "\n")
     
     def _load_state(self) -> Dict[str, Any]:
