@@ -24,5 +24,10 @@ Quiescence Search to avoid the "horizon effect."
 Evaluation: Hand-crafted AI heuristics including Piece-Square Tables (PST) and material imbalance weights.
 ---
 
+How it works.
+Currently a local script is run. This script instructs an AI to find a change to the code. It is run as a scheduled task.
+python .\cody-agent\agent.py
+
+
 ## 🛠 License
 MIT License — see `LICENSE` for details.
