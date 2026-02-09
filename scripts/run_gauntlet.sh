@@ -60,7 +60,6 @@ log = open("gauntlet.log").read()
 # Parse SPRT result from cutechess-cli output
 sprt_status = "unknown"
 sprt_llr = None
-sprt_bounds = None
 
 # Look for SPRT decision lines
 # Cutechess-cli outputs lines like:
