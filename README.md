@@ -25,16 +25,66 @@ Evaluation: Hand-crafted AI heuristics including Piece-Square Tables (PST) and m
 ---
 
 How it works.
-Currently a local script is run. This script instructs an AI to find a change to the code. It is run as a scheduled task.
-1. install openai
-pip install openai
+Running Locally (Zero Cost & Private)
+If you want to run Cody's improvement agent without an OpenAI API key, you can run a local LLM using Ollama.
 
-2. set api keys as environment variables
-SET OPENAI_API_KEY	sk-xxxxxxx...
-SET GITHUB_TOKEN	ghp_xxxxxxx...
+Install Ollama: Download and install from ollama.com.
+https://ollama.com/
 
-2. run script whenever you want to update Cody
-python .\cody-agent\agent.py
+Pull a Coding Model: Open your terminal and download a model optimized for programming (we recommend deepseek-coder-v2 or llama3.1).
+
+Bash
+ollama pull deepseek-coder-v2:16b-lite-instruct-q4_K_M
+Start the Server: Ensure Ollama is running (it usually starts automatically in the system tray).
+
+Configure Agent: In your config.json, set the following:
+
+"model": "deepseek-coder-v2:16b-lite-instruct-q4_K_M"
+
+"use_local": true (ensure your script is updated to handle this flag).
+
+💻 Updated agent.py Logic
+To make this work, we need to point the OpenAI client to your local machine instead of OpenAI's servers.
+
+Step 1: Update your config.json
+Add a base_url or a local flag so the script knows where to look.
+
+JSON
+{
+    "branch_prefix": "ai-feature-",
+    "model": "deepseek-coder-v2:16b-lite-instruct-q4_K_M",
+    "api_base": "http://localhost:11434/v1"
+}
+Step 2: Modify agent.py
+Find your call_ai function and update it to use the api_base from your config.
+
+Python
+# ... (existing imports)
+
+# -----------------------------
+# Updated Helper: call AI (Local or Cloud)
+# -----------------------------
+from openai import OpenAI
+
+def call_ai(prompt):
+    # Use the local URL if provided, otherwise default to OpenAI
+    # api_key is required by the library but ignored by Ollama
+    client = OpenAI(
+        api_key=OPENAI_KEY if OPENAI_KEY else "ollama",
+        base_url=CONFIG.get("api_base", "https://api.openai.com/v1")
+    )
+
+    print(f"Sending request to {CONFIG.get('model')} at {client.base_url}...")
+
+    response = client.chat.completions.create(
+        model=MODEL,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.4
+    )
+    return response.choices[0].message.content
 
 
 ## 🛠 License

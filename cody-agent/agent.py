@@ -39,12 +39,19 @@ SYSTEM_PROMPT = SYSTEM_PROMPT_PATH.read_text()
 
 
 # -----------------------------
-# Helper: call OpenAI
+# Updated Helper: call AI (Local or Cloud)
 # -----------------------------
 from openai import OpenAI
 
 def call_ai(prompt):
-    client = OpenAI(api_key=OPENAI_KEY)
+    # Use the local URL if provided, otherwise default to OpenAI
+    # api_key is required by the library but ignored by Ollama
+    client = OpenAI(
+        api_key=OPENAI_KEY if OPENAI_KEY else "ollama",
+        base_url=CONFIG.get("api_base", "https://api.openai.com/v1")
+    )
+
+    print(f"Sending request to {CONFIG.get('model')} at {client.base_url}...")
 
     response = client.chat.completions.create(
         model=MODEL,
@@ -54,7 +61,6 @@ def call_ai(prompt):
         ],
         temperature=0.4
     )
-
     return response.choices[0].message.content
 
 
