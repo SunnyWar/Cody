@@ -12,8 +12,11 @@ the orchestrator moves to the next task in sequence.
 
 Workflow progression:
 - Refactoring phase: analyze once, then execute tasks one per run (only code changes)
+- Clippy phase: run after each phase to keep warnings in check
 - Performance phase: analyze once, then execute tasks one per run (only code changes)
+- Clippy phase: run after each phase to keep warnings in check
 - Features phase: execute up to 3 features (one per run), rerun earlier phases if large diffs
+- Clippy phase: run after each phase to keep warnings in check
 
 State file tracks: current_phase, phase_started (datetime), features_completed
 """
@@ -32,6 +35,8 @@ import refactoring_analyzer
 import refactoring_executor
 import performance_analyzer
 import performance_executor
+import clippy_analyzer
+import clippy_executor
 import features_analyzer
 import features_executor
 
@@ -40,7 +45,7 @@ class Orchestrator:
     """Master orchestrator for single-merge-per-run workflow."""
     
     STATE_FILE = "orchestrator_state.json"
-    PHASES = ["refactoring", "performance", "features"]
+    MAIN_PHASES = ["refactoring", "performance", "features"]
     
     def __init__(self, repo_root: Path, config: dict):
         self.repo_root = repo_root
@@ -70,6 +75,7 @@ class Orchestrator:
             "phase_started": datetime.now().isoformat(),  # when we started this phase
             "analysis_done": False,              # have we analyzed current phase?
             "features_completed": 0,             # count of features done (for 3-feature limit)
+            "resume_phase": None,                # where to resume after clippy
             "last_run": None,
             "run_count": 0
         }
@@ -81,12 +87,20 @@ class Orchestrator:
         with open(self.state_file, 'w') as f:
             json.dump(self.state, f, indent=2)
     
-    def _advance_phase(self):
-        """Move to next phase in workflow."""
-        current_idx = self.PHASES.index(self.state["current_phase"])
-        if current_idx < len(self.PHASES) - 1:
-            self.state["current_phase"] = self.PHASES[current_idx + 1]
-        # else: we're done (features)
+    def _advance_main_phase(self, from_phase: str):
+        """Move to the next main phase, inserting clippy cleanup in between."""
+        current_idx = self.MAIN_PHASES.index(from_phase)
+        if current_idx < len(self.MAIN_PHASES) - 1:
+            next_phase = self.MAIN_PHASES[current_idx + 1]
+        else:
+            next_phase = None
+
+        self._set_clippy_phase(next_phase)
+
+    def _set_clippy_phase(self, resume_phase: Optional[str]):
+        """Switch to clippy phase and store where to resume afterward."""
+        self.state["current_phase"] = "clippy"
+        self.state["resume_phase"] = resume_phase
         self.state["analysis_done"] = False
         self.state["phase_started"] = datetime.now().isoformat()
         self._save_state()
@@ -156,6 +170,8 @@ class Orchestrator:
                 return self._run_refactoring_task()
             elif phase == "performance":
                 return self._run_performance_task()
+            elif phase == "clippy":
+                return self._run_clippy_task()
             elif phase == "features":
                 return self._run_features_task()
             else:
@@ -193,7 +209,7 @@ class Orchestrator:
         
         if not next_item:
             self.log("\n✅ Refactoring phase complete, moving to performance...")
-            self._advance_phase()
+            self._advance_main_phase("refactoring")
             # Recursively execute next phase
             return self.run_single_improvement()
         
@@ -241,7 +257,7 @@ class Orchestrator:
         
         if not next_item:
             self.log("\n✅ Performance phase complete, moving to features...")
-            self._advance_phase()
+            self._advance_main_phase("performance")
             # Recursively execute next phase
             return self.run_single_improvement()
         
@@ -281,10 +297,9 @@ class Orchestrator:
         # Check if we've hit feature limit
         if features_done >= max_features:
             self.log(f"\n✅ Features phase complete (executed {features_done}/{max_features})")
-            self.log("✅ WORKFLOW COMPLETE!")
-            self._save_state()
-            return False
-        
+            self._advance_main_phase("features")
+            return self.run_single_improvement()
+
         # Analyze if not yet done
         if not self.state["analysis_done"]:
             self.log("\nAnalyzing feature opportunities...")
@@ -292,17 +307,16 @@ class Orchestrator:
             self.log(f"Found {added} feature opportunities")
             self.state["analysis_done"] = True
             self._save_state()
-        
+
         # Get next task
         todo_list = TodoList("features", self.repo_root)
         next_item = todo_list.get_next_item()
-        
+
         if not next_item:
             self.log(f"\n✅ No more features available ({features_done}/{max_features})")
-            self.log("✅ WORKFLOW COMPLETE!")
-            self._save_state()
-            return False
-        
+            self._advance_main_phase("features")
+            return self.run_single_improvement()
+
         # Execute the single feature
         self.log(f"\n📝 Feature {features_done + 1}/{max_features}: {next_item.id} - {next_item.title}")
         success, diff_size = features_executor.execute_feature(
@@ -310,14 +324,14 @@ class Orchestrator:
             self.repo_root,
             self.config
         )
-        
+
         if success:
             # Check for actual code changes (exclude TODO files)
             if self._has_code_changes():
                 self.log(f"✅ Successfully completed: {next_item.id}")
                 self._create_checkpoint(f"Feature: {next_item.id}")
                 self.state["features_completed"] = features_done + 1
-                
+
                 # If large diff, trigger refactoring and performance passes
                 if diff_size == "large":
                     self.log(f"\n📏 Large diff detected - queueing refactoring & performance passes")
@@ -325,7 +339,8 @@ class Orchestrator:
                     self.state["current_phase"] = "refactoring"
                     self.state["analysis_done"] = False
                     self.state["phase_started"] = datetime.now().isoformat()
-                
+                    self.state["resume_phase"] = None
+
                 self._save_state()
                 return True
             else:
@@ -336,6 +351,64 @@ class Orchestrator:
             self.log(f"❌ Failed: {next_item.id}")
             self._save_state()
             return False
+
+    def _run_clippy_task(self) -> bool:
+        """Run one clippy task. Return True if actual code was merged, False if phase changed."""
+        self.log("\n" + "=" * 70)
+        self.log("CLIPPY WARNINGS PHASE")
+        self.log("=" * 70)
+
+        # Analyze if not yet done
+        if not self.state["analysis_done"]:
+            self.log("\nAnalyzing clippy warnings and performance lints...")
+            added = clippy_analyzer.analyze(self.repo_root, self.config)
+            self.log(f"Found {added} clippy opportunities")
+            self.state["analysis_done"] = True
+            self._save_state()
+
+        # Get next task
+        todo_list = TodoList("clippy", self.repo_root)
+        next_item = todo_list.get_next_item()
+
+        if not next_item:
+            resume_phase = self.state.get("resume_phase")
+            if resume_phase:
+                self.log(f"\n✅ Clippy phase complete, moving to {resume_phase}...")
+                self.state["current_phase"] = resume_phase
+                self.state["resume_phase"] = None
+                self.state["analysis_done"] = False
+                self.state["phase_started"] = datetime.now().isoformat()
+                self._save_state()
+                return self.run_single_improvement()
+
+            self.log("\n✅ Clippy phase complete. WORKFLOW COMPLETE!")
+            self._save_state()
+            return False
+
+        # Execute the single task
+        self.log(f"\n📝 Working on: {next_item.id} - {next_item.title}")
+        success = clippy_executor.execute_clippy_fix(
+            next_item.id,
+            self.repo_root,
+            self.config
+        )
+
+        if success:
+            # Check for actual code changes (exclude TODO files)
+            if self._has_code_changes():
+                self.log(f"✅ Successfully completed: {next_item.id}")
+                self._create_checkpoint(f"Clippy: {next_item.id}")
+                self._save_state()
+                return True
+            else:
+                self.log(f"ℹ️ Task completed but no code changes made (TODO-only): {next_item.id}")
+                # Mark as done in TODO but continue to next task
+                return self._run_clippy_task()
+        else:
+            self.log(f"❌ Failed: {next_item.id}")
+            self._save_state()
+            return False
+        
     
     def _create_checkpoint(self, name: str):
         """Create a git checkpoint."""

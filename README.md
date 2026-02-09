@@ -101,6 +101,11 @@ def call_ai(prompt):
     )
     return response.choices[0].message.content
 
+## Human TODO items
+1. Need PGO optimization
+2. Need parameter tuning
+3. Need SPRT testing
+4. Need strong AI evaluation (premium models)
 
 ## 🛠 License
 MIT License — see `LICENSE` for details.
