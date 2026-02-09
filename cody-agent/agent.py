@@ -9,13 +9,18 @@ from openai import OpenAI
 # -----------------------------
 # 1. Configuration & Secrets
 # -----------------------------
+# ... inside the config loading section ...
 AGENT_DIR = Path(__file__).resolve().parent
-# Assuming the script is in /cody-agent/ and the project is in the parent dir
-REPO_ROOT = AGENT_DIR.parent 
 CONFIG_PATH = AGENT_DIR / "config.json"
+SAMPLE_PATH = AGENT_DIR / "config.sample.json"
 
 if not CONFIG_PATH.exists():
-    raise FileNotFoundError(f"Config file not found at {CONFIG_PATH}")
+    if SAMPLE_PATH.exists():
+        print("❌ Error: 'config.json' not found.")
+        print(f"👉 Please copy '{SAMPLE_PATH.name}' to 'config.json' and edit your settings.")
+    else:
+        print("❌ Error: No configuration files found.")
+    exit(1)
 
 CONFIG = json.load(open(CONFIG_PATH))
 
@@ -32,6 +37,7 @@ BRANCH_PREFIX = CONFIG["branch_prefix"]
 MODEL = CONFIG["model"]
 
 # Load System Prompt
+REPO_ROOT = AGENT_DIR.parent
 SYSTEM_PROMPT_PATH = REPO_ROOT / ".github" / "ai" / "system.md"
 SYSTEM_PROMPT = SYSTEM_PROMPT_PATH.read_text() if SYSTEM_PROMPT_PATH.exists() else "You are a senior Rust engineer building a chess engine."
 
