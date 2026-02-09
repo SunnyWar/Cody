@@ -7,6 +7,7 @@ Analyzes the Cody chess engine codebase for refactoring opportunities.
 import os
 import sys
 import json
+import re
 from pathlib import Path
 from openai import OpenAI
 from todo_manager import TodoList, generate_unique_id
@@ -92,22 +93,24 @@ def call_ai(prompt: str, config: dict) -> str:
 
 
 def extract_json_from_response(response: str) -> list:
-    """Extract JSON array from AI response."""
-    # Try to find JSON in code blocks
-    if "```json" in response:
-        start = response.find("```json") + 7
-        end = response.find("```", start)
-        json_str = response[start:end].strip()
-    elif "```" in response:
-        start = response.find("```") + 3
-        end = response.find("```", start)
-        json_str = response[start:end].strip()
+    """Extract JSON array from AI response using regex."""
+    # Try to find JSON in code blocks (```json ... ```)
+    match = re.search(r"```json\s*([\s\S]*?)\s*```", response, re.DOTALL)
+    if match:
+        json_str = match.group(1).strip()
+    # Fallback: try generic code blocks (``` ... ```)
     else:
-        # Try to parse the whole response
-        json_str = response.strip()
+        match = re.search(r"```\s*([\s\S]*?)\s*```", response, re.DOTALL)
+        if match:
+            json_str = match.group(1).strip()
+        else:
+            # No code block found, try to parse the whole response
+            json_str = response.strip()
     
     try:
-        return json.loads(json_str)
+        result = json.loads(json_str)
+        # Ensure we return a list
+        return result if isinstance(result, list) else []
     except json.JSONDecodeError as e:
         print(f"❌ Failed to parse JSON: {e}")
         print(f"Response preview: {response[:500]}...")
