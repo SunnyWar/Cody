@@ -1,5 +1,5 @@
 {
-  "github_repo": "SunnyWar/Cody",
-  "branch_prefix": "cody-ai-",
-  "model": "gpt-4.1"
+    "branch_prefix": "ai-feature-",
+    "model": "deepseek-coder-v2:16b-lite-instruct-q4_K_M",
+    "api_base": "http://localhost:11434/v1"
 }
