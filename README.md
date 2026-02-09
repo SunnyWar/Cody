@@ -23,6 +23,13 @@ Quiescence Search to avoid the "horizon effect."
 
 Evaluation: Hand-crafted AI heuristics including Piece-Square Tables (PST) and material imbalance weights.
 ---
+## 🧠 How Cody Learns
+Cody uses a recursive feedback loop. When the agent attempts a code improvement:
+1. **Hypothesize:** The LLM suggests a chess logic improvement (e.g., "Implement Null Move Pruning").
+2. **Execute:** `agent.py` applies the patch.
+3. **Verify:** The local environment runs `cargo test`. 
+4. **Refine:** If tests fail, Cody analyzes the compiler error and self-corrects.
+
 
 How it works
 
