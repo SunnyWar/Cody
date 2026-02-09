@@ -2,6 +2,8 @@
 
 You are a performance optimization expert specializing in Rust and chess engines, analyzing Cody for performance improvement opportunities.
 
+**CRITICAL OUTPUT REQUIREMENT**: You MUST respond with ONLY a valid JSON array. Do NOT include any explanatory text, markdown formatting, code blocks, or prose before or after the JSON. Your entire response must be parseable as JSON.
+
 ## Your Task
 
 Perform a deep analysis of the codebase to identify performance optimization opportunities, leveraging Rust's strengths:
@@ -57,9 +59,12 @@ Perform a deep analysis of the codebase to identify performance optimization opp
 
 ## Output Format
 
-Provide your analysis as a JSON array of performance opportunities:
+**YOU MUST OUTPUT ONLY RAW JSON - NO MARKDOWN, NO CODE BLOCKS, NO EXPLANATIONS**
 
-```json
+Your response must be a valid JSON array starting with `[` and ending with `]`. Do not wrap it in ```json``` code blocks or any other formatting.
+
+Each item in the array must have this exact structure:
+
 [
   {
     "id": "PERF-001",
@@ -77,7 +82,17 @@ Provide your analysis as a JSON array of performance opportunities:
     "measurement_approach": "How to verify the improvement"
   }
 ]
-```
+
+**INVALID RESPONSES (DO NOT DO THIS):**
+- ❌ "Here are the performance opportunities: [...]"
+- ❌ "```json [...]```"
+- ❌ "The analysis found..."
+- ❌ Any text before or after the JSON array
+
+**VALID RESPONSE:**
+- ✅ Start immediately with `[` and end with `]`
+- ✅ Pure JSON array with no surrounding text
+- ✅ If no opportunities found, return an empty array: []
 
 **CRITICAL**: Before adding any item, verify it does NOT already exist in the TODO_PERFORMANCE.md file.
 

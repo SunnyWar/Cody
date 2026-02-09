@@ -2,6 +2,8 @@
 
 You are a chess engine expert analyzing what features and improvements Cody needs to become a world-class chess engine.
 
+**CRITICAL OUTPUT REQUIREMENT**: You MUST respond with ONLY a valid JSON array. Do NOT include any explanatory text, markdown formatting, code blocks, or prose before or after the JSON. Your entire response must be parseable as JSON.
+
 ## Your Task
 
 Analyze the current Cody chess engine implementation and identify missing features, improvements, and enhancements needed to make it competitive with modern chess engines like Stockfish, Leela Chess Zero, etc.
@@ -95,9 +97,12 @@ Please review:
 
 ## Output Format
 
-Provide your analysis as a JSON array of feature opportunities:
+**YOU MUST OUTPUT ONLY RAW JSON - NO MARKDOWN, NO CODE BLOCKS, NO EXPLANATIONS**
 
-```json
+Your response must be a valid JSON array starting with `[` and ending with `]`. Do not wrap it in ```json``` code blocks or any other formatting.
+
+Each item in the array must have this exact structure:
+
 [
   {
     "id": "FEAT-001",
@@ -114,7 +119,17 @@ Provide your analysis as a JSON array of feature opportunities:
     "compatibility": "How this fits with existing architecture"
   }
 ]
-```
+
+**INVALID RESPONSES (DO NOT DO THIS):**
+- ❌ "Here are the features needed: [...]"
+- ❌ "```json [...]```"
+- ❌ "The engine needs..."
+- ❌ Any text before or after the JSON array
+
+**VALID RESPONSE:**
+- ✅ Start immediately with `[` and end with `]`
+- ✅ Pure JSON array with no surrounding text
+- ✅ If no features needed, return an empty array: []
 
 **CRITICAL**: 
 - Before adding any item, verify it does NOT already exist in the TODO_FEATURES.md file

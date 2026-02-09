@@ -83,7 +83,7 @@ def call_ai(prompt: str, config: dict) -> str:
     response = client.chat.completions.create(
         model=model,
         messages=[
-            {"role": "system", "content": "You are a senior Rust architect analyzing code for refactoring opportunities."},
+            {"role": "system", "content": "You are a senior Rust architect analyzing code for refactoring opportunities. You MUST respond with ONLY valid JSON. Do not include any text, explanations, or markdown formatting - only output the raw JSON array."},
             {"role": "user", "content": prompt}
         ],
         temperature=0.3
