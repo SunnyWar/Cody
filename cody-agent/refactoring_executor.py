@@ -68,7 +68,14 @@ def call_ai(prompt: str, config: dict) -> str:
             base_url=config.get("api_base", "http://localhost:11434/v1")
         )
     else:
-        client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            print(f"\n❌ Error: OPENAI_API_KEY environment variable not set")
+            print(f"\n   Set your API key:")
+            print(f"   export OPENAI_API_KEY=sk-...")
+            print(f"\n   Or configure 'use_local': true in config.json to use a local LLM.\n")
+            sys.exit(1)
+        client = OpenAI(api_key=api_key)
     
     model = config["model"]
     print(f"🤖 Implementing with {model}...")
