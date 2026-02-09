@@ -96,6 +96,8 @@ python .\cody-agent\orchestrator.py
    - Register machines.
 4. **Strong AI evaluation (premium models)**
    - Secure funding.
+5. **Tune orchestration**
+   - Log summary of things tried, only allow retry after signifant code changes
 
 ## 🛠 License
 
