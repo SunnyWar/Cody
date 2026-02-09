@@ -5,24 +5,30 @@
     "version": "0.2.0",
     "configurations": [
         {
-    "type": "lldb",
-    "request": "launch",
-    "name": "Debug executable 'Cody'",
-    "cargo": {
-        "args": [
-            "build",
-            "--bin=Cody",
-            "--package=Cody"
-        ],
-        "filter": {
-            "name": "Cody",
-            "kind": "bin"
-        }
-    },
-    "args": [],
-    "cwd": "${workspaceFolder}"
-}
-,
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'Cody'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=Cody",
+                    "--package=Cody"
+                ],
+                "filter": {
+                    "name": "Cody",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
         {
             "type": "lldb",
             "request": "launch",
