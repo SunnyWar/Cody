@@ -141,7 +141,7 @@ def call_ai(prompt: str, config: dict) -> str:
         messages=[
             {
                 "role": "system",
-                "content": "You are a senior Rust engineer analyzing clippy output."
+                "content": "You are a senior Rust engineer analyzing clippy output. You MUST respond with ONLY valid JSON. Do not include any text, explanations, or markdown formatting - only output the raw JSON array."
             },
             {"role": "user", "content": prompt}
         ],
