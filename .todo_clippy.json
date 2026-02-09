@@ -1,0 +1,127 @@
+[
+  {
+    "id": "CLIP-001",
+    "title": "Avoid long literals lacking separators",
+    "priority": "medium",
+    "category": "",
+    "description": "Consider using underscores to improve readability of large numeric literals.",
+    "status": "not-started",
+    "created_at": "2026-02-09T11:07:22.850141",
+    "completed_at": null,
+    "estimated_complexity": "medium",
+    "files_affected": [],
+    "dependencies": [],
+    "file": "bitboard/src/tables/bishop_attack.rs",
+    "line": 6,
+    "suggestions": [
+      {
+        "suggestion": "BitBoardMask(0x8040201008040200)",
+        "replacement": "BitBoardMask(0x8040_2010_0804_0200)"
+      },
+      {
+        "suggestion": "BitBoardMask(0x0000000000000200)",
+        "replacement": "BitBoardMask(0x0000_0000_0000_0200)"
+      },
+      {
+        "suggestion": "BitBoardMask(0x0000000000040200)",
+        "replacement": "BitBoardMask(0x0000_0000_0004_0200)"
+      },
+      {
+        "suggestion": "BitBoardMask(0x0000000000000200)",
+        "replacement": "BitBoardMask(0x0000_0000_0000_0200)"
+      }
+    ]
+  },
+  {
+    "id": "CLIP-002",
+    "title": "Use underscores in numeric literals for readability",
+    "priority": "medium",
+    "category": "",
+    "description": "Consider using underscores to improve readability of large numeric literals.",
+    "status": "not-started",
+    "created_at": "2026-02-09T11:07:22.851785",
+    "completed_at": null,
+    "estimated_complexity": "medium",
+    "files_affected": [],
+    "dependencies": [],
+    "file": "engine/src/api/uciapi.rs",
+    "line": 307,
+    "suggestions": [
+      {
+        "suggestion": "(total_nodes as f64 / (total_time_ms as f64 / 1000.0)) as u64",
+        "replacement": "(total_nodes as f64 / (total_time_ms as f64 / 1000.0)) as u64"
+      }
+    ]
+  },
+  {
+    "id": "CLIP-003",
+    "title": "Use direct variable access in format strings",
+    "priority": "medium",
+    "category": "",
+    "description": "Consider using direct variable access in `format!` string for better readability and performance.",
+    "status": "not-started",
+    "created_at": "2026-02-09T11:07:22.852490",
+    "completed_at": null,
+    "estimated_complexity": "medium",
+    "files_affected": [],
+    "dependencies": [],
+    "file": "engine/src/api/uciapi.rs",
+    "line": 310,
+    "suggestions": [
+      {
+        "suggestion": "&format!(\"Total time (ms) : {}\", total_time_ms)",
+        "replacement": "&format!(\"Total time (ms) : {total_time_ms}\")"
+      },
+      {
+        "suggestion": "&format!(\"Nodes searched  : {}\", total_nodes)",
+        "replacement": "&format!(\"Nodes searched  : {total_nodes}\")"
+      },
+      {
+        "suggestion": "&format!(\"Nodes/second    : {}\", total_nps)",
+        "replacement": "&format!(\"Nodes/second    : {total_nps}\")"
+      }
+    ]
+  },
+  {
+    "id": "CLIP-004",
+    "title": "Prefer `!is_empty` over length comparison to zero",
+    "priority": "medium",
+    "category": "",
+    "description": "Using `!is_empty` is clearer and more explicit than comparing the length of a collection to zero.",
+    "status": "not-started",
+    "created_at": "2026-02-09T11:07:22.852863",
+    "completed_at": null,
+    "estimated_complexity": "medium",
+    "files_affected": [],
+    "dependencies": [],
+    "file": "engine/src/main.rs",
+    "line": 17,
+    "suggestions": [
+      {
+        "suggestion": "args.is_empty() || (args.len() > 0 && args[0] != \"perft\")",
+        "replacement": "!args.is_empty() || (!args.is_empty() && args[0] != \"perft\")"
+      }
+    ]
+  },
+  {
+    "id": "CLIP-005",
+    "title": "Use references in loop over containers for better performance",
+    "priority": "medium",
+    "category": "",
+    "description": "Using references in loops can improve performance by avoiding unnecessary cloning of elements.",
+    "status": "not-started",
+    "created_at": "2026-02-09T11:07:22.853263",
+    "completed_at": null,
+    "estimated_complexity": "medium",
+    "files_affected": [],
+    "dependencies": [],
+    "file": "engine/src/main.rs",
+    "line": 19,
+    "suggestions": [
+      {
+        "suggestion": "for a in args.iter()",
+        "replacement": "for &a in &args"
+      }
+    ]
+  }
+]
