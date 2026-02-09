@@ -1,0 +1,196 @@
+"""
+Features Analysis Agent
+
+Analyzes what features Cody needs to become a world-class chess engine.
+"""
+
+import os
+import json
+from pathlib import Path
+from openai import OpenAI
+from todo_manager import TodoList, generate_unique_id
+
+
+def load_config():
+    """Load configuration."""
+    config_path = Path(__file__).parent / "config.json"
+    with open(config_path) as f:
+        return json.load(f)
+
+
+def get_prompt_template():
+    """Load the features analysis prompt."""
+    repo_root = Path(__file__).parent.parent
+    prompt_path = repo_root / ".github" / "ai" / "prompts" / "features_analysis.md"
+    return prompt_path.read_text()
+
+
+def gather_project_context(repo_root: Path) -> str:
+    """Gather architecture, current features, and all code."""
+    context = []
+    
+    # Include architecture docs
+    for doc_file in ["architecture.md", "README.md", "TODO.md"]:
+        doc_path = repo_root / doc_file
+        if doc_path.exists():
+            context.append(f"\n// ========== {doc_file} ==========\n{doc_path.read_text()}")
+    
+    # Gather all Rust source files (not just key ones, to handle future expansion)
+    # Prioritize certain files by processing them first
+    priority_patterns = [
+        "engine/src/lib.rs",
+        "engine/src/search/engine.rs",
+        "engine/src/api/uciapi.rs",
+        "bitboard/src/lib.rs",
+        "bitboard/src/position.rs",
+        "bitboard/src/movegen/mod.rs",
+    ]
+    
+    processed_files = set()
+    
+    # Process priority files first (max 2000 chars each)
+    for pattern in priority_patterns:
+        full_path = repo_root / pattern
+        if full_path.exists():
+            rel_path = pattern
+            content = full_path.read_text()
+            context.append(f"\n// ========== {rel_path} ==========\n{content[:2000]}")
+            processed_files.add(full_path)
+    
+    # Process all other Rust files (max 1500 chars each)
+    for rs_file in sorted(repo_root.rglob("*.rs")):
+        if "target" in str(rs_file) or "flycheck" in str(rs_file):
+            continue
+        if rs_file in processed_files:
+            continue
+        
+        rel_path = rs_file.relative_to(repo_root)
+        content = rs_file.read_text()
+        context.append(f"\n// ========== {rel_path} ==========\n{content[:1500]}")
+        processed_files.add(rs_file)
+    
+    return "\n".join(context)
+
+
+def call_ai(prompt: str, config: dict) -> str:
+    """Call the AI with the prompt."""
+    if config.get("use_local"):
+        client = OpenAI(
+            api_key="ollama", 
+            base_url=config.get("api_base", "http://localhost:11434/v1")
+        )
+    else:
+        client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    
+    model = config["model"]
+    print(f"🤖 Analyzing features with {model}...")
+    
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": "You are a chess engine expert analyzing what features are needed for a world-class engine."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.4
+    )
+    
+    return response.choices[0].message.content
+
+
+def extract_json_from_response(response: str) -> list:
+    """Extract JSON array from AI response."""
+    if "```json" in response:
+        start = response.find("```json") + 7
+        end = response.find("```", start)
+        json_str = response[start:end].strip()
+    elif "```" in response:
+        start = response.find("```") + 3
+        end = response.find("```", start)
+        json_str = response[start:end].strip()
+    else:
+        json_str = response.strip()
+    
+    try:
+        return json.loads(json_str)
+    except json.JSONDecodeError as e:
+        print(f"❌ Failed to parse JSON: {e}")
+        print(f"Response preview: {response[:500]}...")
+        return []
+
+
+def analyze(repo_root: Path, config: dict) -> int:
+    """Run features analysis and update TODO list."""
+    print("=" * 60)
+    print("WORLD-CLASS FEATURES ANALYSIS")
+    print("=" * 60)
+    
+    # Load existing TODO list
+    todo_list = TodoList("features", repo_root)
+    existing_ids = todo_list.get_all_ids()
+    
+    # Build the prompt
+    prompt_template = get_prompt_template()
+    project_context = gather_project_context(repo_root)
+    
+    # Include existing TODO items
+    existing_todos_info = ""
+    if todo_list.items:
+        existing_todos_info = "\n## Existing TODO Items (DO NOT DUPLICATE)\n\n"
+        for item in todo_list.items:
+            existing_todos_info += f"- {item.id}: {item.title} [{item.status}]\n"
+    
+    # Validation instruction
+    validation_note = """
+## VALIDATION REQUIREMENT
+
+Before adding any feature:
+1. Check if it's already implemented in the current codebase
+2. Check if it's already in the existing TODO list above
+3. Verify it's compatible with the fixed-block arena architecture
+4. Ensure it doesn't conflict with allocation-free hot path constraint
+"""
+    
+    full_prompt = f"{prompt_template}\n\n{existing_todos_info}\n\n{validation_note}\n\n## PROJECT CONTEXT\n\n{project_context}"
+    
+    # Call AI
+    response = call_ai(full_prompt, config)
+    
+    # Parse response
+    new_items = extract_json_from_response(response)
+    
+    if not new_items:
+        print("⚠️ No features found or failed to parse response")
+        return 0
+    
+    # Generate unique IDs
+    for item in new_items:
+        if "id" not in item or not item["id"]:
+            item["id"] = generate_unique_id("features", existing_ids + [i["id"] for i in new_items])
+    
+    # Add to TODO list
+    added = todo_list.add_items(new_items, check_duplicates=True)
+    
+    # Save
+    if added > 0:
+        todo_list.save()
+        print(f"\n✅ Added {added} new feature items to TODO list")
+    else:
+        print("\n⏭️ No new items added (all were duplicates or already implemented)")
+    
+    return added
+
+
+def main():
+    """Main entry point."""
+    config = load_config()
+    repo_root = Path(__file__).parent.parent
+    
+    added = analyze(repo_root, config)
+    
+    print(f"\n{'=' * 60}")
+    print(f"Analysis complete: {added} new items added")
+    print(f"{'=' * 60}")
+
+
+if __name__ == "__main__":
+    main()
