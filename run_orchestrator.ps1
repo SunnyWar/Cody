@@ -8,14 +8,14 @@ Write-Host ""
 
 # Check if Python is available
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
-    Write-Host "❌ Python not found. Please install Python 3.8 or later." -ForegroundColor Red
+    Write-Host "[ERROR] Python not found. Please install Python 3.8 or later." -ForegroundColor Red
     exit 1
 }
 
 # Check if we're in the right directory
 $agentDir = Join-Path $PSScriptRoot "cody-agent"
 if (-not (Test-Path $agentDir)) {
-    Write-Host "❌ cody-agent directory not found." -ForegroundColor Red
+    Write-Host "[ERROR] cody-agent directory not found." -ForegroundColor Red
     exit 1
 }
 
@@ -26,12 +26,12 @@ $packages = @("openai", "requests")
 foreach ($pkg in $packages) {
     $installed = python -c "import $pkg" 2>$null
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "❌ Package '$pkg' not found. Installing..." -ForegroundColor Yellow
+        Write-Host "[WARN] Package '$pkg' not found. Installing..." -ForegroundColor Yellow
         python -m pip install $pkg
     }
 }
 
-Write-Host "✅ Dependencies OK" -ForegroundColor Green
+Write-Host "[OK] Dependencies OK" -ForegroundColor Green
 Write-Host ""
 
 # Helper to select a category
@@ -50,7 +50,7 @@ function Select-Category {
         "3" { return "features" }
         "4" { return "clippy" }
         default {
-            Write-Host "`n❌ Invalid category choice." -ForegroundColor Red
+            Write-Host "`n[ERROR] Invalid category choice." -ForegroundColor Red
             return $null
         }
     }
@@ -71,7 +71,7 @@ $choice = Read-Host "Enter choice (1-7)"
 
 switch ($choice) {
     "1" {
-        Write-Host "`n🚀 Starting single improvement run..." -ForegroundColor Green
+        Write-Host "`n[RUN] Starting single improvement run..." -ForegroundColor Green
         Write-Host "This runs exactly one orchestrated task and exits." -ForegroundColor Yellow
         Write-Host ""
 
@@ -84,7 +84,7 @@ switch ($choice) {
     }
 
     "2" {
-        Write-Host "`n🔍 Running analysis for all categories..." -ForegroundColor Green
+        Write-Host "`n[RUN] Running analysis for all categories..." -ForegroundColor Green
         Set-Location $agentDir
 
         Write-Host "`nRefactoring analysis..."
@@ -100,13 +100,13 @@ switch ($choice) {
         python clippy_analyzer.py
 
         Set-Location ..
-        Write-Host "`n✅ Analysis complete. Check TODO_*.md files." -ForegroundColor Green
+        Write-Host "`n[OK] Analysis complete. Check TODO_*.md files." -ForegroundColor Green
     }
 
     "3" {
         $category = Select-Category
         if ($null -ne $category) {
-            Write-Host "`n🔍 Running analysis for $category..." -ForegroundColor Green
+            Write-Host "`n[RUN] Running analysis for $category..." -ForegroundColor Green
             Set-Location $agentDir
             switch ($category) {
                 "refactoring" { python refactoring_analyzer.py }
@@ -115,14 +115,14 @@ switch ($choice) {
                 "clippy" { python clippy_analyzer.py }
             }
             Set-Location ..
-            Write-Host "`n✅ Analysis complete. Check TODO_*.md files." -ForegroundColor Green
+            Write-Host "`n[OK] Analysis complete. Check TODO_*.md files." -ForegroundColor Green
         }
     }
 
     "4" {
         $category = Select-Category
         if ($null -ne $category) {
-            Write-Host "`n▶️ Executing next task for $category..." -ForegroundColor Green
+            Write-Host "`n[RUN] Executing next task for $category..." -ForegroundColor Green
             Set-Location $agentDir
             switch ($category) {
                 "refactoring" { python refactoring_executor.py next }
@@ -131,12 +131,12 @@ switch ($choice) {
                 "clippy" { python clippy_executor.py next }
             }
             Set-Location ..
-            Write-Host "`n✅ Execution complete." -ForegroundColor Green
+            Write-Host "`n[OK] Execution complete." -ForegroundColor Green
         }
     }
 
     "5" {
-        Write-Host "`n▶️ Executing next task from all categories..." -ForegroundColor Green
+        Write-Host "`n[RUN] Executing next task from all categories..." -ForegroundColor Green
         Set-Location $agentDir
 
         Write-Host "`nRefactoring..."
@@ -152,11 +152,11 @@ switch ($choice) {
         python clippy_executor.py next
 
         Set-Location ..
-        Write-Host "`n✅ Execution complete." -ForegroundColor Green
+        Write-Host "`n[OK] Execution complete." -ForegroundColor Green
     }
 
     "6" {
-        Write-Host "`n📊 TODO Statistics:" -ForegroundColor Green
+        Write-Host "`n[INFO] TODO Statistics:" -ForegroundColor Green
         Set-Location $agentDir
 
         Write-Host "`nRefactoring:"
@@ -175,12 +175,12 @@ switch ($choice) {
     }
 
     "7" {
-        Write-Host "`n👋 Goodbye!" -ForegroundColor Cyan
+        Write-Host "`nGoodbye!" -ForegroundColor Cyan
         exit 0
     }
     
     default {
-        Write-Host "`n❌ Invalid choice. Exiting." -ForegroundColor Red
+        Write-Host "`n[ERROR] Invalid choice. Exiting." -ForegroundColor Red
         exit 1
     }
 }
