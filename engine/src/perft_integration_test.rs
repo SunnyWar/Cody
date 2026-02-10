@@ -204,25 +204,22 @@ mod perft_integration_tests {
         let game_fen = "r1bq1rk1/1p4pp/p7/N2p1p2/P2P1P2/bP2B1PP/4P3/R2q1RKB w - - 0 9";
         let pos_with_black_queen = Position::from_fen(game_fen);
 
-        // Verify d1e1 is NOT generated in legal moves for White
-        let d1_from = Square::D1;
-        let e1_to = Square::E1;
-        let moves = generate_legal_moves(&pos_with_black_queen);
-        let illegal_present = moves.iter().any(|m| m.from() == d1_from && m.to() == e1_to);
+        let mut moves: Vec<String> = generate_legal_moves(&pos_with_black_queen)
+            .iter()
+            .map(|m| m.to_string())
+            .collect();
+        moves.sort();
 
-        assert!(
-            !illegal_present,
-            "d1e1 should not be in legal moves (d1 is Black Queen, not White's piece)"
-        );
+        let mut expected = vec![
+            "b3b4", "g3g4", "h3h4", "a5c4", "a5c6", "a5b7", "h1g2", "h1f3", "h1e4", "h1d5", "e3c1",
+            "e3d2", "e3f2", "a1b1", "a1c1", "a1d1", "a1a2", "a1a3", "f1d1", "f1e1", "g1h2", "g1g2",
+            "g1f2",
+        ];
+        expected.sort();
 
-        // Verify there are legal moves available
-        assert!(
-            !moves.is_empty(),
-            "Position should have legal moves for White"
-        );
-        println!(
-            "Position legal move count: {}. d1e1 correctly excluded.",
-            moves.len()
+        assert_eq!(
+            moves, expected,
+            "Unexpected legal moves in complex position"
         );
     }
 }
