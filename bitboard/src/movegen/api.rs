@@ -333,4 +333,70 @@ mod tests {
         assert!(kingside, "White should be able to castle kingside");
         assert!(queenside, "White should be able to castle queenside");
     }
+
+    #[test]
+    fn test_illegal_c3d5_not_generated() {
+        let fen = "r2q1rk1/1p2bppp/p1npbn2/3Np3/P3P3/1NN5/1PP1BPPP/R1BQ1R1K b - - 0 1";
+        let pos = Position::from_fen(fen);
+
+        // Generate all moves the engine thinks are possible
+        let legal_moves = generate_legal_moves(&pos);
+
+        // Check if any move originates from C3
+        let moves_from_c3: Vec<_> = legal_moves
+            .iter()
+            .filter(|m| m.from() == Square::C3)
+            .collect();
+
+        assert!(
+            moves_from_c3.is_empty(),
+            "Bug Found: Engine generated moves from C3 ({:?}), but Black has no piece there. \
+             Check for rank-flipping/mirroring logic in movegen.",
+            moves_from_c3
+        );
+    }
+
+    #[test]
+    fn test_state_consistency_after_white_move() {
+        let fen = "r2q1rk1/1p2bppp/p1npbn2/4p3/P3P3/1NN5/1PP1BPPP/R1BQ1R1K w - - 0 1";
+        let pos = Position::from_fen(fen);
+
+        // Simulate White's move: Knight from c3 to d5
+        let white_move = ChessMove::new(Square::C3, Square::D5, MoveType::Quiet);
+        let mut new_pos = Position::default();
+        pos.apply_move_into(&white_move, &mut new_pos);
+
+        // Helper to get piece at a square
+        fn get_piece_at(pos: &Position, sq: Square) -> Option<crate::piece::Piece> {
+            let mask = crate::BitBoardMask::from_square(sq);
+            for (piece, bb) in pos.pieces.iter() {
+                if (bb & mask).is_nonempty() {
+                    return Some(piece);
+                }
+            }
+            None
+        }
+
+        // 1. Check if C3 is actually cleared
+        assert!(
+            get_piece_at(&new_pos, Square::C3).is_none(),
+            "Bug: Square C3 should be empty after White moves the knight to d5!"
+        );
+
+        // 2. Check side to move
+        assert_eq!(
+            new_pos.side_to_move,
+            Color::Black,
+            "It should be Black's turn."
+        );
+
+        // 3. Ensure Black can't move from C3
+        let black_moves = generate_legal_moves(&new_pos);
+        let ghost_move = black_moves.iter().any(|m| m.from() == Square::C3);
+
+        assert!(
+            !ghost_move,
+            "Bug: Black is allowed to move a piece from C3, which should be empty!"
+        );
+    }
 }
