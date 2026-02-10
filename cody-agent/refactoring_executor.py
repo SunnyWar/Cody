@@ -96,14 +96,31 @@ def call_ai(prompt: str, config: dict) -> str:
 
 def extract_patch(response: str) -> str:
     """Extract the patch from AI response."""
-    # Look for diff block
+    # Strategy 1: Look for ```diff ... ``` blocks
     if "```diff" in response:
         start = response.find("```diff") + 7
         end = response.find("```", start)
-        if end == -1:
+        if end != -1:
+            patch = response[start:end].strip()
+            # Remove any remaining markdown fences
+            patch = patch.replace("```", "").strip()
+            return patch
+        else:
             # No closing backticks, take everything after ```diff
-            return response[start:].strip()
-        return response[start:end].strip()
+            patch = response[start:].strip()
+            patch = patch.replace("```", "").strip()
+            return patch
+    
+    # Strategy 2: Look for generic code blocks
+    if "```" in response:
+        parts = response.split("```")
+        # Look for a part that contains diff
+        for part in parts:
+            if "diff --git" in part:
+                patch = part.strip()
+                return patch
+    
+    # Strategy 3: Direct search for diff content
     if "diff --git" in response:
         start = response.find("diff --git")
         # Extract until we hit a non-patch line (common endings)
@@ -123,10 +140,13 @@ def apply_patch(repo_root: Path, patch: str) -> bool:
     patch_file = repo_root / "temp_refactoring.patch"
     
     try:
-        # Clean the patch: remove problematic index lines and trailing whitespace
+        # Clean the patch: remove problematic lines and markdown fences
         cleaned_lines = []
         for line in patch.splitlines():
-            # Skip index lines with fake or real git hashes - they can cause corruption errors
+            # Skip markdown backticks
+            if line.strip() in ["`````", "```", "```diff", "```json"]:
+                continue
+            # Skip index lines with git hashes
             if line.startswith("index "):
                 continue
             cleaned_lines.append(line)
@@ -134,6 +154,11 @@ def apply_patch(repo_root: Path, patch: str) -> bool:
         # Remove trailing empty lines
         while cleaned_lines and not cleaned_lines[-1].strip():
             cleaned_lines.pop()
+        
+        # Ensure we have at least a diff line
+        if not any(line.startswith("diff --git") for line in cleaned_lines):
+            print("❌ No valid diff content found in patch")
+            return False
         
         cleaned_patch = "\n".join(cleaned_lines) + "\n"
         
