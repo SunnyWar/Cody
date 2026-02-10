@@ -51,23 +51,18 @@ Implement the following performance optimization:
 
 Provide two things:
 
-### 1. Implementation Patch
+### 1. Complete Updated File
 
-```diff
-diff --git a/path/to/file.rs b/path/to/file.rs
---- a/path/to/file.rs
-+++ b/path/to/file.rs
-@@ -10,7 +10,7 @@ old line
--removed line
-+added line
- unchanged line
+```rust
+// path/to/file.rs
+
+[complete file content with optimizations applied]
 ```
 
-**Important**:
-- Use exact file paths from repo root
-- Include proper git diff headers (diff --git, ---, +++, @@)
-- Do NOT include the "index" line with git hashes
-- Ensure no trailing blank lines after the patch
+**CRITICAL**:
+- Output the COMPLETE file with all changes applied
+- Include the file path as a comment at the top
+- Preserve all existing functionality
 
 ### 2. Performance Report
 
