@@ -12,8 +12,6 @@ impl Iterator for SquaresIter {
         } else {
             let tz = self.bb.trailing_zeros();
             let sq = tz as u8;
-            // Debug output for diagnosis
-            println!("squares() yields index {} (bb=0x{:016x})", sq, self.bb);
             self.bb &= !(1u64 << tz); // clear the lowest set bit
             Square::try_from_index(sq)
         }

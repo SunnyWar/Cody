@@ -208,7 +208,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
     fn probe_for_best_move(
         &mut self,
         d: usize,
-        moves: &mut Vec<ChessMove>,
+        moves: &mut [ChessMove],
         move_index: &FxHashMap<(Square, Square), usize>,
     ) {
         let Some(ttref) = self.tt.as_ref() else {
@@ -218,12 +218,11 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         let key = self.arena.get(0).position.zobrist_hash();
         if let Some(e) = ttref.probe(key, d as i8, -INF, INF) {
             let bmove = e.best_move;
-            if !bmove.is_null() {
-                if let Some(&pos) = move_index.get(&(bmove.from, bmove.to)) {
-                    if pos != 0 {
-                        moves.swap(0, pos);
-                    }
-                }
+            if !bmove.is_null()
+                && let Some(&pos) = move_index.get(&(bmove.from, bmove.to))
+                && pos != 0
+            {
+                moves.swap(0, pos);
             }
         }
     }

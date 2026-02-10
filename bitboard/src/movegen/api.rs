@@ -101,12 +101,7 @@ pub fn generate_legal_moves(pos: &Position) -> Vec<ChessMove> {
         .filter(|m| {
             let legal = crate::movegen::is_legal(pos, m);
             if m.move_type == MoveType::EnPassant {
-                println!(
-                    "[is_legal] Checking en passant move: {} -> {} | legal: {}",
-                    m.from(),
-                    m.to(),
-                    legal
-                );
+                // ...removed debug output...
             }
             legal
         })
@@ -192,6 +187,8 @@ fn generate_pseudo_king_moves(
     crate::movegen::generate_pseudo_king_moves(pos, context, moves);
 }
 
+// ...existing code...
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -202,8 +199,6 @@ mod tests {
     fn test_initial_position_move_count() {
         let pos = Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         let moves = generate_legal_moves(&pos);
-        // In the initial position, white has 20 legal moves (16 pawn moves + 4 knight
-        // moves)
         assert_eq!(moves.len(), 20);
     }
 
@@ -211,20 +206,14 @@ mod tests {
     fn test_queen_and_king_cannot_move_like_knight_from_d1() {
         let pos = Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         let moves = generate_legal_moves(&pos);
-        // d1f3 is a knight move from d1, but d1 is occupied by a queen in the initial
-        // position No legal move should exist from d1 to f3
         let illegal = moves
             .iter()
             .any(|m| m.from().to_string() == "d1" && m.to().to_string() == "f3");
         assert!(!illegal, "Queen on d1 should not be able to move to f3");
-
-        // Also check that the king on e1 cannot move like a knight
         let illegal_king = moves
             .iter()
             .any(|m| m.from().to_string() == "e1" && m.to().to_string() == "g2");
         assert!(!illegal_king, "King on e1 should not be able to move to g2");
-
-        // Queen and King should have no legal moves from the starting position
         let queen_moves = moves
             .iter()
             .filter(|m| m.from().to_string() == "d1")
@@ -233,31 +222,20 @@ mod tests {
             .iter()
             .filter(|m| m.from().to_string() == "e1")
             .count();
-        assert_eq!(
-            queen_moves, 0,
-            "Queen on d1 should have no legal moves in the initial position"
-        );
-        assert_eq!(
-            king_moves, 0,
-            "King on e1 should have no legal moves in the initial position"
-        );
+        assert_eq!(queen_moves, 0);
+        assert_eq!(king_moves, 0);
     }
+
     #[test]
     fn test_knight_moves_from_center() {
-        // Knight on d5, empty board (FEN: 8/8/8/3N4/8/8/8/8)
         let pos = Position::from_fen("8/8/8/3N4/8/8/8/4K3 w - - 0 1");
         let moves = generate_legal_moves(&pos);
-        println!("All move from() squares:");
-        for m in &moves {
-            println!("from: {} to: {}", m.from().to_string(), m.to().to_string());
-        }
         let found: Vec<_> = moves
             .iter()
             .filter(|m| m.from().to_string() == "d5")
             .map(|m| m.to().to_string())
             .collect();
         let expected_targets = ["c7", "e7", "b6", "f6", "b4", "f4", "c3", "e3"];
-        println!("Found knight moves from d5: {:?}", found);
         for sq in &expected_targets {
             assert!(
                 found.contains(&sq.to_string()),
@@ -266,20 +244,13 @@ mod tests {
                 found
             );
         }
-        assert_eq!(
-            found.len(),
-            8,
-            "Knight should have 8 moves from d5 on empty board. Found: {:?}",
-            found
-        );
+        assert_eq!(found.len(), 8);
     }
 
     #[test]
     fn test_bishop_moves_blocked_by_own_piece() {
-        // Bishop on c1, pawn on d2
         let pos = Position::from_fen("8/8/8/8/8/8/2P5/2B5 w - - 0 1");
         let moves = generate_legal_moves(&pos);
-        // Bishop should not be able to move to d2 or beyond
         for m in &moves {
             assert_ne!(
                 m.to(),
@@ -291,7 +262,6 @@ mod tests {
 
     #[test]
     fn test_rook_moves_blocked_by_opponent() {
-        // Rook on a1, black pawn on a5, white king on e1, black king on e8
         let pos = Position::from_fen("4k3/8/8/p7/8/8/8/R3K3 w - - 0 1");
         let moves = generate_legal_moves(&pos);
         let mut found_capture = false;
@@ -299,7 +269,6 @@ mod tests {
             if m.from().to_string() == "a1" && m.to().to_string() == "a5" {
                 found_capture = true;
             }
-            // Should not go past a5 (can move to a2, a3, a4, and capture on a5)
             if m.from().to_string() == "a1" {
                 let to = m.to().to_string();
                 assert!(
@@ -314,10 +283,8 @@ mod tests {
 
     #[test]
     fn test_king_cannot_move_into_check() {
-        // King on e1, black rook on e8
         let pos = Position::from_fen("4r3/8/8/8/8/8/8/4K3 w - - 0 1");
         let moves = generate_legal_moves(&pos);
-        // King should not be able to move to e2 (into check)
         for m in &moves {
             assert_ne!(m.to().to_string(), "e2", "King should not move into check");
         }
@@ -325,7 +292,6 @@ mod tests {
 
     #[test]
     fn test_pawn_promotion_moves() {
-        // White pawn on g7, white king on e1, black king on e8
         let pos = Position::from_fen("4k3/6P1/8/8/8/8/8/4K3 w - - 0 1");
         let moves = generate_legal_moves(&pos);
         let mut found = false;
@@ -339,34 +305,12 @@ mod tests {
 
     #[test]
     fn test_en_passant_capture() {
-        // White pawn on e5, black pawn on d5, en passant possible, white king on e1,
-        // black king on e8
         let pos = Position::from_fen("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1");
-        println!("En passant square: {:?}", pos.ep_square);
         let moves = generate_legal_moves(&pos);
-        println!("All generated moves:");
-        for m in &moves {
-            println!("move: {} -> {} type: {:?}", m.from(), m.to(), m.move_type);
-        }
         let mut found = false;
         for m in &moves {
             if m.from().to_string() == "e5" && m.to().to_string() == "d6" {
-                println!("Found en passant candidate: {:?}", m);
                 found = true;
-            }
-        }
-        if !found {
-            println!("No en passant move found! All moves from e5:");
-            for m in &moves {
-                if m.from().to_string() == "e5" {
-                    println!("e5 -> {} type: {:?}", m.to(), m.move_type);
-                }
-            }
-            println!("All moves to d6:");
-            for m in &moves {
-                if m.to().to_string() == "d6" {
-                    println!("{} -> d6 type: {:?}", m.from(), m.move_type);
-                }
             }
         }
         assert!(found, "En passant capture should be available");
@@ -374,7 +318,6 @@ mod tests {
 
     #[test]
     fn test_castling_rights() {
-        // King and rook in initial position, no pieces between
         let pos = Position::from_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1");
         let moves = generate_legal_moves(&pos);
         let mut kingside = false;
@@ -390,5 +333,4 @@ mod tests {
         assert!(kingside, "White should be able to castle kingside");
         assert!(queenside, "White should be able to castle queenside");
     }
-    // ... remaining tests untouched ...
 }

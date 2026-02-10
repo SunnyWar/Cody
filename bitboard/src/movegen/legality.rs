@@ -16,8 +16,6 @@ use crate::position::Position;
 pub fn is_legal(pos: &Position, m: &ChessMove) -> bool {
     let mut new_pos = Position::default();
     pos.apply_move_into(m, &mut new_pos);
-    println!("[is_legal] After applying move: {:?}", m);
-    println!("[is_legal] New position FEN: {}", new_pos.to_fen());
 
     // Try to find the king square for the original side to move
     let king_sq_opt = new_pos
@@ -27,17 +25,11 @@ pub fn is_legal(pos: &Position, m: &ChessMove) -> bool {
         .next();
 
     if king_sq_opt.is_none() {
-        println!("[is_legal] No king found for {:?}", pos.side_to_move);
         return false;
     }
 
     let king_sq = king_sq_opt.unwrap();
-    println!(
-        "[is_legal] King square for {:?}: {}",
-        pos.side_to_move, king_sq
-    );
     let attackers = get_attackers(&new_pos, king_sq, pos.side_to_move.opposite());
-    println!("[is_legal] Attackers on king: {:?}", attackers);
 
     attackers.is_empty()
 }

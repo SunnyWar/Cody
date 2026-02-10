@@ -214,17 +214,6 @@ impl Position {
     }
 
     pub fn apply_move_into(&self, mv: &ChessMove, out: &mut Position) {
-        // DEBUG: Print all piece bitboards before move application
-        println!("[DEBUG][BEFORE] Piece bitboards before move:");
-        for (piece, bb) in self.pieces.iter() {
-            println!("    {:?}: 0x{:016x}", piece, bb.0);
-        }
-        println!(
-            "[DEBUG][BEFORE] Occupancy: White=0x{:016x} Black=0x{:016x} Both=0x{:016x}",
-            self.occupancy[OccupancyKind::White].0,
-            self.occupancy[OccupancyKind::Black].0,
-            self.occupancy[OccupancyKind::Both].0
-        );
         // Copy all fields except pieces, which will be updated below
         out.occupancy = self.occupancy;
         out.side_to_move = self.side_to_move;
@@ -235,10 +224,6 @@ impl Position {
         out.pieces = self.pieces; // Start with a copy, then update only the relevant bitboards
         let us = self.side_to_move;
         let them = us.opposite();
-        println!(
-            "[apply_move_into] Applying move: {:?} from {} to {} (type: {:?})",
-            mv, mv.from, mv.to, mv.move_type
-        );
 
         let from_mask = BitBoardMask::from_square(mv.from);
 
@@ -270,25 +255,11 @@ impl Position {
         // Handle captures (including en passant)
         let capture_sq = match mv.move_type {
             MoveType::EnPassant => match us {
-                Color::White => {
-                    let sq = mv.to.backward(1).expect("Invalid EP capture square");
-                    println!(
-                        "[apply_move_into] En passant capture square for White: {}",
-                        sq
-                    );
-                    sq
-                }
-                Color::Black => {
-                    let sq = mv.to.forward(1).expect("Invalid EP capture square");
-                    println!(
-                        "[apply_move_into] En passant capture square for Black: {}",
-                        sq
-                    );
-                    sq
-                }
+                Color::White => mv.to.backward(1).expect("Invalid EP capture square"),
+                Color::Black => mv.to.forward(1).expect("Invalid EP capture square"),
             },
             MoveType::Capture => {
-                println!("[apply_move_into] Standard capture at: {}", mv.to);
+                // ...removed debug output...
                 mv.to
             }
             _ => mv.to,
@@ -308,7 +279,7 @@ impl Position {
                     let p = Piece::from_parts(them, Some(kind));
                     let bb = out.pieces.get_mut(p);
                     if (*bb & cap_mask).is_nonempty() {
-                        println!("[apply_move_into] Capturing {:?} at {}", p, capture_sq);
+                        // ...removed debug output...
                         *bb &= !cap_mask;
                         break;
                     }
@@ -346,17 +317,14 @@ impl Position {
         let to_mask = BitBoardMask::from_square(mv.to);
         let final_piece = match mv.move_type {
             MoveType::Promotion(kind) => {
-                println!(
-                    "[apply_move_into] Promotion: placing {:?} at {}",
-                    kind, mv.to
-                );
+                // ...removed debug output...
                 Piece::from_parts(us, Some(kind))
             }
             _ => moving_piece,
         };
         let bb = out.pieces.get_mut(final_piece);
         *bb |= to_mask;
-        println!("[apply_move_into] Placed {:?} at {}", final_piece, mv.to);
+        // ...removed debug output...
 
         // Update occupancy
         let white_occupancy = or_color(&out.pieces, Color::White);
@@ -394,18 +362,6 @@ impl Position {
 
         // Switch side to move
         out.side_to_move = them;
-
-        // DEBUG: Print all piece bitboards after move application
-        println!("[DEBUG] Piece bitboards after move:");
-        for (piece, bb) in out.pieces.iter() {
-            println!("    {:?}: 0x{:016x}", piece, bb.0);
-        }
-        println!(
-            "[DEBUG] Occupancy: White=0x{:016x} Black=0x{:016x} Both=0x{:016x}",
-            out.occupancy[OccupancyKind::White].0,
-            out.occupancy[OccupancyKind::Black].0,
-            out.occupancy[OccupancyKind::Both].0
-        );
     }
 
     fn update_castling_rights(&mut self, from: Square, to: Square) {
