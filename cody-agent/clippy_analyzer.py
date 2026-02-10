@@ -225,7 +225,22 @@ def analyze(repo_root: Path, config: dict) -> int:
         f"## CLIPPY OUTPUT\n\n{clippy_output}"
     )
 
-    response = call_ai(full_prompt, config)
+    # Call AI with error handling
+    try:
+        response = call_ai(full_prompt, config)
+    except Exception as e:
+        logs_dir = repo_root / ".orchestrator_logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        error_path = logs_dir / f"clippy_ai_error_{timestamp}.txt"
+        with error_path.open("w", encoding="utf-8", errors="replace") as f:
+            f.write(f"AI API Error: {type(e).__name__}\n")
+            f.write(f"Error message: {str(e)}\n")
+            f.write("\n=== Clippy output ===\n")
+            f.write(clippy_output[:2000])
+        print(f"❌ AI API Error: {type(e).__name__}: {str(e)[:200]}")
+        print(f"📄 Error details saved to: {error_path}")
+        raise RuntimeError(f"clippy AI call failed; see {error_path}")
 
     new_items = extract_json_from_response(response, repo_root, "clippy")
     
