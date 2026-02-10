@@ -78,7 +78,19 @@ python .\cody-agent\orchestrator.py
 ```
 
 ## Human TODO Items
-
+0. **Essential baseline functionality - human directs AI to add these features.**
+   - command line not blocked by search - uci commands should be recieved and handled
+   - UCI Command: debug [on | off] 
+   - UCI Command: setoption name Hash value <x>
+   - UCI Command: setoption name Clear Hash
+   - UCI Command: go ponder Starts searching in "hint" mode on the opponent's time.
+   - UCI Command: go nodes <x>
+   - UCI Command: go mate <x>
+   - UCI Command: go searchmoves <move1> ... <moveN> 
+   - UCI Command: ponderhit
+   - UCI Command: info seldepth <x> (Output command)
+   - UCI Command: info nps <x> (Output command)
+   - UCI Command: info hashfull <x> (Output command)
 1. **PGO optimization**
    - Add a PGO build profile.
    - Add a PGO workflow.
