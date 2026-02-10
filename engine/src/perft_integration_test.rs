@@ -36,9 +36,25 @@ mod perft_integration_tests {
         let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 10";
         let pos = Position::from_fen(fen);
 
-        // Known values for Kiwipete from various sources
-        assert_eq!(perft(&pos, 1), 48);
-        println!("Kiwipete: perft(1) = 48 ✓");
+        let mut moves: Vec<String> = generate_legal_moves(&pos)
+            .iter()
+            .map(|m| m.to_string())
+            .collect();
+        moves.sort();
+
+        let mut expected = vec![
+            "a2a3", "b2b3", "g2g3", "d5d6", "a2a4", "g2g4", "g2h3", "d5e6", "c3b1", "c3d1", "c3a4",
+            "c3b5", "e5d3", "e5c4", "e5g4", "e5c6", "e5g6", "e5d7", "e5f7", "d2c1", "d2e3", "d2f4",
+            "d2g5", "d2h6", "e2d1", "e2f1", "e2d3", "e2c4", "e2b5", "e2a6", "a1b1", "a1c1", "a1d1",
+            "h1f1", "h1g1", "f3d3", "f3e3", "f3g3", "f3h3", "f3f4", "f3g4", "f3f5", "f3h5", "f3f6",
+            "e1d1", "e1f1", "e1g1", "e1c1",
+        ];
+        expected.sort();
+
+        assert_eq!(
+            moves, expected,
+            "Unexpected legal moves in Kiwipete position"
+        );
     }
 
     #[test]
@@ -46,10 +62,22 @@ mod perft_integration_tests {
         let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 11";
         let pos = Position::from_fen(fen);
 
-        // Simple endgame position
-        let count = perft(&pos, 1);
-        println!("Simple endgame: perft(1) = {}", count);
-        assert!(count > 0);
+        let mut moves: Vec<String> = generate_legal_moves(&pos)
+            .iter()
+            .map(|m| m.to_string())
+            .collect();
+        moves.sort();
+
+        let mut expected = vec![
+            "e2e3", "g2g3", "a5a6", "e2e4", "g2g4", "b4b1", "b4b2", "b4b3", "b4a4", "b4c4", "b4d4",
+            "b4e4", "b4f4", "a5a4",
+        ];
+        expected.sort();
+
+        assert_eq!(
+            moves, expected,
+            "Unexpected legal moves in endgame position"
+        );
     }
 
     #[test]
