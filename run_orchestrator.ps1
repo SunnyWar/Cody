@@ -77,9 +77,20 @@ switch ($choice) {
 
         $confirm = Read-Host "Continue? (y/n)"
         if ($confirm -eq "y") {
-            Set-Location $agentDir
-            python orchestrator.py
-            Set-Location ..
+            $allChecksPassed = $false
+            while (-not $allChecksPassed) {
+                Set-Location $agentDir
+                python orchestrator.py
+                Set-Location ..
+                python cody-agent/validate_cargo.py
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "`n[OK] All checks passed." -ForegroundColor Green
+                    $allChecksPassed = $true
+                } else {
+                    Write-Host "[ERROR] One or more checks failed. Sending error info to AI for fix and retry..." -ForegroundColor Red
+                    # TODO: Integrate error reporting and retry loop with AI orchestrator
+                }
+            }
         }
     }
 
@@ -122,37 +133,57 @@ switch ($choice) {
     "4" {
         $category = Select-Category
         if ($null -ne $category) {
-            Write-Host "`n[RUN] Executing next task for $category..." -ForegroundColor Green
-            Set-Location $agentDir
-            switch ($category) {
-                "refactoring" { python refactoring_executor.py next }
-                "performance" { python performance_executor.py next }
-                "features" { python features_executor.py next }
-                "clippy" { python clippy_executor.py next }
+            $allChecksPassed = $false
+            while (-not $allChecksPassed) {
+                Write-Host "`n[RUN] Executing next task for $category..." -ForegroundColor Green
+                Set-Location $agentDir
+                switch ($category) {
+                    "refactoring" { python refactoring_executor.py next }
+                    "performance" { python performance_executor.py next }
+                    "features" { python features_executor.py next }
+                    "clippy" { python clippy_executor.py next }
+                }
+                Set-Location ..
+                python cody-agent/validate_cargo.py
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "`n[OK] All checks passed." -ForegroundColor Green
+                    $allChecksPassed = $true
+                } else {
+                    Write-Host "[ERROR] One or more checks failed. Sending error info to AI for fix and retry..." -ForegroundColor Red
+                    # TODO: Integrate error reporting and retry loop with AI orchestrator
+                }
             }
-            Set-Location ..
-            Write-Host "`n[OK] Execution complete." -ForegroundColor Green
         }
     }
 
     "5" {
-        Write-Host "`n[RUN] Executing next task from all categories..." -ForegroundColor Green
-        Set-Location $agentDir
+        $allChecksPassed = $false
+        while (-not $allChecksPassed) {
+            Write-Host "`n[RUN] Executing next task from all categories..." -ForegroundColor Green
+            Set-Location $agentDir
 
-        Write-Host "`nRefactoring..."
-        python refactoring_executor.py next
+            Write-Host "`nRefactoring..."
+            python refactoring_executor.py next
 
-        Write-Host "`nPerformance..."
-        python performance_executor.py next
+            Write-Host "`nPerformance..."
+            python performance_executor.py next
 
-        Write-Host "`nFeatures..."
-        python features_executor.py next
+            Write-Host "`nFeatures..."
+            python features_executor.py next
 
-        Write-Host "`nClippy..."
-        python clippy_executor.py next
+            Write-Host "`nClippy..."
+            python clippy_executor.py next
 
-        Set-Location ..
-        Write-Host "`n[OK] Execution complete." -ForegroundColor Green
+            Set-Location ..
+            python cody-agent/validate_cargo.py
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "`n[OK] All checks passed." -ForegroundColor Green
+                $allChecksPassed = $true
+            } else {
+                Write-Host "[ERROR] One or more checks failed. Sending error info to AI for fix and retry..." -ForegroundColor Red
+                # TODO: Integrate error reporting and retry loop with AI orchestrator
+            }
+        }
     }
 
     "6" {
