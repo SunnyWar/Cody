@@ -8,6 +8,7 @@ import os
 import sys
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 from openai import OpenAI
 from todo_manager import TodoList, generate_unique_id
@@ -108,7 +109,7 @@ def call_ai(prompt: str, config: dict) -> str:
     return response.choices[0].message.content
 
 
-def extract_json_from_response(response: str) -> list:
+def extract_json_from_response(response: str, repo_root: Path, phase: str) -> list:
     """Extract JSON array from AI response using regex."""
     # Try to find JSON in code blocks (```json ... ```)
     match = re.search(r"```json\s*([\s\S]*?)\s*```", response, re.DOTALL)
@@ -128,9 +129,19 @@ def extract_json_from_response(response: str) -> list:
         # Ensure we return a list
         return result if isinstance(result, list) else []
     except json.JSONDecodeError as e:
+        logs_dir = repo_root / ".orchestrator_logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        dump_path = logs_dir / f"{phase}_parse_fail_{timestamp}.txt"
+        with dump_path.open("w", encoding="utf-8", errors="replace") as f:
+            f.write("JSON parse failure\n")
+            f.write(f"Error: {e}\n")
+            f.write("\n=== Response ===\n")
+            f.write(response)
         print(f"❌ Failed to parse JSON: {e}")
         print(f"Response preview: {response[:500]}...")
-        return []
+        print(f"📄 Full response saved to: {dump_path}")
+        raise RuntimeError(f"{phase} JSON parse failed; see {dump_path}")
 
 
 def analyze(repo_root: Path, config: dict) -> int:
@@ -160,7 +171,7 @@ def analyze(repo_root: Path, config: dict) -> int:
     response = call_ai(full_prompt, config)
     
     # Parse response
-    new_items = extract_json_from_response(response)
+    new_items = extract_json_from_response(response, repo_root, "performance")
     
     # Validate that new_items is a list of dicts
     if not isinstance(new_items, list):
