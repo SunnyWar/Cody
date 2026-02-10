@@ -311,6 +311,74 @@ mod perft_integration_tests {
     }
 
     #[test]
+    fn test_two_move_restricted_position() {
+        let fen = "r5k1/3R4/2P2b1p/1p2n2p/p3q2P/P7/8/R3q1K1 w - - 0 37";
+        let pos = Position::from_fen(fen);
+
+        let mut moves: Vec<String> = generate_legal_moves(&pos)
+            .iter()
+            .map(|m| m.to_string())
+            .collect();
+        moves.sort();
+
+        let mut expected = vec!["a1e1", "g1h2"];
+        expected.sort();
+
+        assert_eq!(
+            moves, expected,
+            "Unexpected legal moves in two-move restricted position"
+        );
+    }
+
+    #[test]
+    fn test_complex_rook_position() {
+        let fen = "r2q1R2/3P2k1/p4R2/P3b3/5R1p/6pP/6K1/2R5 b - - 2 54";
+        let pos = Position::from_fen(fen);
+
+        let mut moves: Vec<String> = generate_legal_moves(&pos)
+            .iter()
+            .map(|m| m.to_string())
+            .collect();
+        moves.sort();
+
+        let mut expected = vec![
+            "e5a1", "e5b2", "e5c3", "e5d4", "e5f4", "e5d6", "e5f6", "e5c7", "e5b8", "a8a7", "a8b8",
+            "a8c8", "d8a5", "d8b6", "d8f6", "d8c7", "d8d7", "d8e7", "d8b8", "d8c8", "d8e8", "d8f8",
+            "g7h7",
+        ];
+        expected.sort();
+
+        assert_eq!(
+            moves, expected,
+            "Unexpected legal moves in complex rook position"
+        );
+    }
+
+    #[test]
+    fn test_complex_piece_position() {
+        let fen = "r2q1rk1/pb2b1p1/1n3p2/1PpP2P1/2P4N/R1B5/3N1pBK/3q4 w - - 0 18";
+        let pos = Position::from_fen(fen);
+
+        let mut moves: Vec<String> = generate_legal_moves(&pos)
+            .iter()
+            .map(|m| m.to_string())
+            .collect();
+        moves.sort();
+
+        let mut expected = vec![
+            "d5d6", "g5g6", "g5f6", "d2b1", "d2f1", "d2b3", "d2f3", "d2e4", "h4f3", "h4f5", "h4g6",
+            "g2f1", "g2h1", "g2f3", "g2h3", "g2e4", "c3a1", "c3b2", "c3b4", "c3d4", "c3a5", "c3e5",
+            "c3f6", "a3a1", "a3a2", "a3b3", "a3a4", "a3a5", "a3a6", "a3a7", "h2h3", "h2g3",
+        ];
+        expected.sort();
+
+        assert_eq!(
+            moves, expected,
+            "Unexpected legal moves in complex piece position"
+        );
+    }
+
+    #[test]
     fn test_illegal_move_not_generated_in_complex_position() {
         // Position where d1 is a BLACK QUEEN and d1-e1 should NOT be legal for White
         let game_fen = "r1bq1rk1/1p4pp/p7/N2p1p2/P2P1P2/bP2B1PP/4P3/R2q1RKB w - - 0 9";
