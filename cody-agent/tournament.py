@@ -57,15 +57,14 @@ def load_epd_lines(epd_path: Path):
     return lines
 
 def run_tournament(new_engine: Path, old_engine: Path, epd_path: Path, games: int):
-    # Construct the Cute Chess command
     cmd = [
         CUTECHESS_CMD,
-        "-engine", f"name=New_Version", f"cmd={new_engine}",
-        "-engine", f"name=Baseline", f"cmd={old_engine}",
-        "-each", "tc=10+0.1", "proto=uci",  # 10s + 0.1s increment
+        "-engine", f"name=New_Version", f"cmd={new_engine}", f"dir={new_engine.parent}",
+        "-engine", f"name=Baseline", f"cmd={old_engine}", f"dir={old_engine.parent}",
+        "-each", "tc=10+0.1", "proto=uci",
         "-games", str(games),
         "-repeat",
-        "-concurrency", str(CONCURRENCY),
+        "-concurrency", "1", # Set to 1 for debugging
         "-pgnout", "tournament_results.pgn"
     ]
 
