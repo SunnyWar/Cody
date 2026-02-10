@@ -153,11 +153,20 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     if let Some(e) = tt_entry_opt {
         let bmove = e.best_move;
         if !bmove.is_null()
-            && let Some(pos) = moves_vec
-                .iter()
-                .position(|mm| mm.from == bmove.from && mm.to == bmove.to)
+            && let Some(pos) = moves_vec.iter().position(|mm| *mm == bmove)
         {
             moves_vec.swap(0, pos);
+        }
+        #[cfg(debug_assertions)]
+        if !bmove.is_null()
+            && moves_vec.iter().all(|mm| *mm != bmove)
+            && VERBOSE.load(Ordering::Relaxed)
+        {
+            let key = arena.get(ply).position.zobrist_hash();
+            eprintln!(
+                "[debug] TT best move not found in node move list: move={} key={} ply={}",
+                bmove, key, ply
+            );
         }
     }
 

@@ -6,12 +6,10 @@ use crate::search::core::MATE_SCORE;
 use crate::search::core::NODE_COUNT;
 use crate::search::core::search_node_with_arena;
 use crate::search::evaluator::Evaluator;
-use bitboard::Square;
 use bitboard::mov::ChessMove;
 use bitboard::movegen::MoveGenerator;
 use bitboard::movegen::generate_legal_moves;
 use bitboard::position::Position;
-use rustc_hash::FxHashMap;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
@@ -90,15 +88,8 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             let mut best_score = i32::MIN;
             let mut best_move = ChessMove::null();
 
-            // Build a (from,to) → index map once
-            let move_index: FxHashMap<(Square, Square), usize> = moves
-                .iter()
-                .enumerate()
-                .map(|(i, m)| ((m.from, m.to), i))
-                .collect();
-
             // Probe TT and reorder instantly if match found
-            self.probe_for_best_move(d, &mut moves, &move_index);
+            self.probe_for_best_move(d, &mut moves);
 
             if self.num_threads <= 1 {
                 // Serial path: prepare a TT reference that points at our engine TT if present,
@@ -238,12 +229,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         (last_completed_move, last_completed_score)
     }
 
-    fn probe_for_best_move(
-        &mut self,
-        d: usize,
-        moves: &mut [ChessMove],
-        move_index: &FxHashMap<(Square, Square), usize>,
-    ) {
+    fn probe_for_best_move(&mut self, d: usize, moves: &mut [ChessMove]) {
         let Some(ttref) = self.tt.as_ref() else {
             return;
         };
@@ -251,11 +237,21 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         let key = self.arena.get(0).position.zobrist_hash();
         if let Some(e) = ttref.probe(key, d as i8, -INF, INF) {
             let bmove = e.best_move;
-            if !bmove.is_null()
-                && let Some(&pos) = move_index.get(&(bmove.from, bmove.to))
+            if bmove.is_null() {
+                return;
+            }
+
+            if let Some(pos) = moves.iter().position(|mm| *mm == bmove)
                 && pos != 0
             {
                 moves.swap(0, pos);
+            }
+            #[cfg(debug_assertions)]
+            if moves.iter().all(|mm| *mm != bmove) && crate::VERBOSE.load(Ordering::Relaxed) {
+                eprintln!(
+                    "[debug] TT best move not found in root move list: move={} key={}",
+                    bmove, key
+                );
             }
         }
     }

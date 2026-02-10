@@ -197,4 +197,32 @@ mod perft_integration_tests {
             "Reconstructed position FEN should match original"
         );
     }
+
+    #[test]
+    fn test_illegal_move_not_generated_in_complex_position() {
+        // Position where d1 is a BLACK QUEEN and d1-e1 should NOT be legal for White
+        let game_fen = "r1bq1rk1/1p4pp/p7/N2p1p2/P2P1P2/bP2B1PP/4P3/R2q1RKB w - - 0 9";
+        let pos_with_black_queen = Position::from_fen(game_fen);
+
+        // Verify d1e1 is NOT generated in legal moves for White
+        let d1_from = Square::D1;
+        let e1_to = Square::E1;
+        let moves = generate_legal_moves(&pos_with_black_queen);
+        let illegal_present = moves.iter().any(|m| m.from() == d1_from && m.to() == e1_to);
+
+        assert!(
+            !illegal_present,
+            "d1e1 should not be in legal moves (d1 is Black Queen, not White's piece)"
+        );
+
+        // Verify there are legal moves available
+        assert!(
+            !moves.is_empty(),
+            "Position should have legal moves for White"
+        );
+        println!(
+            "Position legal move count: {}. d1e1 correctly excluded.",
+            moves.len()
+        );
+    }
 }
