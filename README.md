@@ -79,7 +79,6 @@ python .\cody-agent\orchestrator.py
 
 ## Human TODO Items
 0. **Essential baseline functionality - human directs AI to add these features.**
-   - command line not blocked by search - uci commands should be recieved and handled
    - UCI Command: debug [on | off] 
    - UCI Command: setoption name Hash value <x>
    - UCI Command: setoption name Clear Hash
