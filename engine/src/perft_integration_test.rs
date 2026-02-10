@@ -5,6 +5,8 @@ mod perft_integration_tests {
     use bitboard::Square;
     use bitboard::movegen::generate_legal_moves;
     use bitboard::perft;
+    use bitboard::piece::Color;
+    use bitboard::piece::Piece;
     use bitboard::position::Position;
 
     #[test]
@@ -123,5 +125,76 @@ mod perft_integration_tests {
         expected.sort();
 
         assert_eq!(moves, expected, "Unexpected legal moves in position");
+    }
+
+    #[test]
+    fn test_perft_two_queens_illegal_move() {
+        let fen = "r1bq1rk1/1p4pp/p7/N2p1p2/P2P1P2/bP2B1PP/4P3/R2q1RKB w - - 0 9";
+        let pos = Position::from_fen(fen);
+
+        // Ensure the illegal move d1e1 is not made
+        let illegal_from = Square::from_coords('d', '1').unwrap();
+        let illegal_to = Square::from_coords('e', '1').unwrap();
+        let illegal_present = generate_legal_moves(&pos)
+            .iter()
+            .any(|m| m.from() == illegal_from && m.to() == illegal_to);
+        assert!(!illegal_present, "Illegal move d1e1 was generated");
+
+        let count = perft(&pos, 1);
+        println!("Position with two queens: perft(1) = {}", count);
+        assert!(count > 0, "Should have legal moves for White");
+    }
+
+    #[test]
+    fn test_promotion_move_consistency() {
+        // FEN just before Black plays c2xd1=Q (capture pawn on c2 takes rook on d1 and
+        // promotes to queen)
+        let fen = "r1bq1rk1/pp2bppp/2n5/3p4/P2P4/4B1P1/1PpNPP1P/R2Q1RKB b - - 0 3";
+        let pos = Position::from_fen(fen);
+        let original_hash = pos.zobrist_hash();
+
+        // Parse the promotion move (capture + promote)
+        let m_str = "c2d1q";
+        let m = pos
+            .parse_uci_move(m_str)
+            .expect("Failed to parse promotion move");
+        assert_eq!(m.from(), Square::C2, "Move from should be c2");
+        assert_eq!(m.to(), Square::D1, "Move to should be d1");
+        assert_eq!(
+            m.promotion(),
+            Some(bitboard::piece::PieceKind::Queen),
+            "Move should be a queen promotion"
+        );
+
+        // Execute the promotion
+        let mut new_pos = Position::default();
+        pos.apply_move_into(&m, &mut new_pos);
+
+        // Verify hash changed after the move
+        let new_hash = new_pos.zobrist_hash();
+        assert_ne!(
+            new_hash, original_hash,
+            "Hash should change after making a move"
+        );
+
+        // Verify the promoted piece is on d1 and is a Black Queen
+        let black_queen = Piece::from_parts(Color::Black, Some(bitboard::piece::PieceKind::Queen));
+        assert!(
+            new_pos.pieces.get(black_queen).contains(Square::D1),
+            "Promoted Black Queen not found on d1"
+        );
+
+        // Simulate undo by reconstructing from FEN and verifying consistency
+        let reconstructed_pos = Position::from_fen(&pos.to_fen());
+        assert_eq!(
+            reconstructed_pos.zobrist_hash(),
+            original_hash,
+            "Reconstructed position hash should match original"
+        );
+        assert_eq!(
+            reconstructed_pos.to_fen(),
+            pos.to_fen(),
+            "Reconstructed position FEN should match original"
+        );
     }
 }
