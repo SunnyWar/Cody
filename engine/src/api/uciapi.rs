@@ -16,6 +16,7 @@ use std::io::{self};
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
+use std::sync::mpsc;
 
 pub struct CodyApi {
     engine: Engine<SimpleMoveGen, MaterialEvaluator>,
@@ -50,15 +51,38 @@ impl CodyApi {
         engine::util::iso_stamp_ms()
     }
 
-    pub fn run(&mut self) {
+    pub fn run(self) {
         let stdin = io::stdin();
-        let mut stdout = io::stdout();
-
+        let stop_flag = self.stop.clone();
+        let (tx, rx) = mpsc::channel::<String>();
+        let worker = std::thread::spawn(move || {
+            self.run_worker(rx);
+        });
         for line in stdin.lock().lines() {
-            let cmd = line.unwrap();
+            let cmd = match line {
+                Ok(cmd) => cmd,
+                Err(_) => break,
+            };
+            if cmd == "stop" || cmd == "quit" {
+                stop_flag.store(true, Ordering::Relaxed);
+            }
+            if tx.send(cmd.clone()).is_err() {
+                break;
+            }
+            if cmd == "quit" {
+                break;
+            }
+        }
+        drop(tx);
+        let _ = worker.join();
+    }
+
+    fn run_worker(mut self, rx: mpsc::Receiver<String>) {
+        let mut stdout = io::stdout();
+        for cmd in rx {
             // Log incoming command
             self.log_in(&cmd);
-
+            let mut should_quit = false;
             match cmd.as_str() {
                 "uci" => self.handle_uci(&mut stdout),
                 cmd if cmd.starts_with("setoption") => self.handle_setoption(cmd),
@@ -70,10 +94,13 @@ impl CodyApi {
                     self.stop.store(true, Ordering::Relaxed);
                 }
                 cmd if cmd.starts_with("bench") => self.handle_bench(cmd, &mut stdout),
-                "quit" => break,
+                "quit" => should_quit = true,
                 _ => {}
             }
-            stdout.flush().unwrap();
+            stdout.flush().ok();
+            if should_quit {
+                break;
+            }
         }
     }
 
