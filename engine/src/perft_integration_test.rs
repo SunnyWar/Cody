@@ -57,17 +57,24 @@ mod perft_integration_tests {
         let fen = "r1b1r1k1/1p1nqppp/p1pb1n2/3p4/2PPp2P/1PN1PNP1/P1Q1BP2/R1BR2K1 b - - 0 3";
         let pos = Position::from_fen(fen);
 
-        // Ensure the illegal move reported in the log is not generated.
-        let illegal_from = Square::from_coords('a', '6').unwrap();
-        let illegal_to = Square::from_coords('h', '4').unwrap();
-        let illegal_present = generate_legal_moves(&pos)
+        let mut moves: Vec<String> = generate_legal_moves(&pos)
             .iter()
-            .any(|m| m.from() == illegal_from && m.to() == illegal_to);
-        assert!(!illegal_present, "Illegal move a6h4 was generated");
+            .map(|m| m.to_string())
+            .collect();
+        moves.sort();
 
-        let count = perft(&pos, 1);
-        println!("Midgame position before illegal move: perft(1) = {}", count);
-        assert!(count > 0, "Should have legal moves for Black");
+        let mut expected = vec![
+            "a6a5", "c6c5", "b7b6", "g7g6", "h7h6", "b7b5", "g7g5", "h7h5", "d5c4", "e4f3", "f6g4",
+            "f6h5", "d7c5", "d7e5", "d7b6", "d7b8", "d7f8", "d6a3", "d6g3", "d6b4", "d6f4", "d6c5",
+            "d6e5", "d6c7", "d6b8", "a8a7", "a8b8", "e8d8", "e8f8", "e7e5", "e7e6", "e7d8", "e7f8",
+            "g8f8", "g8h8",
+        ];
+        expected.sort();
+
+        assert_eq!(
+            moves, expected,
+            "Unexpected legal moves in midgame position"
+        );
     }
 
     #[test]
@@ -75,39 +82,24 @@ mod perft_integration_tests {
         let fen = "rn1qnrk1/1P3p2/6pp/1p4bP/PpB1p1P1/1P2PN2/2Q2P2/R1B2RK1 w - - 0 12";
         let pos = Position::from_fen(fen);
 
-        // Ensure the illegal move reported in the log is not generated.
-        let illegal_from = Square::from_coords('b', '7').unwrap();
-        let illegal_to = Square::from_coords('a', '8').unwrap();
-        let moves = generate_legal_moves(&pos);
-        let illegal_present = moves
+        let mut moves: Vec<String> = generate_legal_moves(&pos)
             .iter()
-            .any(|m| m.from() == illegal_from && m.to() == illegal_to && m.promotion().is_none());
-        assert!(
-            !illegal_present,
-            "Illegal move b7a8 without promotion was generated"
+            .map(|m| m.to_string())
+            .collect();
+        moves.sort();
+
+        let mut expected = vec![
+            "a4a5", "b7a8q", "b7a8r", "b7a8b", "b7a8n", "a4b5", "h5g6", "f3e1", "f3d2", "f3h2",
+            "f3d4", "f3h4", "f3e5", "f3g5", "c1b2", "c1d2", "c1a3", "c4e2", "c4d3", "c4b5", "c4d5",
+            "c4e6", "c4f7", "a1b1", "a1a2", "a1a3", "f1d1", "f1e1", "c2b1", "c2d1", "c2a2", "c2b2",
+            "c2d2", "c2e2", "c2c3", "c2d3", "c2e4", "g1h1", "g1g2", "g1h2",
+        ];
+        expected.sort();
+
+        assert_eq!(
+            moves, expected,
+            "Unexpected legal moves in midgame promotion position"
         );
-
-        let promo_targets = moves
-            .iter()
-            .filter(|m| m.from() == illegal_from && m.to() == illegal_to)
-            .map(|m| m.promotion())
-            .collect::<Vec<_>>();
-        for promo in [
-            bitboard::piece::PieceKind::Queen,
-            bitboard::piece::PieceKind::Rook,
-            bitboard::piece::PieceKind::Bishop,
-            bitboard::piece::PieceKind::Knight,
-        ] {
-            assert!(
-                promo_targets.contains(&Some(promo)),
-                "Missing promotion move b7a8{}",
-                promo.to_uci()
-            );
-        }
-
-        let count = perft(&pos, 1);
-        println!("Midgame position before illegal move: perft(1) = {}", count);
-        assert!(count > 0, "Should have legal moves for White");
     }
 
     #[test]
@@ -132,17 +124,23 @@ mod perft_integration_tests {
         let fen = "r1bq1rk1/1p4pp/p7/N2p1p2/P2P1P2/bP2B1PP/4P3/R2q1RKB w - - 0 9";
         let pos = Position::from_fen(fen);
 
-        // Ensure the illegal move d1e1 is not made
-        let illegal_from = Square::from_coords('d', '1').unwrap();
-        let illegal_to = Square::from_coords('e', '1').unwrap();
-        let illegal_present = generate_legal_moves(&pos)
+        let mut moves: Vec<String> = generate_legal_moves(&pos)
             .iter()
-            .any(|m| m.from() == illegal_from && m.to() == illegal_to);
-        assert!(!illegal_present, "Illegal move d1e1 was generated");
+            .map(|m| m.to_string())
+            .collect();
+        moves.sort();
 
-        let count = perft(&pos, 1);
-        println!("Position with two queens: perft(1) = {}", count);
-        assert!(count > 0, "Should have legal moves for White");
+        let mut expected = vec![
+            "b3b4", "g3g4", "h3h4", "a5c4", "a5c6", "a5b7", "h1g2", "h1f3", "h1e4", "h1d5", "e3c1",
+            "e3d2", "e3f2", "a1b1", "a1c1", "a1d1", "a1a2", "a1a3", "f1d1", "f1e1", "g1h2", "g1g2",
+            "g1f2",
+        ];
+        expected.sort();
+
+        assert_eq!(
+            moves, expected,
+            "Unexpected legal moves in two-queens position"
+        );
     }
 
     #[test]
