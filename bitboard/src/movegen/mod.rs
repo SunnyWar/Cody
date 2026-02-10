@@ -9,16 +9,16 @@ pub mod legality;
 pub mod pawn;
 pub mod sliders;
 
-pub use api::{
-    MoveGenerator, SimpleMoveGen, generate_legal_moves, generate_pseudo_captures,
-    generate_pseudo_moves,
-};
-
+pub use api::MoveGenerator;
+pub use api::SimpleMoveGen;
+pub use api::generate_legal_moves;
+pub use api::generate_pseudo_captures;
+pub use api::generate_pseudo_moves;
 // Re-export pawn generator to preserve the original API surface
 pub use king::generate_pseudo_king_moves;
 pub use knight::generate_pseudo_knight_moves;
 pub use legality::is_legal;
 pub use pawn::generate_pseudo_pawn_moves;
-pub use sliders::{
-    generate_pseudo_bishop_moves, generate_pseudo_queen_moves, generate_pseudo_rook_moves,
-};
+pub use sliders::generate_pseudo_bishop_moves;
+pub use sliders::generate_pseudo_queen_moves;
+pub use sliders::generate_pseudo_rook_moves;

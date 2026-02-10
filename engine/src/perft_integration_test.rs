@@ -78,6 +78,23 @@ mod perft_integration_tests {
     }
 
     #[test]
+    fn test_perft_promotion_pin_stress_position() {
+        let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
+        let pos = Position::from_fen(fen);
+
+        let moves = generate_legal_moves(&pos);
+        assert_eq!(moves.len(), 44, "Unexpected legal move count");
+
+        let move_strs: Vec<String> = moves.iter().map(|m| m.to_string()).collect();
+        for promo in ["d7c8q", "d7c8r", "d7c8b", "d7c8n"] {
+            assert!(
+                move_strs.contains(&promo.to_string()),
+                "Missing move {promo}"
+            );
+        }
+    }
+
+    #[test]
     fn test_perft_endgame_position() {
         let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 11";
         let pos = Position::from_fen(fen);

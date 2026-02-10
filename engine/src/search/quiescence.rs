@@ -1,13 +1,14 @@
+use crate::VERBOSE;
 use crate::core::arena::Arena;
+use crate::search::engine::NODE_COUNT;
 use crate::search::evaluator::Evaluator;
+use crate::util;
 use bitboard::mov::ChessMove;
 use bitboard::movegen::MoveGenerator;
-use bitboard::piece::{Color, Piece, PieceKind};
+use bitboard::piece::Color;
+use bitboard::piece::Piece;
+use bitboard::piece::PieceKind;
 use bitboard::position::Position;
-
-use crate::VERBOSE;
-use crate::search::engine::NODE_COUNT;
-use crate::util;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::atomic::Ordering;

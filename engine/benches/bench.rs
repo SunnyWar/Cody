@@ -1,8 +1,14 @@
 use bitboard::BitBoardMask;
 use bitboard::bitboard::occupancy_to_index;
 use bitboard::movegen::SimpleMoveGen;
-use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use engine::{Engine, MaterialEvaluator, NODE_COUNT, TEST_CASES};
+use criterion::BenchmarkId;
+use criterion::Criterion;
+use criterion::criterion_group;
+use criterion::criterion_main;
+use engine::Engine;
+use engine::MaterialEvaluator;
+use engine::NODE_COUNT;
+use engine::TEST_CASES;
 use std::hint::black_box;
 use std::sync::atomic::Ordering;
 

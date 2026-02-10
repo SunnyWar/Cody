@@ -1,5 +1,6 @@
 // bitboard/src/tables/rank_masks.rs
-use crate::{BitBoardMask, constants::BOARD_SIZE};
+use crate::BitBoardMask;
+use crate::constants::BOARD_SIZE;
 
 pub const RANK_1: BitBoardMask = BitBoardMask(0x00000000000000FF);
 pub const RANK_2: BitBoardMask = BitBoardMask(0x000000000000FF00);

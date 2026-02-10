@@ -17,5 +17,6 @@ pub mod tables;
 pub mod zobrist;
 
 pub use bitboardmask::BitBoardMask;
-pub use perft::{perft, perft_divide};
+pub use perft::perft;
+pub use perft::perft_divide;
 pub use square::Square;

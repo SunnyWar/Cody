@@ -1,8 +1,8 @@
 // src/core/occupancy.rs
 
-use std::ops::{Index, IndexMut};
-
 use crate::BitBoardMask;
+use std::ops::Index;
+use std::ops::IndexMut;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum OccupancyKind {
@@ -23,6 +23,7 @@ impl OccupancyMap {
             inner: [BitBoardMask::empty(); 3],
         }
     }
+
     #[inline]
     pub fn or_in(&mut self, kind: OccupancyKind, mask: BitBoardMask) {
         self.inner[kind as usize] |= mask;
@@ -42,6 +43,7 @@ impl Default for OccupancyMap {
 
 impl Index<OccupancyKind> for OccupancyMap {
     type Output = BitBoardMask;
+
     fn index(&self, kind: OccupancyKind) -> &Self::Output {
         &self.inner[kind as usize]
     }

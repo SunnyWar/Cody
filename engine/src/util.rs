@@ -1,4 +1,5 @@
-use bitboard::{perft, position::Position};
+use bitboard::perft;
+use bitboard::position::Position;
 use std::time::SystemTime;
 
 /// Return an ISO-8601 / RFC3339 UTC timestamp with millisecond precision.

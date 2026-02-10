@@ -1,15 +1,23 @@
 // src/search/evaluator.rs
 
-use bitboard::{
-    piece::{Color, Piece, PieceKind},
-    position::Position,
-};
-
-use crate::search::piecesquaretable::{
-    BISHOP_ENDGAME_TABLE, BISHOP_SQUARE_TABLE, KING_ENDGAME_TABLE, KING_MIDGAME_SQUARE_TABLE,
-    KNIGHT_ENDGAME_TABLE, KNIGHT_SQUARE_TABLE, MAX_PHASE, PAWN_ENDGAME_TABLE, PAWN_SQUARE_TABLE,
-    PHASE_WEIGHTS, QUEEN_ENDGAME_TABLE, QUEEN_SQUARE_TABLE, ROOK_ENDGAME_TABLE, ROOK_SQUARE_TABLE,
-};
+use crate::search::piecesquaretable::BISHOP_ENDGAME_TABLE;
+use crate::search::piecesquaretable::BISHOP_SQUARE_TABLE;
+use crate::search::piecesquaretable::KING_ENDGAME_TABLE;
+use crate::search::piecesquaretable::KING_MIDGAME_SQUARE_TABLE;
+use crate::search::piecesquaretable::KNIGHT_ENDGAME_TABLE;
+use crate::search::piecesquaretable::KNIGHT_SQUARE_TABLE;
+use crate::search::piecesquaretable::MAX_PHASE;
+use crate::search::piecesquaretable::PAWN_ENDGAME_TABLE;
+use crate::search::piecesquaretable::PAWN_SQUARE_TABLE;
+use crate::search::piecesquaretable::PHASE_WEIGHTS;
+use crate::search::piecesquaretable::QUEEN_ENDGAME_TABLE;
+use crate::search::piecesquaretable::QUEEN_SQUARE_TABLE;
+use crate::search::piecesquaretable::ROOK_ENDGAME_TABLE;
+use crate::search::piecesquaretable::ROOK_SQUARE_TABLE;
+use bitboard::piece::Color;
+use bitboard::piece::Piece;
+use bitboard::piece::PieceKind;
+use bitboard::position::Position;
 
 /// Piece values in centipawns
 const PIECE_VALUES: [i32; 6] = [
