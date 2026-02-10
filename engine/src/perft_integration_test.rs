@@ -2,6 +2,8 @@
 /// Run with: cargo test --lib test_perft_integration -- --nocapture
 #[cfg(test)]
 mod perft_integration_tests {
+    use bitboard::Square;
+    use bitboard::movegen::generate_legal_moves;
     use bitboard::perft;
     use bitboard::position::Position;
 
@@ -46,5 +48,23 @@ mod perft_integration_tests {
         let count = perft(&pos, 1);
         println!("Simple endgame: perft(1) = {}", count);
         assert!(count > 0);
+    }
+
+    #[test]
+    fn test_perft_midgame_position() {
+        let fen = "r1b1r1k1/1p1nqppp/p1pb1n2/3p4/2PPp2P/1PN1PNP1/P1Q1BP2/R1BR2K1 b - - 0 3";
+        let pos = Position::from_fen(fen);
+
+        // Ensure the illegal move reported in the log is not generated.
+        let illegal_from = Square::from_coords('a', '6').unwrap();
+        let illegal_to = Square::from_coords('h', '4').unwrap();
+        let illegal_present = generate_legal_moves(&pos)
+            .iter()
+            .any(|m| m.from() == illegal_from && m.to() == illegal_to);
+        assert!(!illegal_present, "Illegal move a6h4 was generated");
+
+        let count = perft(&pos, 1);
+        println!("Midgame position before illegal move: perft(1) = {}", count);
+        assert!(count > 0, "Should have legal moves for Black");
     }
 }
