@@ -1,18 +1,23 @@
-use crate::{
-    BitBoardMask, Square,
-    bitboard::{
-        bishop_attacks_from, king_attacks, knight_attacks, pawn_attacks_to, rook_attacks_from,
-    },
-    mov::ChessMove,
-    occupancy::OccupancyKind,
-    piece::{Color, Piece, PieceKind},
-    position::Position,
-};
+use crate::BitBoardMask;
+use crate::Square;
+use crate::bitboard::bishop_attacks_from;
+use crate::bitboard::king_attacks;
+use crate::bitboard::knight_attacks;
+use crate::bitboard::pawn_attacks_to;
+use crate::bitboard::rook_attacks_from;
+use crate::mov::ChessMove;
+use crate::occupancy::OccupancyKind;
+use crate::piece::Color;
+use crate::piece::Piece;
+use crate::piece::PieceKind;
+use crate::position::Position;
 
 /// Return true if making `m` from `pos` leaves the side to move in check.
 pub fn is_legal(pos: &Position, m: &ChessMove) -> bool {
     let mut new_pos = Position::default();
     pos.apply_move_into(m, &mut new_pos);
+    println!("[is_legal] After applying move: {:?}", m);
+    println!("[is_legal] New position FEN: {}", new_pos.to_fen());
 
     // Try to find the king square for the original side to move
     let king_sq_opt = new_pos
@@ -22,11 +27,17 @@ pub fn is_legal(pos: &Position, m: &ChessMove) -> bool {
         .next();
 
     if king_sq_opt.is_none() {
+        println!("[is_legal] No king found for {:?}", pos.side_to_move);
         return false;
     }
 
     let king_sq = king_sq_opt.unwrap();
+    println!(
+        "[is_legal] King square for {:?}: {}",
+        pos.side_to_move, king_sq
+    );
     let attackers = get_attackers(&new_pos, king_sq, pos.side_to_move.opposite());
+    println!("[is_legal] Attackers on king: {:?}", attackers);
 
     attackers.is_empty()
 }

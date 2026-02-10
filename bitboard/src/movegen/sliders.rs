@@ -1,9 +1,10 @@
-use crate::{
-    bitboard::{bishop_attacks_from, rook_attacks_from},
-    mov::ChessMove,
-    piece::{Piece, PieceKind},
-    position::{MoveGenContext, Position},
-};
+use crate::bitboard::bishop_attacks_from;
+use crate::bitboard::rook_attacks_from;
+use crate::mov::ChessMove;
+use crate::piece::Piece;
+use crate::piece::PieceKind;
+use crate::position::MoveGenContext;
+use crate::position::Position;
 
 pub fn generate_pseudo_bishop_moves(
     pos: &Position,
@@ -32,6 +33,15 @@ pub fn generate_pseudo_rook_moves(
 
     for from in rooks.squares() {
         let valid_moves = rook_attacks_from(from, context.occupancy).and(context.not_ours);
+        println!(
+            "Rook at {} (idx {}): valid_moves mask 0x{:016x}",
+            from.to_string(),
+            from.index(),
+            valid_moves.0
+        );
+        for to in valid_moves.squares() {
+            println!("Rook move: {} -> {}", from.to_string(), to.to_string());
+        }
         crate::movegen::api::push_moves_from_valid_targets(pos, context, from, valid_moves, moves);
     }
 }

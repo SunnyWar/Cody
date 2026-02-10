@@ -1,3 +1,4 @@
+// ...existing code...
 // This file started life as the monolithic movegen.rs. For the refactor PR#1
 // we move the full original content here unchanged so external users see the
 // same API while we split internals in subsequent PRs.
@@ -97,7 +98,18 @@ pub fn generate_pseudo_moves(pos: &Position) -> Vec<ChessMove> {
 pub fn generate_legal_moves(pos: &Position) -> Vec<ChessMove> {
     generate_pseudo_moves(pos)
         .into_iter()
-        .filter(|m| crate::movegen::is_legal(pos, m))
+        .filter(|m| {
+            let legal = crate::movegen::is_legal(pos, m);
+            if m.move_type == MoveType::EnPassant {
+                println!(
+                    "[is_legal] Checking en passant move: {} -> {} | legal: {}",
+                    m.from(),
+                    m.to(),
+                    legal
+                );
+            }
+            legal
+        })
         .collect()
 }
 
@@ -229,6 +241,154 @@ mod tests {
             king_moves, 0,
             "King on e1 should have no legal moves in the initial position"
         );
+    }
+    #[test]
+    fn test_knight_moves_from_center() {
+        // Knight on d5, empty board (FEN: 8/8/8/3N4/8/8/8/8)
+        let pos = Position::from_fen("8/8/8/3N4/8/8/8/4K3 w - - 0 1");
+        let moves = generate_legal_moves(&pos);
+        println!("All move from() squares:");
+        for m in &moves {
+            println!("from: {} to: {}", m.from().to_string(), m.to().to_string());
+        }
+        let found: Vec<_> = moves
+            .iter()
+            .filter(|m| m.from().to_string() == "d5")
+            .map(|m| m.to().to_string())
+            .collect();
+        let expected_targets = ["c7", "e7", "b6", "f6", "b4", "f4", "c3", "e3"];
+        println!("Found knight moves from d5: {:?}", found);
+        for sq in &expected_targets {
+            assert!(
+                found.contains(&sq.to_string()),
+                "Missing knight move to {}. Found: {:?}",
+                sq,
+                found
+            );
+        }
+        assert_eq!(
+            found.len(),
+            8,
+            "Knight should have 8 moves from d5 on empty board. Found: {:?}",
+            found
+        );
+    }
+
+    #[test]
+    fn test_bishop_moves_blocked_by_own_piece() {
+        // Bishop on c1, pawn on d2
+        let pos = Position::from_fen("8/8/8/8/8/8/2P5/2B5 w - - 0 1");
+        let moves = generate_legal_moves(&pos);
+        // Bishop should not be able to move to d2 or beyond
+        for m in &moves {
+            assert_ne!(
+                m.to(),
+                Square::from_coords('d', '2').unwrap(),
+                "Bishop should not capture own pawn"
+            );
+        }
+    }
+
+    #[test]
+    fn test_rook_moves_blocked_by_opponent() {
+        // Rook on a1, black pawn on a5, white king on e1, black king on e8
+        let pos = Position::from_fen("4k3/8/8/p7/8/8/8/R3K3 w - - 0 1");
+        let moves = generate_legal_moves(&pos);
+        let mut found_capture = false;
+        for m in &moves {
+            if m.from().to_string() == "a1" && m.to().to_string() == "a5" {
+                found_capture = true;
+            }
+            // Should not go past a5 (can move to a2, a3, a4, and capture on a5)
+            if m.from().to_string() == "a1" {
+                let to = m.to().to_string();
+                assert!(
+                    to != "a6" && to != "a7" && to != "a8",
+                    "Rook should not move past capture (found move to {})",
+                    to
+                );
+            }
+        }
+        assert!(found_capture, "Rook should be able to capture on a5");
+    }
+
+    #[test]
+    fn test_king_cannot_move_into_check() {
+        // King on e1, black rook on e8
+        let pos = Position::from_fen("4r3/8/8/8/8/8/8/4K3 w - - 0 1");
+        let moves = generate_legal_moves(&pos);
+        // King should not be able to move to e2 (into check)
+        for m in &moves {
+            assert_ne!(m.to().to_string(), "e2", "King should not move into check");
+        }
+    }
+
+    #[test]
+    fn test_pawn_promotion_moves() {
+        // White pawn on g7, white king on e1, black king on e8
+        let pos = Position::from_fen("4k3/6P1/8/8/8/8/8/4K3 w - - 0 1");
+        let moves = generate_legal_moves(&pos);
+        let mut found = false;
+        for m in &moves {
+            if m.from().to_string() == "g7" && m.to().to_string() == "g8" {
+                found = true;
+            }
+        }
+        assert!(found, "Pawn should be able to promote on g8");
+    }
+
+    #[test]
+    fn test_en_passant_capture() {
+        // White pawn on e5, black pawn on d5, en passant possible, white king on e1,
+        // black king on e8
+        let pos = Position::from_fen("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1");
+        println!("En passant square: {:?}", pos.ep_square);
+        let moves = generate_legal_moves(&pos);
+        println!("All generated moves:");
+        for m in &moves {
+            println!("move: {} -> {} type: {:?}", m.from(), m.to(), m.move_type);
+        }
+        let mut found = false;
+        for m in &moves {
+            if m.from().to_string() == "e5" && m.to().to_string() == "d6" {
+                println!("Found en passant candidate: {:?}", m);
+                found = true;
+            }
+        }
+        if !found {
+            println!("No en passant move found! All moves from e5:");
+            for m in &moves {
+                if m.from().to_string() == "e5" {
+                    println!("e5 -> {} type: {:?}", m.to(), m.move_type);
+                }
+            }
+            println!("All moves to d6:");
+            for m in &moves {
+                if m.to().to_string() == "d6" {
+                    println!("{} -> d6 type: {:?}", m.from(), m.move_type);
+                }
+            }
+        }
+        assert!(found, "En passant capture should be available");
+    }
+
+    #[test]
+    fn test_castling_rights() {
+        // King and rook in initial position, no pieces between
+        let pos = Position::from_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1");
+        let moves = generate_legal_moves(&pos);
+        let mut kingside = false;
+        let mut queenside = false;
+        for m in &moves {
+            if m.from().to_string() == "e1" && m.to().to_string() == "g1" {
+                kingside = true;
+            }
+            if m.from().to_string() == "e1" && m.to().to_string() == "c1" {
+                queenside = true;
+            }
+        }
+        assert!(kingside, "White should be able to castle kingside");
+        assert!(queenside, "White should be able to castle queenside");
     }
     // ... remaining tests untouched ...
 }

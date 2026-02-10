@@ -1,13 +1,96 @@
-use std::arch::x86_64::*;
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
-use std::ops::{Shl, Shr};
+// Iterator over set squares in a BitBoardMask.
+pub struct SquaresIter {
+    bb: u64,
+}
 
+impl Iterator for SquaresIter {
+    type Item = Square;
+
+    fn next(&mut self) -> Option<Square> {
+        if self.bb == 0 {
+            None
+        } else {
+            let tz = self.bb.trailing_zeros();
+            let sq = tz as u8;
+            // Debug output for diagnosis
+            println!("squares() yields index {} (bb=0x{:016x})", sq, self.bb);
+            self.bb &= !(1u64 << tz); // clear the lowest set bit
+            Square::try_from_index(sq)
+        }
+    }
+}
+#[cfg(test)]
+mod squares_iterator_regression_tests {
+    use super::*;
+    use crate::Square;
+
+    #[test]
+    fn test_squares_iterator_single_high_bit() {
+        // Only H8 set (index 63)
+        let mask = BitBoardMask(1u64 << 63);
+        let squares: Vec<Square> = mask.squares().collect();
+        assert_eq!(squares, vec![Square::H8]);
+    }
+
+    #[test]
+    fn test_squares_iterator_multiple_high_bits() {
+        // Set A1, D5, H8
+        let mask = BitBoardMask((1u64 << 0) | (1u64 << 35) | (1u64 << 63));
+        let mut squares: Vec<Square> = mask.squares().collect();
+        squares.sort_by_key(|sq: &Square| sq.index());
+        assert_eq!(squares, vec![Square::A1, Square::D5, Square::H8]);
+    }
+
+    #[test]
+    fn test_squares_iterator_all_bits() {
+        // All squares set
+        let mask = BitBoardMask(u64::MAX);
+        let squares: Vec<Square> = mask.squares().collect();
+        assert_eq!(squares.len(), 64);
+        let mut indices: Vec<usize> = squares.iter().map(|sq: &Square| sq.index()).collect();
+        indices.sort();
+        assert_eq!(indices, (0..64).collect::<Vec<_>>());
+    }
+}
 use crate::Square;
+use std::arch::x86_64::*;
+use std::ops::BitAnd;
+use std::ops::BitAndAssign;
+use std::ops::BitOr;
+use std::ops::BitOrAssign;
+use std::ops::Not;
+use std::ops::Shl;
+use std::ops::Shr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BitBoardMask(pub u64);
 
 impl BitBoardMask {
+    #[inline]
+    pub fn and(self, rhs: Self) -> Self {
+        self & rhs
+    }
+
+    #[inline]
+    pub fn or(self, rhs: Self) -> Self {
+        self | rhs
+    }
+
+    #[inline]
+    pub fn shift_left(self, n: u8) -> Self {
+        BitBoardMask(self.0 << n)
+    }
+
+    #[inline]
+    pub fn shift_right(self, n: u8) -> Self {
+        BitBoardMask(self.0 >> n)
+    }
+
+    #[inline]
+    pub fn contains(&self, sq: Square) -> bool {
+        self.contains_square(sq)
+    }
+
     #[inline]
     pub const fn empty() -> Self {
         Self(0)
@@ -61,17 +144,8 @@ impl BitBoardMask {
 
     /// Returns an iterator over all set squares in this bitboard.
     #[inline]
-    pub fn squares(self) -> impl Iterator<Item = Square> {
-        let mut bb = self.0;
-        std::iter::from_fn(move || {
-            if bb == 0 {
-                None
-            } else {
-                let sq = bb.trailing_zeros() as u8;
-                bb &= bb - 1; // clear the lowest set bit
-                Square::try_from_index(sq)
-            }
-        })
+    pub fn squares(self) -> SquaresIter {
+        SquaresIter { bb: self.0 }
     }
 
     #[inline]
@@ -79,40 +153,14 @@ impl BitBoardMask {
         if self.0 == 0 {
             None
         } else {
-            let idx = self.0.trailing_zeros() as u8;
-            Square::try_from_index(idx)
+            let tz = self.0.trailing_zeros();
+            Square::try_from_index(tz as u8)
         }
     }
 
-    #[inline]
-    pub fn contains(&self, sq: Square) -> bool {
-        self.0 & (1u64 << (sq as u8)) != 0
-    }
+    // ...rest of BitBoardMask impl...
 
-    #[inline]
-    pub const fn shift_left(self, n: u32) -> Self {
-        BitBoardMask(self.0 << n)
-    }
-
-    #[inline]
-    pub const fn shift_right(self, n: u32) -> Self {
-        BitBoardMask(self.0 >> n)
-    }
-
-    #[inline]
-    pub const fn or(self, other: Self) -> Self {
-        BitBoardMask(self.0 | other.0)
-    }
-
-    #[inline]
-    pub const fn and(self, other: Self) -> Self {
-        BitBoardMask(self.0 & other.0)
-    }
-
-    #[inline]
-    pub const fn xor(self, other: Self) -> Self {
-        BitBoardMask(self.0 ^ other.0)
-    }
+    // Move test module to bottom of file at module scope
 
     #[inline]
     pub const fn not(self) -> Self {
@@ -134,6 +182,7 @@ impl BitBoardMask {
 // Standard trait implementations remain the same...
 impl Shl<i8> for BitBoardMask {
     type Output = Self;
+
     #[inline]
     fn shl(self, rhs: i8) -> Self::Output {
         if rhs >= 0 {
@@ -146,6 +195,7 @@ impl Shl<i8> for BitBoardMask {
 
 impl Shr<i8> for BitBoardMask {
     type Output = Self;
+
     #[inline]
     fn shr(self, rhs: i8) -> Self::Output {
         if rhs >= 0 {
@@ -158,6 +208,7 @@ impl Shr<i8> for BitBoardMask {
 
 impl BitAnd for BitBoardMask {
     type Output = Self;
+
     #[inline]
     fn bitand(self, rhs: Self) -> Self::Output {
         BitBoardMask(self.0 & rhs.0)
@@ -173,6 +224,7 @@ impl BitAndAssign for BitBoardMask {
 
 impl BitOr for BitBoardMask {
     type Output = Self;
+
     #[inline]
     fn bitor(self, rhs: Self) -> Self::Output {
         BitBoardMask(self.0 | rhs.0)
@@ -188,6 +240,7 @@ impl BitOrAssign for BitBoardMask {
 
 impl Not for BitBoardMask {
     type Output = Self;
+
     #[inline]
     fn not(self) -> Self::Output {
         BitBoardMask(!self.0)
@@ -351,79 +404,73 @@ impl BitBoardMask {
     pub const fn subray_up_right(self, origin: BitBoardMask) -> BitBoardMask {
         // Simplified implementation - full optimization would require diagonal masks
         let mut ray = BitBoardMask::empty();
-        let mut probe = origin.shift_left(9);
-
+        let mut probe = BitBoardMask(origin.0 << 9);
         // Unroll first few iterations for better performance
         if probe.0 != 0 && (probe.0 & 0xFEFEFEFEFEFEFEFE) != 0 {
             // Not on left edge
-            ray = ray.or(probe);
-            if self.and(probe).is_nonempty() {
+            ray = BitBoardMask(ray.0 | probe.0);
+            if BitBoardMask(self.0 & probe.0).is_nonempty() {
                 return ray;
             }
-            probe = probe.shift_left(9);
-
+            probe = BitBoardMask(probe.0 << 9);
             if probe.0 != 0 && (probe.0 & 0xFEFEFEFEFEFEFEFE) != 0 {
-                ray = ray.or(probe);
-                if self.and(probe).is_nonempty() {
+                ray = BitBoardMask(ray.0 | probe.0);
+                if BitBoardMask(self.0 & probe.0).is_nonempty() {
                     return ray;
                 }
-                probe = probe.shift_left(9);
+                probe = BitBoardMask(probe.0 << 9);
             }
         }
-
         // Continue with loop for remaining squares
         while probe.0 != 0 && (probe.0 & 0xFEFEFEFEFEFEFEFE) != 0 {
-            ray = ray.or(probe);
-            if self.and(probe).is_nonempty() {
+            ray = BitBoardMask(ray.0 | probe.0);
+            if BitBoardMask(self.0 & probe.0).is_nonempty() {
                 break;
             }
-            probe = probe.shift_left(9);
+            probe = BitBoardMask(probe.0 << 9);
         }
         ray
     }
 
     pub const fn subray_down_left(self, origin: BitBoardMask) -> BitBoardMask {
         let mut ray = BitBoardMask::empty();
-        let mut probe = origin.shift_right(9);
-
+        let mut probe = BitBoardMask(origin.0 >> 9);
         // Unroll and add edge detection
         while probe.0 != 0 && (probe.0 & 0x7F7F7F7F7F7F7F7F) != 0 {
             // Not on right edge
-            ray = ray.or(probe);
-            if self.and(probe).is_nonempty() {
+            ray = BitBoardMask(ray.0 | probe.0);
+            if BitBoardMask(self.0 & probe.0).is_nonempty() {
                 break;
             }
-            probe = probe.shift_right(9);
+            probe = BitBoardMask(probe.0 >> 9);
         }
         ray
     }
 
     pub const fn subray_up_left(self, origin: BitBoardMask) -> BitBoardMask {
         let mut ray = BitBoardMask::empty();
-        let mut probe = origin.shift_left(7);
-
+        let mut probe = BitBoardMask(origin.0 << 7);
         while probe.0 != 0 && (probe.0 & 0x7F7F7F7F7F7F7F7F) != 0 {
             // Not on right edge
-            ray = ray.or(probe);
-            if self.and(probe).is_nonempty() {
+            ray = BitBoardMask(ray.0 | probe.0);
+            if BitBoardMask(self.0 & probe.0).is_nonempty() {
                 break;
             }
-            probe = probe.shift_left(7);
+            probe = BitBoardMask(probe.0 << 7);
         }
         ray
     }
 
     pub const fn subray_down_right(self, origin: BitBoardMask) -> BitBoardMask {
         let mut ray = BitBoardMask::empty();
-        let mut probe = origin.shift_right(7);
-
+        let mut probe = BitBoardMask(origin.0 >> 7);
         while probe.0 != 0 && (probe.0 & 0xFEFEFEFEFEFEFEFE) != 0 {
             // Not on left edge
-            ray = ray.or(probe);
-            if self.and(probe).is_nonempty() {
+            ray = BitBoardMask(ray.0 | probe.0);
+            if BitBoardMask(self.0 & probe.0).is_nonempty() {
                 break;
             }
-            probe = probe.shift_right(7);
+            probe = BitBoardMask(probe.0 >> 7);
         }
         ray
     }

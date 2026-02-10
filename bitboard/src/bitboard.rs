@@ -1,25 +1,24 @@
 // bitboard/src/bitboard.rs
 #![allow(long_running_const_eval)]
 
-use std::arch::x86_64::*;
-
+use crate::BitBoardMask;
+use crate::Square;
+use crate::constants::BOARD_SIZE;
+use crate::constants::NUM_SQUARES;
 use crate::piece::Color;
-use crate::{
-    BitBoardMask, Square,
-    constants::{BOARD_SIZE, NUM_SQUARES},
-    tables::{
-        bishop_attack::BISHOP_ATTACKS,
-        file_masks::{NOT_FILE_A, NOT_FILE_H},
-        king_attack::KING_ATTACKS,
-        knight_attack::KNIGHT_ATTACKS,
-        rook_attack::ROOK_ATTACKS,
-    },
-};
+use crate::tables::bishop_attack::BISHOP_ATTACKS;
+use crate::tables::file_masks::NOT_FILE_A;
+use crate::tables::file_masks::NOT_FILE_H;
+use crate::tables::king_attack::KING_ATTACKS;
+use crate::tables::knight_attack::KNIGHT_ATTACKS;
+use crate::tables::rook_attack::ROOK_ATTACKS;
+use std::arch::x86_64::*;
 
 pub struct BitIter(u64);
 
 impl Iterator for BitIter {
     type Item = u8;
+
     fn next(&mut self) -> Option<Self::Item> {
         if self.0 == 0 {
             None
@@ -71,8 +70,7 @@ const fn rook_mask(square: Square) -> BitBoardMask {
     let rank_mask = square.rank_mask();
     let file_mask = square.file_mask();
     let origin = square.bitboard();
-
-    rank_mask.or(file_mask).and(origin.not())
+    BitBoardMask((rank_mask.0 | file_mask.0) & !origin.0)
 }
 
 pub const ROOK_MASKS: [BitBoardMask; NUM_SQUARES] = {
@@ -120,44 +118,42 @@ impl BitBoardMask {
 
 #[inline]
 const fn bishop_mask(square: Square) -> BitBoardMask {
-    BitBoardMask::diagonal_for(square).or(BitBoardMask::antidiagonal_for(square))
+    let d = BitBoardMask::diagonal_for(square);
+    let a = BitBoardMask::antidiagonal_for(square);
+    BitBoardMask(d.0 | a.0)
 }
 
 #[inline]
 pub const fn bishop_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
     let origin = square.bitboard();
-
     // Diagonal directions
     let diag_mask = DIAGONAL_MASKS[square.index()];
-    let diag_blockers = occupancy.and(diag_mask);
+    let diag_blockers = BitBoardMask(occupancy.0 & diag_mask.0);
     let ne = diag_blockers.subray_up_right(origin);
     let sw = diag_blockers.subray_down_left(origin);
-    let diag_attacks = ne.or(sw);
-
+    let diag_attacks = BitBoardMask(ne.0 | sw.0);
     // Anti-diagonal directions
     let anti_mask = ANTIDIAGONAL_MASKS[square.index()];
-    let anti_blockers = occupancy.and(anti_mask);
+    let anti_blockers = BitBoardMask(occupancy.0 & anti_mask.0);
     let nw = anti_blockers.subray_up_left(origin);
     let se = anti_blockers.subray_down_right(origin);
-    let anti_attacks = nw.or(se);
-
-    diag_attacks.or(anti_attacks)
+    let anti_attacks = BitBoardMask(nw.0 | se.0);
+    BitBoardMask(diag_attacks.0 | anti_attacks.0)
 }
 
 #[inline]
 const fn pawn_attacks_from(square: Square, color: Color) -> BitBoardMask {
     let bb = square.bitboard();
-
     match color {
         Color::White => {
-            let nw_attack = bb.shift_left(7).and(NOT_FILE_H);
-            let ne_attack = bb.shift_left(9).and(NOT_FILE_A);
-            nw_attack.or(ne_attack)
+            let nw_attack = BitBoardMask((bb.0 << 7) & NOT_FILE_H.0);
+            let ne_attack = BitBoardMask((bb.0 << 9) & NOT_FILE_A.0);
+            BitBoardMask(nw_attack.0 | ne_attack.0)
         }
         Color::Black => {
-            let sw_attack = bb.shift_right(9).and(NOT_FILE_H);
-            let se_attack = bb.shift_right(7).and(NOT_FILE_A);
-            sw_attack.or(se_attack)
+            let sw_attack = BitBoardMask((bb.0 >> 9) & NOT_FILE_H.0);
+            let se_attack = BitBoardMask((bb.0 >> 7) & NOT_FILE_A.0);
+            BitBoardMask(sw_attack.0 | se_attack.0)
         }
     }
 }
@@ -267,7 +263,8 @@ mod tests {
         let occupancy = BitBoardMask(0b10010); // bits at positions 1 and 4 are set
 
         // The mask bits are: [bit 1, bit 2, bit 4]
-        // Occupancy has bits 1 and 4 set, so index should be: 1 (bit 0) + 0 (bit 1) + 1 (bit 2) = 0b101 = 5
+        // Occupancy has bits 1 and 4 set, so index should be: 1 (bit 0) + 0 (bit 1) + 1
+        // (bit 2) = 0b101 = 5
         let index = occupancy_to_index(occupancy, mask);
         assert_eq!(index, 0b101);
     }
@@ -293,7 +290,8 @@ mod tests {
         let mask = BitBoardMask(0b101010);
         let occupancy = BitBoardMask(0b100000);
         let index = occupancy_to_index(occupancy, mask);
-        // Only the highest bit in mask is set in occupancy, which is the 3rd bit in mask order
+        // Only the highest bit in mask is set in occupancy, which is the 3rd bit in
+        // mask order
         assert_eq!(index, 0b100);
     }
 }

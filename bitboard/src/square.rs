@@ -1,11 +1,10 @@
 // bitboard/src/square.rs
 
+use crate::BitBoardMask;
+use crate::tables::file_masks::FILE_MASKS;
+use crate::tables::rank_masks::RANK_MASKS;
+use crate::tables::square_colors::SQUARE_COLOR_MASK;
 use std::fmt;
-
-use crate::{
-    BitBoardMask,
-    tables::{file_masks::FILE_MASKS, rank_masks::RANK_MASKS, square_colors::SQUARE_COLOR_MASK},
-};
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
