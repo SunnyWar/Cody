@@ -1,19 +1,23 @@
 use crate::VERBOSE;
 use crate::core::arena::Arena;
-use crate::core::tt::{TTFlag, TranspositionTable};
+use crate::core::tt::TTFlag;
+use crate::core::tt::TranspositionTable;
 use crate::search::evaluator::Evaluator;
 use crate::search::quiescence::quiescence_with_arena;
-use bitboard::movegen::{MoveGenerator, generate_legal_moves};
-use std::fs::OpenOptions;
-use std::io::{self, Write};
-use std::sync::atomic::AtomicU64;
-use std::sync::atomic::Ordering;
 // use the UCI API's iso_stamp for consistent timestamps with milliseconds
 use crate::util;
+use bitboard::movegen::MoveGenerator;
+use bitboard::movegen::generate_legal_moves;
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::io::{self};
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering;
 
 pub static NODE_COUNT: AtomicU64 = AtomicU64::new(0);
 
-// Positive large value used to detect mate scores. Keep consistent with UCI API's MATE_SCORE.
+// Positive large value used to detect mate scores. Keep consistent with UCI
+// API's MATE_SCORE.
 pub const MATE_SCORE: i32 = 30_000;
 // Large infinity value for alpha-beta bounds
 pub const INF: i32 = 1_000_000_000;
@@ -25,14 +29,19 @@ pub fn print_uci_info(
     elapsed_ms: u64,
 ) {
     let nodes = NODE_COUNT.load(Ordering::Relaxed);
-    let nps = if elapsed_ms > 0 {
-        nodes * 1000 / elapsed_ms
-    } else {
-        0
-    };
+    let nps = elapsed_ms
+        .checked_div(1)
+        .map(|_| {
+            if elapsed_ms > 0 {
+                nodes as u128 * 1000 / elapsed_ms as u128
+            } else {
+                0
+            }
+        })
+        .unwrap_or(0);
 
-    // Build the UCI info string (with mate/centipawn formatting) and write to stdout
-    // and append the same line to cody_uci.log for traceability.
+    // Build the UCI info string (with mate/centipawn formatting) and write to
+    // stdout and append the same line to cody_uci.log for traceability.
     let info_line = if score.abs() > MATE_SCORE - 100 {
         let mate_in = if score > 0 {
             (MATE_SCORE - score + 1) / 2
@@ -95,7 +104,8 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         return quiescence_with_arena(movegen, evaluator, arena, ply, alpha, beta);
     }
 
-    // Probe TT if provided (tt is always present in serial path; for parallel we pass a local dummy)
+    // Probe TT if provided (tt is always present in serial path; for parallel we
+    // pass a local dummy)
     let mut tt_entry_opt: Option<crate::core::tt::TTEntry> = None;
     {
         let key = arena.get(ply).position.zobrist_hash();

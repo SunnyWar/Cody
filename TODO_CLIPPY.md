@@ -1,6 +1,6 @@
 # TODO List: Clippy
-Generated: 2026-02-09 21:43:43
-**Stats**: 5 total | 3 not started | 1 in progress | 1 completed
+Generated: 2026-02-10 00:18:18
+**Stats**: 5 total | 0 not started | 1 in progress | 4 completed
 ---
 
 ## In Progress
@@ -12,29 +12,6 @@ Generated: 2026-02-09 21:43:43
 
 Consider using underscores to improve readability of large numeric literals.
 
-## Not Started
-
-### [ ] CLIP-003: Use direct variable access in format strings
-- **Priority**: medium
-- **Category**: 
-- **Complexity**: medium
-
-Consider using direct variable access in `format!` string for better readability and performance.
-
-### [ ] CLIP-004: Prefer `!is_empty` over length comparison to zero
-- **Priority**: medium
-- **Category**: 
-- **Complexity**: medium
-
-Using `!is_empty` is clearer and more explicit than comparing the length of a collection to zero.
-
-### [ ] CLIP-005: Use references in loop over containers for better performance
-- **Priority**: medium
-- **Category**: 
-- **Complexity**: medium
-
-Using references in loops can improve performance by avoiding unnecessary cloning of elements.
-
 ## Completed
 
 ### [x] CLIP-001: Avoid long literals lacking separators
@@ -45,3 +22,30 @@ Using references in loops can improve performance by avoiding unnecessary clonin
 Consider using underscores to improve readability of large numeric literals.
 
 *Completed: 2026-02-09T21:43:43.432412*
+
+### [x] CLIP-003: Use direct variable access in format strings
+- **Priority**: medium
+- **Category**: 
+- **Complexity**: medium
+
+Consider using direct variable access in `format!` string for better readability and performance.
+
+*Completed: 2026-02-10T00:18:18.152982*
+
+### [x] CLIP-004: Prefer `!is_empty` over length comparison to zero
+- **Priority**: medium
+- **Category**: 
+- **Complexity**: medium
+
+Using `!is_empty` is clearer and more explicit than comparing the length of a collection to zero.
+
+*Completed: 2026-02-10T00:18:18.206099*
+
+### [x] CLIP-005: Use references in loop over containers for better performance
+- **Priority**: medium
+- **Category**: 
+- **Complexity**: medium
+
+Using references in loops can improve performance by avoiding unnecessary cloning of elements.
+
+*Completed: 2026-02-10T00:18:18.257542*

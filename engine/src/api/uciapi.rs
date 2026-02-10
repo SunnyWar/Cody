@@ -307,9 +307,9 @@ impl CodyApi {
         let total_nps = (total_nodes as f64 / (total_time_ms as f64 / 1000.0)) as u64;
 
         self.writeln_and_log(out, "===========================");
-        self.writeln_and_log(out, &format!("Total time (ms) : {}", total_time_ms));
-        self.writeln_and_log(out, &format!("Nodes searched  : {}", total_nodes));
-        self.writeln_and_log(out, &format!("Nodes/second    : {}", total_nps));
+        self.writeln_and_log(out, &format!("Total time (ms) : {total_time_ms}"));
+        self.writeln_and_log(out, &format!("Nodes searched  : {total_nodes}"));
+        self.writeln_and_log(out, &format!("Nodes/second    : {total_nps}"));
         out.flush().unwrap();
     }
 

@@ -14,9 +14,9 @@ fn main() {
     args.remove(0);
 
     // Check for perft command
-    if args.is_empty() || (args.len() > 0 && args[0] != "perft") {
+    if !args.is_empty() || (!args.is_empty() && args[0] != "perft") {
         // UCI mode or handle flags
-        for a in args.iter() {
+        for a in &args {
             if a == "--verbose" || a.eq_ignore_ascii_case("-v") {
                 VERBOSE.store(true, std::sync::atomic::Ordering::Relaxed);
             }

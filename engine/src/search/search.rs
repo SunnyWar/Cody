@@ -1,14 +1,16 @@
 // src/search/search.rs
 
 use crate::core::arena::Arena;
-use crate::search::core::{INF, MATE_SCORE, NODE_COUNT, print_uci_info, search_node_with_arena};
+use crate::search::core::INF;
+use crate::search::core::MATE_SCORE;
+use crate::search::core::NODE_COUNT;
+use crate::search::core::search_node_with_arena;
 use crate::search::evaluator::Evaluator;
 use bitboard::Square;
-use bitboard::{
-    mov::ChessMove,
-    movegen::{MoveGenerator, generate_legal_moves},
-    position::Position,
-};
+use bitboard::mov::ChessMove;
+use bitboard::movegen::MoveGenerator;
+use bitboard::movegen::generate_legal_moves;
+use bitboard::position::Position;
 use rustc_hash::FxHashMap;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
@@ -44,11 +46,12 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         self.num_threads = n.max(1);
     }
 
-    /// Iterative deepening search. max_depth is the maximum search depth to perform.
-    /// Optionally accepts a time budget in milliseconds and a stop flag reference. If the
-    /// time budget is provided the search will stop after completing the last fully
-    /// finished depth that doesn't exceed the budget. The stop flag (AtomicBool) can be
-    /// used by the caller to request an early stop; if provided the search will check it
+    /// Iterative deepening search. max_depth is the maximum search depth to
+    /// perform. Optionally accepts a time budget in milliseconds and a stop
+    /// flag reference. If the time budget is provided the search will stop
+    /// after completing the last fully finished depth that doesn't exceed
+    /// the budget. The stop flag (AtomicBool) can be used by the caller to
+    /// request an early stop; if provided the search will check it
     /// between completed depths.
     pub fn search(
         &mut self,
@@ -151,11 +154,6 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                             // Each thread gets its own arena to avoid synchronization
                             let mut local_arena = Arena::new(arena_cap);
                             local_arena.get_mut(0).position.copy_from(root);
-                            {
-                                let (parent, child) = local_arena.get_pair_mut(0, 1);
-                                parent.position.apply_move_into(&m, &mut child.position);
-                            }
-                            // Each thread gets its own TT instance (no shared access)
                             let mut local_tt_thread = crate::core::tt::TranspositionTable::new(1);
                             let score = -search_node_with_arena(
                                 &mg,

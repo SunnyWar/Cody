@@ -1,9 +1,9 @@
 /// Integration test demonstrating perft usage
 /// Run with: cargo test --lib test_perft_integration -- --nocapture
-
 #[cfg(test)]
 mod perft_integration_tests {
-    use bitboard::{perft, position::Position};
+    use bitboard::perft;
+    use bitboard::position::Position;
 
     #[test]
     fn test_perft_initial_position_depth_2() {
