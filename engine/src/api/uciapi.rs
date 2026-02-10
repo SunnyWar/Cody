@@ -1,18 +1,25 @@
+use crate::api::golimits::GoLimits;
 use bitboard::movegen::SimpleMoveGen;
 use bitboard::piece::Color;
 use bitboard::position::Position;
-use engine::{Engine, MaterialEvaluator, NODE_COUNT, TEST_CASES, TestCase, VERBOSE};
+use engine::Engine;
+use engine::MaterialEvaluator;
+use engine::NODE_COUNT;
+use engine::TEST_CASES;
+use engine::TestCase;
+use engine::VERBOSE;
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::io::{self, BufRead, Write};
+use std::io::BufRead;
+use std::io::Write;
+use std::io::{self};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-
-use crate::api::golimits::GoLimits;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 
 pub struct CodyApi {
     engine: Engine<SimpleMoveGen, MaterialEvaluator>,
-    current_pos: Position,
+    pub current_pos: Position,
     limits: GoLimits,
     stop: Arc<AtomicBool>, // for future: stop support
     // Optional log file for UCI diagnostics (IN/OUT)
@@ -95,7 +102,8 @@ impl CodyApi {
             max_threads
         );
         self.writeln_and_log(out, &opt);
-        // Advertise Verbose option so UIs can toggle runtime verbose logging via setoption
+        // Advertise Verbose option so UIs can toggle runtime verbose logging via
+        // setoption
         self.writeln_and_log(out, "option name Verbose type check default false");
         self.writeln_and_log(out, "uciok");
     }
@@ -138,7 +146,7 @@ impl CodyApi {
         self.writeln_and_log(out, "readyok");
     }
 
-    fn handle_position(&mut self, cmd: &str, out: &mut impl Write) {
+    pub fn handle_position(&mut self, cmd: &str, out: &mut impl Write) {
         let mut tokens = cmd.split_whitespace().skip(1).peekable();
         let mut pos = Position::default();
 
@@ -150,16 +158,22 @@ impl CodyApi {
                 }
                 "fen" => {
                     tokens.next(); // consume "fen"
-                    let fen_parts: Vec<&str> =
-                        tokens.by_ref().take_while(|&t| t != "moves").collect();
-                    let fen_str = fen_parts.join(" ");
-                    pos = Position::from_fen(&fen_str);
+                    let mut fen_parts = Vec::new();
+                    while let Some(&tok) = tokens.peek() {
+                        if tok == "moves" {
+                            break;
+                        }
+                        fen_parts.push(tokens.next().unwrap());
+                    }
+                    pos = Position::from_fen(&fen_parts.join(" "));
                 }
                 _ => {
                     // Unknown format: keep default start position
                 }
             }
         }
+        // Always sync self.current_pos to the parsed position before applying moves
+        self.current_pos = pos;
 
         // Apply subsequent moves if present
         if let Some(&"moves") = tokens.peek() {
@@ -167,20 +181,21 @@ impl CodyApi {
             for mv in tokens {
                 match pos.parse_uci_move(mv) {
                     Some(chess_move) => {
-                        // Apply move into pos, in-place or via a helper you have
                         let mut new_pos = Position::default();
                         pos.apply_move_into(&chess_move, &mut new_pos);
                         pos = new_pos;
                     }
                     None => {
-                        // If you want visibility during debugging, write to the UCI log and stdout when verbose is enabled.
+                        eprintln!(
+                            "DEBUG: Failed to parse UCI move {} for pos {}",
+                            mv,
+                            pos.to_fen()
+                        );
                         if VERBOSE.load(Ordering::Relaxed) {
                             let text =
                                 format!("Failed to parse UCI move {} for pos {}", mv, pos.to_fen());
-                            // Best-effort: write to stdout and append to cody_uci.log
                             self.writeln_and_log(out, &text);
                         }
-                        // Per UCI, silently ignoring is acceptable, but better to get this right.
                     }
                 }
             }
@@ -193,7 +208,8 @@ impl CodyApi {
     fn handle_go(&mut self, cmd: &str, out: &mut impl Write) {
         self.stop.store(false, Ordering::Relaxed);
         self.limits = self.parse_go_limits(cmd);
-        // Debug trace: announce parsed limits so UIs / logs can see we've started handling go
+        // Debug trace: announce parsed limits so UIs / logs can see we've started
+        // handling go
         if VERBOSE.load(Ordering::Relaxed) {
             self.writeln_and_log(out, &format!("debug: handle_go limits: {:?}", self.limits));
             out.flush().ok();
@@ -236,8 +252,8 @@ impl CodyApi {
             }
         }
 
-        // Optional: if no depth/movetime but clocks are provided, allocate a sane per-move budget.
-        // Example heuristic (very rough):
+        // Optional: if no depth/movetime but clocks are provided, allocate a sane
+        // per-move budget. Example heuristic (very rough):
         if limits.depth.is_none()
             && limits.movetime_ms.is_none()
             && let (Some(wt), Some(bt)) = (limits.wtime_ms, limits.btime_ms)

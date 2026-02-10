@@ -473,13 +473,30 @@ impl Position {
             None
         };
 
-        // should use: pub trait MoveGenerator {
-        //    fn generate_moves(&self, pos: &Position) -> Vec<Move>;
-        //    fn in_check(&self, pos: &Position) -> bool;
-
-        generate_pseudo_moves(self)
+        let moves = generate_pseudo_moves(self);
+        eprintln!(
+            "DEBUG: parse_uci_move: looking for {}{}{}{} {:?} in moves:",
+            from_file, from_rank, to_file, to_rank, promo
+        );
+        for m in &moves {
+            eprintln!(
+                "  move: {}{} -> {}{} promo: {:?}",
+                (b'a' + m.from().file()) as char,
+                (b'1' + m.from().rank()) as char,
+                (b'a' + m.to().file()) as char,
+                (b'1' + m.to().rank()) as char,
+                m.promotion()
+            );
+        }
+        let found = moves
             .into_iter()
-            .find(|m| m.from() == from_sq && m.to() == to_sq && m.promotion() == promo)
+            .find(|m| m.from() == from_sq && m.to() == to_sq && m.promotion() == promo);
+        if found.is_none() {
+            eprintln!("DEBUG: parse_uci_move: NOT FOUND");
+        } else {
+            eprintln!("DEBUG: parse_uci_move: FOUND");
+        }
+        found
     }
 
     pub fn to_board_state(&self) -> BoardState {
