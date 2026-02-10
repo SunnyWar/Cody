@@ -56,7 +56,7 @@ def load_epd_lines(epd_path: Path):
             lines.append(fen)
     return lines
 
-def run_tournament(new_engine: Path, old_engine: Path, epd_path: Path, games: int):
+def run_tournament(new_engine: Path, old_engine: Path, epd_path: Path | None, games: int):
     cmd = [
         CUTECHESS_CMD,
         "-engine", f"name=New_Version", f"cmd={new_engine}", f"dir={new_engine.parent}",
@@ -69,7 +69,7 @@ def run_tournament(new_engine: Path, old_engine: Path, epd_path: Path, games: in
     ]
 
     # Add opening book/EPD if available
-    if epd_path.exists():
+    if epd_path and epd_path.is_file():
         cmd += ["-openings", f"file={epd_path}", "format=epd", "order=random"]
 
     run(cmd)
@@ -88,9 +88,14 @@ def main():
     print("--- Building Baseline Version ---")
     old_exe = build_baseline_engine(root)
     
+    default_epd = root / "data" / "4000_openings_legacy.epd"
+    epd_path = Path(args.epd) if args.epd else default_epd
+    if not epd_path.is_file():
+        print(f":: Warning: EPD file not found or not a file: {epd_path}")
+
     print(f"--- Starting Tournament ({args.games} games) ---")
     try:
-        run_tournament(new_exe, old_exe, Path(args.epd) if args.epd else Path(""), args.games)
+        run_tournament(new_exe, old_exe, epd_path if epd_path.is_file() else None, args.games)
     finally:
         # Cleanup baseline temp directory if desired
         if old_exe.exists():
