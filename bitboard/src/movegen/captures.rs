@@ -1,14 +1,15 @@
-use crate::{
-    Square,
-    bitboard::{
-        bishop_attacks_from, king_attacks, knight_attacks, pawn_attacks_to, rook_attacks_from,
-    },
-    mov::ChessMove,
-    mov::MoveType,
-    piece::Color,
-    piece::{Piece, PieceKind},
-    position::Position,
-};
+use crate::Square;
+use crate::bitboard::bishop_attacks_from;
+use crate::bitboard::king_attacks;
+use crate::bitboard::knight_attacks;
+use crate::bitboard::pawn_attacks_to;
+use crate::bitboard::rook_attacks_from;
+use crate::mov::ChessMove;
+use crate::mov::MoveType;
+use crate::piece::Color;
+use crate::piece::Piece;
+use crate::piece::PieceKind;
+use crate::position::Position;
 
 /// Generate pseudo capture-like moves (captures, promotions, en-passant).
 pub fn generate_pseudo_captures(pos: &Position) -> Vec<ChessMove> {

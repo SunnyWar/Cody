@@ -1,10 +1,12 @@
-use crate::{
-    Square,
-    bitboard::king_attacks,
-    mov::{ChessMove, MoveType},
-    piece::{Color, Piece, PieceKind},
-    position::{MoveGenContext, Position},
-};
+use crate::Square;
+use crate::bitboard::king_attacks;
+use crate::mov::ChessMove;
+use crate::mov::MoveType;
+use crate::piece::Color;
+use crate::piece::Piece;
+use crate::piece::PieceKind;
+use crate::position::MoveGenContext;
+use crate::position::Position;
 
 pub fn generate_pseudo_king_moves(
     pos: &Position,

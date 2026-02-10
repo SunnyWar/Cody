@@ -1,11 +1,14 @@
 // Simple Zobrist hashing constants for positions.
-// For determinism we use a fixed set of precomputed constants derived from a small LCG.
-// This keeps the bitboard crate allocation-free and dependency-free.
-use crate::piece::{Color, Piece, PieceKind};
+// For determinism we use a fixed set of precomputed constants derived from a
+// small LCG. This keeps the bitboard crate allocation-free and dependency-free.
+use crate::piece::Color;
+use crate::piece::Piece;
+use crate::piece::PieceKind;
 
 pub const ZOBRIST_PIECE_KEYS: [[u64; 64]; 12] = {
     // Generated with a tiny LCG; values are precomputed offline and embedded here.
-    // For brevity in this MVP we use a simple pattern; it's fine for correctness and testing.
+    // For brevity in this MVP we use a simple pattern; it's fine for correctness
+    // and testing.
     const fn make() -> [[u64; 64]; 12] {
         let mut tbl = [[0u64; 64]; 12];
         let mut i = 0;

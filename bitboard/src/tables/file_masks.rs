@@ -1,5 +1,6 @@
 // bitboard/src/tables/file_attack.rs
-use crate::{BitBoardMask, constants::BOARD_SIZE};
+use crate::BitBoardMask;
+use crate::constants::BOARD_SIZE;
 
 pub const FILE_A: BitBoardMask = BitBoardMask(0x0101010101010101);
 pub const FILE_B: BitBoardMask = BitBoardMask(0x0202020202020202);

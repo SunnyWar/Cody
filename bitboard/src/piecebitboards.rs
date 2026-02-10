@@ -1,6 +1,7 @@
 // bitboard/src/piecebitbboards.rs
 
-use crate::{BitBoardMask, piece::Piece};
+use crate::BitBoardMask;
+use crate::piece::Piece;
 
 #[derive(Clone, Copy, Debug)]
 pub struct PieceBitboards {

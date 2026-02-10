@@ -1,8 +1,13 @@
 // bitboard/src/attacks.rs
+use crate::BitBoardMask;
+use crate::Square;
+use crate::bitboard::ANTIDIAGONAL_MASKS;
+use crate::bitboard::BISHOP_MASKS;
+use crate::bitboard::DIAGONAL_MASKS;
+use crate::bitboard::PAWN_ATTACKS;
+use crate::bitboard::ROOK_MASKS;
 #[cfg(all(target_arch = "x86_64", target_feature = "bmi2"))]
 use crate::bitboard::occupancy_to_index;
-
-use crate::bitboard::{ANTIDIAGONAL_MASKS, BISHOP_MASKS, DIAGONAL_MASKS, PAWN_ATTACKS, ROOK_MASKS};
 use crate::piece::Color;
 use crate::tables::bishop_attack::BISHOP_ATTACKS;
 use crate::tables::file_masks::FILE_MASKS;
@@ -10,7 +15,6 @@ use crate::tables::king_attack::KING_ATTACKS;
 use crate::tables::knight_attack::KNIGHT_ATTACKS;
 use crate::tables::rank_masks::RANK_MASKS;
 use crate::tables::rook_attack::ROOK_ATTACKS;
-use crate::{BitBoardMask, Square};
 
 /// Represents a board position for attack calculations
 pub struct BoardState {
