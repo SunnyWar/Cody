@@ -41,11 +41,34 @@ pub fn generate_pseudo_pawn_moves(
     let empty = !context.occupancy;
     let their_pieces = pos.their_pieces(context.us);
 
-    let (single_push_dir, double_push_dir, left_cap_dir, right_cap_dir, double_rank_mask) =
-        match context.us {
-            Color::White => (NORTH, DOUBLE_NORTH, NORTH_WEST, NORTH_EAST, RANK_4),
-            Color::Black => (SOUTH, DOUBLE_SOUTH, SOUTH_EAST, SOUTH_WEST, RANK_5),
-        };
+    let (
+        single_push_dir,
+        double_push_dir,
+        left_cap_dir,
+        right_cap_dir,
+        double_rank_mask,
+        left_cap_mask,
+        right_cap_mask,
+    ) = match context.us {
+        Color::White => (
+            NORTH,
+            DOUBLE_NORTH,
+            NORTH_WEST,
+            NORTH_EAST,
+            RANK_4,
+            !FILE_H,
+            !FILE_A,
+        ),
+        Color::Black => (
+            SOUTH,
+            DOUBLE_SOUTH,
+            SOUTH_EAST,
+            SOUTH_WEST,
+            RANK_5,
+            !FILE_A,
+            !FILE_H,
+        ),
+    };
 
     // Single push
     let single_push = (pawns << single_push_dir) & empty;
@@ -75,7 +98,7 @@ pub fn generate_pseudo_pawn_moves(
     }
 
     // Left capture
-    let left_caps = (pawns << left_cap_dir) & their_pieces & !FILE_H;
+    let left_caps = (pawns << left_cap_dir) & their_pieces & left_cap_mask;
     for to in left_caps.squares() {
         if let Some(from) = to.advance(-left_cap_dir) {
             if is_promotion_rank(to, context.us) {
@@ -94,7 +117,7 @@ pub fn generate_pseudo_pawn_moves(
     }
 
     // Right capture
-    let right_caps = (pawns << right_cap_dir) & their_pieces & !FILE_A;
+    let right_caps = (pawns << right_cap_dir) & their_pieces & right_cap_mask;
     for to in right_caps.squares() {
         if let Some(from) = to.advance(-right_cap_dir) {
             if is_promotion_rank(to, context.us) {
