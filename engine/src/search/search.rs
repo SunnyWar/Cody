@@ -113,6 +113,20 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                 };
 
                 for m in moves {
+                    // Check stop flag and time budget before each move
+                    let now = Instant::now();
+                    let elapsed = now.duration_since(start).as_millis() as u64;
+                    if let Some(mt) = time_budget_ms
+                        && elapsed >= mt
+                    {
+                        break;
+                    }
+                    if let Some(stopflag) = stop
+                        && stopflag.load(Ordering::Relaxed)
+                    {
+                        break;
+                    }
+
                     {
                         let (parent, child) = self.arena.get_pair_mut(0, 1);
                         parent.position.apply_move_into(&m, &mut child.position);
@@ -126,6 +140,9 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                         -INF,
                         INF,
                         tt_ref,
+                        stop,
+                        time_budget_ms,
+                        Some(&start),
                     );
 
                     if score > best_score {
@@ -134,9 +151,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                     }
 
                     // Periodically print UCI info if a long move is being searched
-                    let now = Instant::now();
                     if now.duration_since(last_info_time).as_millis() >= 1000 {
-                        let elapsed = now.duration_since(start).as_millis() as u64;
                         let pv_str = if best_move.is_null() {
                             "".to_string()
                         } else {
@@ -178,6 +193,9 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                                 -INF,
                                 INF,
                                 &mut local_tt_thread,
+                                stop,
+                                time_budget_ms,
+                                Some(&start),
                             );
                             (m, score)
                         })

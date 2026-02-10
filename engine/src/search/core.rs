@@ -85,8 +85,24 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     mut alpha: i32,
     beta: i32,
     tt: &mut TranspositionTable,
+    stop: Option<&std::sync::atomic::AtomicBool>,
+    time_budget_ms: Option<u64>,
+    start_time: Option<&std::time::Instant>,
 ) -> i32 {
     NODE_COUNT.fetch_add(1, Ordering::Relaxed);
+    // Check stop flag and time budget at each node
+    if let Some(stopflag) = stop
+        && stopflag.load(Ordering::Relaxed)
+    {
+        return 0;
+    }
+
+    if let (Some(mt), Some(start)) = (time_budget_ms, start_time) {
+        let elapsed = start.elapsed().as_millis() as u64;
+        if elapsed >= mt {
+            return 0;
+        }
+    }
 
     // Debug: announce entry to this node
     if (ply <= 2 || NODE_COUNT.load(Ordering::Relaxed).is_multiple_of(500_000))
@@ -161,6 +177,9 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
             -beta,
             -alpha,
             tt,
+            stop,
+            time_budget_ms,
+            start_time,
         );
 
         if score > best_score {
