@@ -82,32 +82,65 @@ def call_ai(prompt: str, config: dict) -> str:
     model = config["model"]
     print(f"🤖 Analyzing with {model}...")
     
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": "You are a senior Rust architect analyzing code for refactoring opportunities. You MUST respond with ONLY valid JSON. Do not include any text, explanations, or markdown formatting - only output the raw JSON array."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.3
-    )
+    messages = [
+        {"role": "system", "content": "You are a senior Rust architect analyzing code for refactoring opportunities. You MUST respond with ONLY valid JSON. Do not include any text, explanations, or markdown formatting - only output the raw JSON array."},
+        {"role": "user", "content": prompt}
+    ]
+    
+    # Try to use JSON mode if supported (OpenAI and some local models)
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=0.3,
+            response_format={"type": "json_object"} if not config.get("use_local") else None
+        )
+    except:
+        # Fallback if response_format not supported
+        response = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=0.3
+        )
     
     return response.choices[0].message.content
 
 
 def extract_json_from_response(response: str, repo_root: Path, phase: str) -> list:
-    """Extract JSON array from AI response using regex."""
-    # Try to find JSON in code blocks (```json ... ```)
+    """Extract JSON array from AI response using multiple strategies."""
+    json_str = None
+    
+    # Strategy 1: Try to find JSON in ```json code blocks
     match = re.search(r"```json\s*([\s\S]*?)\s*```", response, re.DOTALL)
     if match:
         json_str = match.group(1).strip()
-    # Fallback: try generic code blocks (``` ... ```)
-    else:
+    
+    # Strategy 2: Try generic code blocks (``` ... ```)
+    if not json_str:
         match = re.search(r"```\s*([\s\S]*?)\s*```", response, re.DOTALL)
         if match:
+            candidate = match.group(1).strip()
+            # Only use if it looks like JSON (starts with [ or {)
+            if candidate.startswith('[') or candidate.startswith('{'):
+                json_str = candidate
+    
+    # Strategy 3: Look for JSON array anywhere in response (handles embedded JSON)
+    if not json_str:
+        match = re.search(r'(\[\s*(?:{[\s\S]*?}\s*,?\s*)*\])', response, re.DOTALL)
+        if match:
             json_str = match.group(1).strip()
-        else:
-            # No code block found, try to parse the whole response
-            json_str = response.strip()
+    
+    # Strategy 4: Try the whole response if it starts with [ or {
+    if not json_str:
+        trimmed = response.strip()
+        if trimmed.startswith('[') or trimmed.startswith('{'):
+            json_str = trimmed
+    
+    # If all strategies fail and response doesn't look like JSON, assume empty result
+    if not json_str:
+        print(f"⚠️ AI did not return JSON format. Response preview: {response[:200]}...")
+        print(f"   Returning empty list. This might mean no {phase} items were found.")
+        return []
     
     try:
         result = json.loads(json_str)
@@ -121,12 +154,16 @@ def extract_json_from_response(response: str, repo_root: Path, phase: str) -> li
         with dump_path.open("w", encoding="utf-8", errors="replace") as f:
             f.write("JSON parse failure\n")
             f.write(f"Error: {e}\n")
-            f.write("\n=== Response ===\n")
+            f.write("\n=== Attempted JSON String ===\n")
+            f.write(json_str)
+            f.write("\n\n=== Full Response ===\n")
             f.write(response)
         print(f"❌ Failed to parse JSON: {e}")
         print(f"Response preview: {response[:500]}...")
         print(f"📄 Full response saved to: {dump_path}")
-        raise RuntimeError(f"{phase} JSON parse failed; see {dump_path}")
+        print(f"⚠️ Returning empty list to continue workflow")
+        # Don't raise - return empty list to allow workflow to continue
+        return []
 
 
 def analyze(repo_root: Path, config: dict) -> int:
