@@ -157,6 +157,17 @@ impl PieceKind {
             _ => None,
         }
     }
+
+    /// Convert to a promotion character in UCI notation ('q','r','b','n').
+    pub const fn to_uci(self) -> char {
+        match self {
+            PieceKind::Queen => 'q',
+            PieceKind::Rook => 'r',
+            PieceKind::Bishop => 'b',
+            PieceKind::Knight => 'n',
+            PieceKind::Pawn | PieceKind::King => '?',
+        }
+    }
 }
 
 #[cfg(test)]

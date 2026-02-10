@@ -1,8 +1,8 @@
 // bitboard/mov.rs
 
+use crate::Square;
+use crate::piece::PieceKind;
 use std::fmt;
-
-use crate::{Square, piece::PieceKind};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MoveType {
@@ -72,6 +72,17 @@ fn square_to_string(sq: Square) -> String {
 
 impl fmt::Display for ChessMove {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}", self.from_square(), self.to_square())
+        match self.move_type {
+            MoveType::Promotion(kind) => {
+                write!(
+                    f,
+                    "{}{}{}",
+                    self.from_square(),
+                    self.to_square(),
+                    kind.to_uci()
+                )
+            }
+            _ => write!(f, "{}{}", self.from_square(), self.to_square()),
+        }
     }
 }
