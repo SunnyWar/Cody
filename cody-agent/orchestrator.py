@@ -56,8 +56,19 @@ class Orchestrator:
         
     def log(self, message: str):
         """Log a message to both console and file."""
+        # Skip logging empty messages or whitespace-only messages
+        if not message or not message.strip():
+            return
+        
+        # Extract leading newlines and log them first, then timestamp the actual content
+        leading_newlines = ""
+        content = message
+        while content.startswith("\n"):
+            leading_newlines += "\n"
+            content = content[1:]
+        
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_line = f"[{timestamp}] {message}"
+        log_line = leading_newlines + f"[{timestamp}] {content}"
         print(log_line)
         
         with open(self.log_file, 'a', encoding='utf-8') as f:

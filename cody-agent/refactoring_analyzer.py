@@ -151,8 +151,22 @@ def analyze(repo_root: Path, config: dict) -> int:
     
     full_prompt = f"{prompt_template}\n\n{existing_todos_info}\n\n## CODE TO ANALYZE\n\n{code_context}"
     
-    # Call AI
-    response = call_ai(full_prompt, config)
+    # Call AI with error handling
+    try:
+        response = call_ai(full_prompt, config)
+    except Exception as e:
+        logs_dir = repo_root / ".orchestrator_logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        error_path = logs_dir / f"refactoring_ai_error_{timestamp}.txt"
+        with error_path.open("w", encoding="utf-8", errors="replace") as f:
+            f.write(f"AI API Error: {type(e).__name__}\n")
+            f.write(f"Error message: {str(e)}\n")
+            f.write("\n=== Prompt sent ===\n")
+            f.write(full_prompt[:2000])  # First 2000 chars of prompt
+        print(f"❌ AI API Error: {type(e).__name__}: {str(e)[:200]}")
+        print(f"📄 Error details saved to: {error_path}")
+        raise RuntimeError(f"refactoring AI call failed; see {error_path}")
     
     # Parse response
     new_items = extract_json_from_response(response, repo_root, "refactoring")

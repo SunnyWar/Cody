@@ -8,6 +8,7 @@ import os
 import sys
 import json
 import subprocess
+from datetime import datetime
 from pathlib import Path
 from openai import OpenAI
 from todo_manager import TodoList
@@ -242,8 +243,21 @@ Description: {item.description}
     full_prompt = prompt_template.replace("{PERFORMANCE_DETAILS}", performance_details)
     full_prompt += f"\n\n## CODE CONTEXT\n\n{code_context}"
     
-    # Call AI
-    response = call_ai(full_prompt, config)
+    # Call AI with error handling
+    try:
+        response = call_ai(full_prompt, config)
+    except Exception as e:
+        logs_dir = repo_root / ".orchestrator_logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        error_path = logs_dir / f"performance_exec_ai_error_{timestamp}.txt"
+        with error_path.open("w", encoding="utf-8", errors="replace") as f:
+            f.write(f"AI API Error: {type(e).__name__}\n")
+            f.write(f"Error message: {str(e)}\n")
+            f.write(f"\nitem_id: {item_id}\n")
+        print(f"❌ AI API Error: {type(e).__name__}: {str(e)[:200]}")
+        print(f"📄 Error details saved to: {error_path}")
+        return False
     
     # Extract and apply patch
     patch = extract_patch(response)
