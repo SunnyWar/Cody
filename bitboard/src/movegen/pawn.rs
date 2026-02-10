@@ -37,7 +37,6 @@ pub fn generate_pseudo_pawn_moves(
     if pawns.is_empty() {
         return;
     }
-    println!("Pawn bitboard: 0x{:016x}", pawns.0);
 
     let empty = !context.occupancy;
     let their_pieces = pos.their_pieces(context.us);
@@ -115,47 +114,16 @@ pub fn generate_pseudo_pawn_moves(
 
     // En passant
     if let Some(ep_square) = pos.ep_square {
-        // Enhanced debug output for diagnosis
-        println!("[EP] pawns: 0x{:016x}", pawns.0);
-        for sq in pawns.squares() {
-            println!("[EP] pawn on {} (idx {})", sq, sq.index());
-        }
-        println!(
-            "[EP] ep_square: {} (idx {}, 0x{:016x})",
-            ep_square,
-            ep_square.index(),
-            ep_square.bitboard().0
-        );
-        println!(
-            "[EP] left_cap_dir: {} right_cap_dir: {}",
-            left_cap_dir, right_cap_dir
-        );
         let left_ep = (pawns << left_cap_dir) & ep_square.bitboard();
-        println!("[EP] left_ep: 0x{:016x}", left_ep.0);
         for to in left_ep.squares() {
             if let Some(from) = to.advance(-left_cap_dir) {
-                println!(
-                    "[EP] left_ep move: {} (idx {}) -> {} (idx {})",
-                    from,
-                    from.index(),
-                    to,
-                    to.index()
-                );
                 moves.push(ChessMove::new(from, to, MoveType::EnPassant));
             }
         }
 
         let right_ep = (pawns << right_cap_dir) & ep_square.bitboard();
-        println!("[EP] right_ep: 0x{:016x}", right_ep.0);
         for to in right_ep.squares() {
             if let Some(from) = to.advance(-right_cap_dir) {
-                println!(
-                    "[EP] right_ep move: {} (idx {}) -> {} (idx {})",
-                    from,
-                    from.index(),
-                    to,
-                    to.index()
-                );
                 moves.push(ChessMove::new(from, to, MoveType::EnPassant));
             }
         }
