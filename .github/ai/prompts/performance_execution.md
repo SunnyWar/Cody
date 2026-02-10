@@ -55,7 +55,6 @@ Provide two things:
 
 ```diff
 diff --git a/path/to/file.rs b/path/to/file.rs
-index abc123..def456 100644
 --- a/path/to/file.rs
 +++ b/path/to/file.rs
 @@ -10,7 +10,7 @@ old line
@@ -63,6 +62,12 @@ index abc123..def456 100644
 +added line
  unchanged line
 ```
+
+**Important**:
+- Use exact file paths from repo root
+- Include proper git diff headers (diff --git, ---, +++, @@)
+- Do NOT include the "index" line with git hashes
+- Ensure no trailing blank lines after the patch
 
 ### 2. Performance Report
 

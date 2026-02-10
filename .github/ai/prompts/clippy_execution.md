@@ -35,7 +35,6 @@ Provide your implementation as a unified diff patch that can be applied with `gi
 
 ```diff
 diff --git a/path/to/file.rs b/path/to/file.rs
-index abc123..def456 100644
 --- a/path/to/file.rs
 +++ b/path/to/file.rs
 @@ -10,7 +10,7 @@ old line
@@ -46,5 +45,7 @@ index abc123..def456 100644
 
 **Important**:
 - Use exact file paths from repo root
-- Include proper git diff headers
+- Include proper git diff headers (diff --git, ---, +++, @@)
+- Do NOT include the "index" line with git hashes
 - Keep the patch focused on the clippy fix only
+- Ensure no trailing blank lines after the patch

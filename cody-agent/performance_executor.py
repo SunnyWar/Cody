@@ -99,13 +99,22 @@ def extract_patch(response: str) -> str:
     if "```diff" in response:
         start = response.find("```diff") + 7
         end = response.find("```", start)
+        if end == -1:
+            # No closing backticks, take everything after ```diff
+            return response[start:].strip()
         return response[start:end].strip()
-    elif "diff --git" in response:
+    if "diff --git" in response:
         start = response.find("diff --git")
-        return response[start:].strip()
-    else:
-        print("⚠️ No clear diff block found in response")
-        return response
+        # Extract until we hit a non-patch line (common endings)
+        patch_text = response[start:]
+        # Stop at common response endings
+        for marker in ["\n\n## ", "\n\n**", "\nNote:", "\n---\n"]:
+            if marker in patch_text:
+                patch_text = patch_text[:patch_text.find(marker)]
+        return patch_text.strip()
+
+    print("⚠️ No clear diff block found in response")
+    return response
 
 
 def apply_patch(repo_root: Path, patch: str) -> bool:
@@ -113,7 +122,21 @@ def apply_patch(repo_root: Path, patch: str) -> bool:
     patch_file = repo_root / "temp_performance.patch"
     
     try:
-        patch_file.write_text(patch)
+        # Clean the patch: remove problematic index lines and trailing whitespace
+        cleaned_lines = []
+        for line in patch.splitlines():
+            # Skip index lines with fake or real git hashes - they can cause corruption errors
+            if line.startswith("index "):
+                continue
+            cleaned_lines.append(line)
+        
+        # Remove trailing empty lines
+        while cleaned_lines and not cleaned_lines[-1].strip():
+            cleaned_lines.pop()
+        
+        cleaned_patch = "\n".join(cleaned_lines) + "\n"
+        
+        patch_file.write_text(cleaned_patch)
         print(f"📄 Patch saved to: {patch_file}")
         
         result = subprocess.run(
