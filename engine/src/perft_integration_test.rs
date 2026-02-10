@@ -58,6 +58,26 @@ mod perft_integration_tests {
     }
 
     #[test]
+    fn test_perft_mirrored_stress_position() {
+        let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
+        let pos = Position::from_fen(fen);
+
+        let mut moves: Vec<String> = generate_legal_moves(&pos)
+            .iter()
+            .map(|m| m.to_string())
+            .collect();
+        moves.sort();
+
+        let mut expected = vec!["b4c5", "c4c5", "d2d4", "f1f2", "f3d4", "g1h1"];
+        expected.sort();
+
+        assert_eq!(
+            moves, expected,
+            "Unexpected legal moves in mirrored stress position"
+        );
+    }
+
+    #[test]
     fn test_perft_endgame_position() {
         let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 11";
         let pos = Position::from_fen(fen);
