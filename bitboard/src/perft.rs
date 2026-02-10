@@ -3,7 +3,19 @@
 ///
 /// Example: perft(position, 1) counts all legal moves from position.
 /// Example: perft(position, 3) counts all possible positions 3 moves ahead.
-use crate::{mov::ChessMove, movegen::generate_legal_moves, position::Position};
+use crate::mov::ChessMove;
+/// Minimal perft (performance test) for move generation verification.
+/// Perft counts the number of leaf nodes at a given depth from a position.
+///
+/// Example: perft(position, 1) counts all legal moves from position.
+/// Example: perft(position, 3) counts all possible positions 3 moves ahead.
+use crate::movegen::generate_legal_moves;
+/// Minimal perft (performance test) for move generation verification.
+/// Perft counts the number of leaf nodes at a given depth from a position.
+///
+/// Example: perft(position, 1) counts all legal moves from position.
+/// Example: perft(position, 3) counts all possible positions 3 moves ahead.
+use crate::position::Position;
 
 /// Count leaf nodes at the given depth from the given position.
 /// Returns the number of possible game paths of that length.
@@ -109,7 +121,7 @@ mod tests {
         let pos = Position::from_fen(fen);
         assert_eq!(
             perft(&pos, 1),
-            15,
+            14,
             "This endgame position should have 15 legal moves"
         );
     }

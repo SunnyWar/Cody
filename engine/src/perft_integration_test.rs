@@ -107,4 +107,21 @@ mod perft_integration_tests {
         println!("Midgame position before illegal move: perft(1) = {}", count);
         assert!(count > 0, "Should have legal moves for White");
     }
+
+    #[test]
+    fn test_perft_limited_legal_moves_position() {
+        let fen = "3qk2r/3P3p/rnn1p2P/2b3p1/2B2NP1/4pP2/1R6/1qB1K2b b k - 0 20";
+        let pos = Position::from_fen(fen);
+
+        let mut moves: Vec<String> = generate_legal_moves(&pos)
+            .iter()
+            .map(|m| m.to_string())
+            .collect();
+        moves.sort();
+
+        let mut expected = vec!["b6d7", "d8d7", "e8d7", "e8e7", "e8f7", "e8f8"];
+        expected.sort();
+
+        assert_eq!(moves, expected, "Unexpected legal moves in position");
+    }
 }
