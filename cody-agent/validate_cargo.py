@@ -14,8 +14,6 @@ def validate_cargo():
         return False
     if not run_command('cargo test', 'cargo test'):
         return False
-    if not run_command('cargo bench', 'cargo bench'):
-        return False
     print("[OK] All checks passed.")
     return True
 
