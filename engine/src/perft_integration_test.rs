@@ -67,4 +67,44 @@ mod perft_integration_tests {
         println!("Midgame position before illegal move: perft(1) = {}", count);
         assert!(count > 0, "Should have legal moves for Black");
     }
+
+    #[test]
+    fn test_perft_midgame_position_white_illegal_promotion() {
+        let fen = "rn1qnrk1/1P3p2/6pp/1p4bP/PpB1p1P1/1P2PN2/2Q2P2/R1B2RK1 w - - 0 12";
+        let pos = Position::from_fen(fen);
+
+        // Ensure the illegal move reported in the log is not generated.
+        let illegal_from = Square::from_coords('b', '7').unwrap();
+        let illegal_to = Square::from_coords('a', '8').unwrap();
+        let moves = generate_legal_moves(&pos);
+        let illegal_present = moves
+            .iter()
+            .any(|m| m.from() == illegal_from && m.to() == illegal_to && m.promotion().is_none());
+        assert!(
+            !illegal_present,
+            "Illegal move b7a8 without promotion was generated"
+        );
+
+        let promo_targets = moves
+            .iter()
+            .filter(|m| m.from() == illegal_from && m.to() == illegal_to)
+            .map(|m| m.promotion())
+            .collect::<Vec<_>>();
+        for promo in [
+            bitboard::piece::PieceKind::Queen,
+            bitboard::piece::PieceKind::Rook,
+            bitboard::piece::PieceKind::Bishop,
+            bitboard::piece::PieceKind::Knight,
+        ] {
+            assert!(
+                promo_targets.contains(&Some(promo)),
+                "Missing promotion move b7a8{}",
+                promo.to_uci()
+            );
+        }
+
+        let count = perft(&pos, 1);
+        println!("Midgame position before illegal move: perft(1) = {}", count);
+        assert!(count > 0, "Should have legal moves for White");
+    }
 }
