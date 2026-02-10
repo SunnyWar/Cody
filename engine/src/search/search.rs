@@ -62,6 +62,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
     ) -> (ChessMove, i32) {
         // Track the overall start time for nps calculations
         let start = Instant::now();
+        let mut last_info_time = start;
 
         let mut last_completed_move = ChessMove::null();
         let mut last_completed_score = i32::MIN;
@@ -131,6 +132,19 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                         best_score = score;
                         best_move = m;
                     }
+
+                    // Periodically print UCI info if a long move is being searched
+                    let now = Instant::now();
+                    if now.duration_since(last_info_time).as_millis() >= 1000 {
+                        let elapsed = now.duration_since(start).as_millis() as u64;
+                        let pv_str = if best_move.is_null() {
+                            "".to_string()
+                        } else {
+                            best_move.to_string()
+                        };
+                        crate::search::core::print_uci_info(d, best_score, &pv_str, elapsed);
+                        last_info_time = now;
+                    }
                 }
             } else {
                 // Parallel root move evaluation using rayon
@@ -187,7 +201,8 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             } else {
                 last_completed_move.to_string()
             };
-            //print_uci_info(d, last_completed_score, &pv_str, elapsed);
+            // Always print info at the end of each depth
+            crate::search::core::print_uci_info(d, last_completed_score, &pv_str, elapsed);
 
             // Stop if time budget exceeded or external stop requested
             if let Some(mt) = time_budget_ms
