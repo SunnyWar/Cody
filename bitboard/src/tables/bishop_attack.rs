@@ -3,10 +3,10 @@ use crate::BitBoardMask;
 
 pub const BISHOP_ATTACKS: [&[BitBoardMask]; 64] = [
     &[
-        BitBoardMask(0x8040201008040200),
-        BitBoardMask(0x0000000000000200),
-        BitBoardMask(0x0000000000040200),
-        BitBoardMask(0x0000000000000200),
+        BitBoardMask(0x8040_2010_0804_0200),
+        BitBoardMask(0x0000_0000_0000_0200),
+        BitBoardMask(0x0000_0000_0004_0200),
+        BitBoardMask(0x0000_0000_0000_0200),
         BitBoardMask(0x0000000008040200),
         BitBoardMask(0x0000000000000200),
         BitBoardMask(0x0000000000040200),
