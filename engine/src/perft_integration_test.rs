@@ -153,6 +153,26 @@ mod perft_integration_tests {
         let pos = Position::from_fen(fen);
         let original_hash = pos.zobrist_hash();
 
+        let mut moves: Vec<String> = generate_legal_moves(&pos)
+            .iter()
+            .map(|m| m.to_string())
+            .collect();
+        moves.sort();
+
+        let mut expected = vec![
+            "a7a6", "b7b6", "f7f6", "g7g6", "h7h6", "a7a5", "b7b5", "f7f5", "g7g5", "h7h5",
+            "c2d1q", "c2d1r", "c2d1b", "c2d1n", "c2c1q", "c2c1r", "c2c1b", "c2c1n", "c6b4", "c6d4",
+            "c6a5", "c6e5", "c6b8", "e7a3", "e7b4", "e7h4", "e7c5", "e7g5", "e7d6", "e7f6", "c8h3",
+            "c8g4", "c8f5", "c8e6", "c8d7", "a8b8", "f8e8", "d8a5", "d8b6", "d8d6", "d8c7", "d8d7",
+            "d8e8", "g8h8",
+        ];
+        expected.sort();
+
+        assert_eq!(
+            moves, expected,
+            "Unexpected legal moves in promotion consistency position"
+        );
+
         // Parse the promotion move (capture + promote)
         let m_str = "c2d1q";
         let m = pos
