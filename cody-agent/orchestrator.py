@@ -67,6 +67,10 @@ class Orchestrator:
             leading_newlines += "\n"
             content = content[1:]
         
+        # If after extracting leading newlines, content is empty/whitespace-only, skip it
+        if not content.strip():
+            return
+        
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_line = leading_newlines + f"[{timestamp}] {content}"
         print(log_line)

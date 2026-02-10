@@ -66,7 +66,8 @@ def call_ai(prompt: str, config: dict) -> str:
     if config.get("use_local"):
         client = OpenAI(
             api_key="ollama", 
-            base_url=config.get("api_base", "http://localhost:11434/v1")
+            base_url=config.get("api_base", "http://localhost:11434/v1"),
+            timeout=3600.0
         )
     else:
         api_key = os.environ.get("OPENAI_API_KEY")
@@ -76,7 +77,7 @@ def call_ai(prompt: str, config: dict) -> str:
             print(f"   export OPENAI_API_KEY=sk-...")
             print(f"\n   Or configure 'use_local': true in config.json to use a local LLM.\n")
             sys.exit(1)
-        client = OpenAI(api_key=api_key)
+        client = OpenAI(api_key=api_key, timeout=3600.0)
     
     model = config["model"]
     print(f"🤖 Analyzing with {model}...")
