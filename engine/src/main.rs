@@ -33,7 +33,7 @@ fn main() {
             }
         }
 
-        let mut api = api::uciapi::CodyApi::new();
+        let api = api::uciapi::CodyApi::new();
         api.run();
     }
 }
