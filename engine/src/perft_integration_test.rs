@@ -302,6 +302,15 @@ mod perft_integration_tests {
     }
 
     #[test]
+    fn test_perft_symmetrical_midgame_position() {
+        let fen = "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10";
+        let pos = Position::from_fen(fen);
+
+        let moves = generate_legal_moves(&pos);
+        assert_eq!(moves.len(), 46, "Unexpected legal move count");
+    }
+
+    #[test]
     fn test_illegal_move_not_generated_in_complex_position() {
         // Position where d1 is a BLACK QUEEN and d1-e1 should NOT be legal for White
         let game_fen = "r1bq1rk1/1p4pp/p7/N2p1p2/P2P1P2/bP2B1PP/4P3/R2q1RKB w - - 0 9";
