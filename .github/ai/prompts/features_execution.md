@@ -78,23 +78,18 @@ Implement the following feature:
 
 ## Output Format
 
-Provide your implementation as a unified diff patch:
+Provide the complete updated file content:
 
-```diff
-diff --git a/path/to/file.rs b/path/to/file.rs
---- a/path/to/file.rs
-+++ b/path/to/file.rs
-@@ -10,7 +10,7 @@ old line
--removed line
-+added line
- unchanged line
+```rust
+// path/to/file.rs
+
+[complete file content with feature implemented]
 ```
 
-**Important**:
-- Use exact file paths from repo root
-- Include proper git diff headers (diff --git, ---, +++, @@)
-- Do NOT include the "index" line with git hashes
-- Ensure no trailing blank lines after the patch
+**CRITICAL**:
+- Output the COMPLETE file with all changes applied
+- Include the file path as a comment at the top
+- Implement the feature fully and correctly
 
 **Include**:
 - Main feature implementation

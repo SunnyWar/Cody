@@ -39,25 +39,21 @@ Implement the following refactoring:
 
 ## Output Format
 
-Provide your implementation as a unified diff patch that can be applied with `git apply`:
+Provide the complete updated file content:
 
-```diff
-diff --git a/path/to/file.rs b/path/to/file.rs
---- a/path/to/file.rs
-+++ b/path/to/file.rs
-@@ -10,7 +10,7 @@ old line
--removed line
-+added line
- unchanged line
+```rust
+// Complete file content here
+// path/to/file.rs
+
+[full file content with your changes]
 ```
 
-**Important**: 
-- Use exact file paths from repo root
-- Include proper git diff headers (diff --git, ---, +++, @@)
-- Do NOT include the "index" line with git hashes
-- Ensure the patch is self-contained and applies cleanly
-- Ensure no trailing blank lines after the patch
-- Test the refactoring mentally before generating the patch
+**CRITICAL**: 
+- Output the COMPLETE file with all changes applied
+- Include the file path as a comment at the top
+- Use proper Rust syntax
+- Preserve all existing functionality not being changed
+- Test the refactoring mentally before generating the code
 
 ## Validation Checklist
 

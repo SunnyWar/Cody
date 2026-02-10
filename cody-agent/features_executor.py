@@ -106,96 +106,63 @@ def call_ai(prompt: str, config: dict) -> str:
     return response.choices[0].message.content
 
 
-def extract_patch(response: str) -> str:
-    """Extract the patch from AI response."""
-    # Strategy 1: Look for ```diff ... ``` blocks
-    if "```diff" in response:
-        start = response.find("```diff") + 7
+def extract_file_content(response: str) -> tuple[str, str]:
+    """Extract file path and content from LLM response.
+    Returns (file_path, content) or (None, None) if extraction fails.
+    """
+    # Look for file path in comment at top of code block
+    if "```rust" in response:
+        start = response.find("```rust") + 7
         end = response.find("```", start)
         if end != -1:
-            patch = response[start:end].strip()
-            # Remove any remaining markdown fences
-            patch = patch.replace("```", "").strip()
-            return patch
-        else:
-            # No closing backticks, take everything after ```diff
-            patch = response[start:].strip()
-            patch = patch.replace("```", "").strip()
-            return patch
-    
-    # Strategy 2: Look for generic code blocks
-    if "```" in response:
-        parts = response.split("```")
-        # Look for a part that contains diff
-        for part in parts:
-            if "diff --git" in part:
-                patch = part.strip()
-                return patch
-    
-    # Strategy 3: Direct search for diff content
-    if "diff --git" in response:
-        start = response.find("diff --git")
-        # Extract until we hit a non-patch line (common endings)
-        patch_text = response[start:]
-        # Stop at common response endings
-        for marker in ["\n\n## ", "\n\n**", "\nNote:", "\n---\n"]:
-            if marker in patch_text:
-                patch_text = patch_text[:patch_text.find(marker)]
-        return patch_text.strip()
-
-    print("⚠️ No clear diff block found in response")
-    return response
-
-
-def apply_patch(repo_root: Path, patch: str) -> bool:
-    """Apply the patch to the repository."""
-    patch_file = repo_root / "temp_feature.patch"
-    
-    try:
-        # Clean the patch: remove problematic lines and markdown fences
-        cleaned_lines = []
-        for line in patch.splitlines():
-            # Skip markdown backticks
-            if line.strip() in ["`````", "```", "```diff", "```json"]:
-                continue
-            # Skip index lines with git hashes
-            if line.startswith("index "):
-                continue
-            cleaned_lines.append(line)
-        
-        # Remove trailing empty lines
-        while cleaned_lines and not cleaned_lines[-1].strip():
-            cleaned_lines.pop()
-        
-        # Ensure we have at least a diff line
-        if not any(line.startswith("diff --git") for line in cleaned_lines):
-            print("❌ No valid diff content found in patch")
-            return False
-        
-        cleaned_patch = "\n".join(cleaned_lines) + "\n"
-        
-        patch_file.write_text(cleaned_patch)
-        print(f"📄 Patch saved to: {patch_file}")
-        
-        result = subprocess.run(
-            ["git", "apply", "--verbose", str(patch_file)],
-            cwd=repo_root,
-            capture_output=True,
-            text=True
-        )
-        
-        if result.returncode == 0:
-            print("✅ Patch applied successfully")
-            patch_file.unlink()
-            return True
-        else:
-            print(f"❌ Failed to apply patch:")
-            print(result.stderr)
-            print(f"Patch saved at {patch_file} for manual review")
-            return False
+            code = response[start:end].strip()
+            # Extract file path from comment
+            lines = code.split("\n")
+            file_path = None
+            for i, line in enumerate(lines[:5]):  # Check first 5 lines
+                if "//" in line and (".rs" in line or "/" in line):
+                    # Extract path from comment
+                    path_part = line.split("//", 1)[1].strip()
+                    if path_part and not path_part.startswith(" "):
+                        file_path = path_part
+                    break
             
+            # Remove comment lines from code
+            code_lines = []
+            skip_comments = True
+            for line in lines:
+                if skip_comments and line.strip().startswith("//"):
+                    continue
+                skip_comments = False
+                code_lines.append(line)
+            
+            content = "\n".join(code_lines).strip()
+            return file_path, content
+    
+    print("⚠️ No clear code block found in response")
+    return None, None
+
+
+def apply_code_changes(repo_root: Path, file_path: str, new_content: str) -> bool:
+    """Write new content directly to file."""
+    try:
+        full_path = repo_root / file_path
+        if not full_path.parent.exists():
+            print(f"❌ Parent directory does not exist: {full_path.parent}")
+            return False
+        
+        # Backup original
+        backup_content = None
+        if full_path.exists():
+            backup_content = full_path.read_text(encoding="utf-8")
+        
+        # Write new content
+        full_path.write_text(new_content, encoding="utf-8")
+        print(f"✅ Updated {file_path}")
+        return True
+        
     except Exception as e:
-        print(f"❌ Error applying patch: {e}")
+        print(f"❌ Error writing file: {e}")
         return False
 
 
@@ -325,15 +292,21 @@ References: {item.metadata.get('references', 'None')}
         print(f"📄 Error details saved to: {error_path}")
         return False, "error"
     
-    # Extract and apply patch
-    patch = extract_patch(response)
+    # Extract and apply changes
+    file_path, new_content = extract_file_content(response)
     
-    if not patch:
-        print("❌ Failed to extract patch from response")
+    if not file_path or not new_content:
+        print("❌ Failed to extract file content from response")
+        # Save response for debugging
+        debug_file = repo_root / "temp_feature_response.txt"
+        debug_file.write_text(response)
+        print(f"💾 Response saved to {debug_file}")
         return False, "none"
     
-    if not apply_patch(repo_root, patch):
-        print("❌ Failed to apply patch")
+    print(f"📝 Updating: {file_path}")
+    
+    if not apply_code_changes(repo_root, file_path, new_content):
+        print("❌ Failed to apply changes")
         return False, "none"
     
     # Calculate diff size

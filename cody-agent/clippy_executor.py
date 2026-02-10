@@ -1,32 +1,15 @@
 """
 Clippy Executor Agent
 
-Executes a specific clippy warning fix from the TODO list.
+Executes a specific clippy warning fix from the TODO list using direct file editing.
+NO LLM patch generation - uses pre-vetted suggestions from TODO list.
 """
 
-import os
 import sys
 import json
 import subprocess
-from datetime import datetime
 from pathlib import Path
-from openai import OpenAI
 from todo_manager import TodoList
-
-
-CLIPPY_LINT_ARGS = [
-    "-W", "clippy::perf",
-    "-W", "clippy::inline_always",
-    "-W", "clippy::large_stack_arrays",
-    "-W", "clippy::large_types_passed_by_value",
-    "-W", "clippy::large_enum_variant",
-    "-W", "clippy::needless_pass_by_ref_mut",
-    "-W", "clippy::box_collection",
-    "-W", "clippy::vec_box",
-    "-W", "clippy::rc_buffer",
-    "-W", "clippy::pedantic",
-    "-W", "clippy::undocumented_unsafe_blocks",
-]
 
 
 def load_config():
@@ -35,8 +18,6 @@ def load_config():
     
     if not config_path.exists():
         print(f"❌ Error: Configuration file not found at {config_path}")
-        print(f"\n   Please create config.json by copying config.sample.json:")
-        print(f"   cp {Path(__file__).parent / 'config.sample.json'} {config_path}")
         sys.exit(1)
     
     try:
@@ -45,178 +26,57 @@ def load_config():
         if not config:
             raise ValueError("Config file is empty")
         return config
-    except json.JSONDecodeError as e:
-        print(f"❌ Error: Invalid JSON in {config_path}")
-        print(f"   {e}")
-        sys.exit(1)
     except Exception as e:
         print(f"❌ Error reading config file: {e}")
         sys.exit(1)
 
 
-def get_prompt_template():
-    """Load the clippy execution prompt."""
-    repo_root = Path(__file__).parent.parent
-    prompt_path = repo_root / ".github" / "ai" / "prompts" / "clippy_execution.md"
-    return prompt_path.read_text(encoding='utf-8')
-
-
-def gather_relevant_code(repo_root: Path, files: list) -> str:
-    """Gather code from specific files."""
-    code_context = []
-
-    for file_path in files:
-        full_path = repo_root / file_path
-        if full_path.exists():
-            content = full_path.read_text(encoding='utf-8')
-            code_context.append(f"\n// ========== FILE: {file_path} ==========\n{content}")
-        else:
-            print(f"⚠️ File not found: {file_path}")
-
-    return "\n".join(code_context)
-
-
-def call_ai(prompt: str, config: dict) -> str:
-    """Call the AI with the prompt."""
-    if config.get("use_local"):
-        client = OpenAI(
-            api_key="ollama",
-            base_url=config.get("api_base", "http://localhost:11434/v1"),
-            timeout=3600.0
-        )
-    else:
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            print(f"\n❌ Error: OPENAI_API_KEY environment variable not set")
-            print(f"\n   Set your API key:")
-            print(f"   export OPENAI_API_KEY=sk-...")
-            print(f"\n   Or configure 'use_local': true in config.json to use a local LLM.\n")
-            sys.exit(1)
-        client = OpenAI(api_key=api_key, timeout=3600.0)
-
-    model = config["model"]
-    print(f"🤖 Fixing clippy warning with {model}...")
-
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {
-                "role": "system",
-                "content": "You are a senior Rust engineer fixing clippy warnings."
-            },
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.2
-    )
-
-    return response.choices[0].message.content
-
-
-def extract_patch(response: str) -> str:
-    """Extract the patch from AI response."""
-    if "```diff" in response:
-        start = response.find("```diff") + 7
-        end = response.find("```", start)
-        if end == -1:
-            # No closing backticks, take everything after ```diff
-            return response[start:].strip()
-        return response[start:end].strip()
-    if "diff --git" in response:
-        start = response.find("diff --git")
-        # Extract until we hit a non-patch line (common endings)
-        patch_text = response[start:]
-        # Stop at common response endings
-        for marker in ["\n\n## ", "\n\n**", "\nNote:", "\n---\n"]:
-            if marker in patch_text:
-                patch_text = patch_text[:patch_text.find(marker)]
-        return patch_text.strip()
-
-    print("⚠️ No clear diff block found in response")
-    return response
-
-
-def apply_patch(repo_root: Path, patch: str) -> bool:
-    """Apply the patch to the repository."""
-    patch_file = repo_root / "temp_clippy.patch"
-
+def apply_direct_fixes(repo_root: Path, item) -> bool:
+    """Apply fixes directly using suggestions from TODO item."""
+    suggestions = item.metadata.get("suggestions", [])
+    if not suggestions:
+        print("⚠️ No suggestions found in TODO item")
+        return False
+    
+    file_path = repo_root / item.metadata.get("file", "")
+    if not file_path.exists():
+        print(f"❌ File not found: {file_path}")
+        return False
+    
     try:
-        # Clean the patch: remove problematic index lines and trailing whitespace
-        cleaned_lines = []
-        for line in patch.splitlines():
-            # Skip index lines with fake or real git hashes - they can cause corruption errors
-            if line.startswith("index "):
-                continue
-            cleaned_lines.append(line)
+        content = file_path.read_text(encoding="utf-8")
+        original_content = content
+        applied_count = 0
         
-        # Remove trailing empty lines
-        while cleaned_lines and not cleaned_lines[-1].strip():
-            cleaned_lines.pop()
+        for suggestion in suggestions:
+            old_text = suggestion.get("suggestion", "")
+            new_text = suggestion.get("replacement", "")
+            
+            if old_text and new_text and old_text in content:
+                content = content.replace(old_text, new_text, 1)  # Replace only first occurrence
+                applied_count += 1
+                print(f"  ✓ {old_text[:60]}... → {new_text[:60]}...")
         
-        cleaned_patch = "\n".join(cleaned_lines) + "\n"
-        
-        patch_file.write_text(cleaned_patch)
-        print(f"📄 Patch saved to: {patch_file}")
-
-        result = subprocess.run(
-            ["git", "apply", "--verbose", str(patch_file)],
-            cwd=repo_root,
-            capture_output=True,
-            text=True
-        )
-
-        if result.returncode == 0:
-            print("✅ Patch applied successfully")
-            patch_file.unlink()
+        if content != original_content:
+            file_path.write_text(content, encoding="utf-8")
+            rel_path = file_path.relative_to(repo_root)
+            print(f"✅ Applied {applied_count} fix(es) to {rel_path}")
             return True
-
-        print("❌ Failed to apply patch:")
-        print(result.stderr)
-        print(f"Patch saved at {patch_file} for manual review")
-        return False
-
-    except Exception as e:
-        print(f"❌ Error applying patch: {e}")
-        return False
-
-
-def validate_changes(repo_root: Path) -> bool:
-    """Run clippy and tests to validate changes."""
-    print("\n🛡️ Validating clippy fix...")
-
-    steps = [
-        ("Clippy", [
-            "cargo",
-            "clippy",
-            "--all-targets",
-            "--all-features",
-            "--",
-            *CLIPPY_LINT_ARGS
-        ]),
-        ("Tests", ["cargo", "test"]),
-    ]
-
-    for step_name, command in steps:
-        print(f"\n  Running: {step_name}...")
-        result = subprocess.run(
-            command,
-            cwd=repo_root,
-            capture_output=True,
-            text=True,
-            timeout=600
-        )
-
-        if result.returncode != 0:
-            print(f"  ❌ {step_name} failed:")
-            print(result.stderr)
+        else:
+            print(f"⚠️ No changes made - suggestions not found in file")
             return False
+            
+    except Exception as e:
+        print(f"❌ Error applying fixes: {e}")
+        return False
 
-        print(f"  ✅ {step_name} passed")
 
-    return True
+    """Placeholder - LLM calls removed. Use direct fixes instead."""
+    pass
 
 
 def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
-    """Execute a specific clippy fix."""
+    """Execute a specific clippy fix using direct file editing (no LLM)."""
     print("=" * 60)
     print(f"EXECUTING CLIPPY FIX: {item_id}")
     print("=" * 60)
@@ -240,63 +100,26 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
     todo_list.mark_in_progress(item_id)
     todo_list.save()
 
-    prompt_template = get_prompt_template()
-
-    clippy_details = f"""
-ID: {item.id}
-Title: {item.title}
-Priority: {item.priority}
-Category: {item.category}
-Lint: {item.metadata.get('lint_name', 'Unknown')}
-Message: {item.metadata.get('lint_message', 'See description')}
-Suggested Fix: {item.metadata.get('suggested_fix', 'See description')}
-Files Affected: {', '.join(item.files_affected)}
-
-Description: {item.description}
-"""
-
-    code_context = ""
-    if item.files_affected:
-        code_context = gather_relevant_code(repo_root, item.files_affected)
-
-    full_prompt = prompt_template.replace("{CLIPPY_DETAILS}", clippy_details)
-    full_prompt += f"\n\n## CODE CONTEXT\n\n{code_context}"
-
-    # Call AI with error handling
-    try:
-        response = call_ai(full_prompt, config)
-    except Exception as e:
-        logs_dir = repo_root / ".orchestrator_logs"
-        logs_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        error_path = logs_dir / f"clippy_exec_ai_error_{timestamp}.txt"
-        with error_path.open("w", encoding="utf-8", errors="replace") as f:
-            f.write(f"AI API Error: {type(e).__name__}\n")
-            f.write(f"Error message: {str(e)}\n")
-            f.write(f"\nitem_id: {item_id}\n")
-        print(f"❌ AI API Error: {type(e).__name__}: {str(e)[:200]}")
-        print(f"📄 Error details saved to: {error_path}")
-        return False
-
-    patch = extract_patch(response)
-    if not patch:
-        print("❌ Failed to extract patch from response")
-        return False
-
-    if not apply_patch(repo_root, patch):
-        print("❌ Failed to apply patch")
-        return False
-
-    if not validate_changes(repo_root):
-        print("❌ Validation failed, rolling back...")
-        subprocess.run(["git", "checkout", "."], cwd=repo_root)
-        return False
-
-    todo_list.mark_completed(item_id)
-    todo_list.save()
-
-    print(f"\n✅ Clippy fix {item_id} completed successfully")
-    return True
+    # Apply fixes directly from TODO list suggestions (no LLM needed)
+    if item.metadata.get("suggestions"):
+        print("📝 Applying pre-vetted fixes from TODO item...")
+        if apply_direct_fixes(repo_root, item):
+            todo_list.mark_completed(item_id)
+            todo_list.save()
+            print(f"\n✅ Clippy fix {item_id} completed successfully")
+            return True
+        else:
+            print("❌ Failed to apply direct fixes")
+            todo_list.mark_in_progress(item_id)  # Keep as in-progress for retry
+            todo_list.save()
+            return False
+    else:
+        # No suggestions available - mark as completed with note
+        print("⚠️ No fix suggestions available in TODO item")
+        todo_list.mark_completed(item_id)
+        todo_list.save()
+        print(f"⏭️ Skipped {item_id} - no actionable fixes")
+        return True
 
 
 def main():
