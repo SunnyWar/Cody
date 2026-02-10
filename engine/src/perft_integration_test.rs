@@ -282,6 +282,26 @@ mod perft_integration_tests {
     }
 
     #[test]
+    fn test_en_passant_rank_pin_position() {
+        let fen = "7k/8/8/K1pP3r/8/8/8/8 w - c6 0 1";
+        let pos = Position::from_fen(fen);
+
+        let mut moves: Vec<String> = generate_legal_moves(&pos)
+            .iter()
+            .map(|m| m.to_string())
+            .collect();
+        moves.sort();
+
+        let mut expected = vec!["a5a4", "a5a6", "a5b5", "a5b6", "d5d6"];
+        expected.sort();
+
+        assert_eq!(
+            moves, expected,
+            "Unexpected legal moves in en passant rank pin position"
+        );
+    }
+
+    #[test]
     fn test_illegal_move_not_generated_in_complex_position() {
         // Position where d1 is a BLACK QUEEN and d1-e1 should NOT be legal for White
         let game_fen = "r1bq1rk1/1p4pp/p7/N2p1p2/P2P1P2/bP2B1PP/4P3/R2q1RKB w - - 0 9";
