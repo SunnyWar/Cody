@@ -61,31 +61,16 @@ def get_repo_root() -> Path:
 
 def gather_code_context(repo_root: Path) -> str:
     """Gather all Rust source code for analysis."""
+    excluded_dirs = {"target", "flycheck"}
     code_context = []
 
-    # Prioritize hot path code
-    priority_paths = [
-        "bitboard/src/movegen/*.rs",
-        "bitboard/src/position.rs",
-        "engine/src/search/*.rs",
-        "engine/src/core/arena.rs",
-    ]
-
-    for pattern in priority_paths:
-        for rs_file in repo_root.glob(pattern):
-            rel_path = rs_file.relative_to(repo_root)
-            content = rs_file.read_text(encoding='utf-8')
-            code_context.append(f"\n// ========== HOT PATH FILE: {rel_path} ==========\n{content}")
-
-    # Add other Rust files
     for rs_file in repo_root.rglob("*.rs"):
-        if "target" in str(rs_file) or "flycheck" in str(rs_file):
+        if any(excluded_dir in rs_file.parts for excluded_dir in excluded_dirs):
             continue
 
         rel_path = rs_file.relative_to(repo_root)
-        if not any(str(rel_path) in ctx for ctx in code_context):
-            content = rs_file.read_text(encoding='utf-8')
-            code_context.append(f"\n// ========== FILE: {rel_path} ==========\n{content}")
+        content = rs_file.read_text(encoding='utf-8')
+        code_context.append(f"\n// ========== FILE: {rel_path} ==========\n{content}")
 
     if not code_context:
         print("❌ Error: No relevant Rust files found or code context is empty.")

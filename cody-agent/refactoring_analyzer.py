@@ -61,28 +61,15 @@ def get_prompt_template():
 
 def gather_code_context(repo_root: Path) -> str:
     """Gather selected Rust source code for analysis."""
-    # Define the critical files to include in the analysis
-    critical_files = [
-        "bitboard/src/movegen/api.rs",
-        "bitboard/src/movegen/captures.rs",
-        "bitboard/src/movegen/legality.rs",
-        "engine/src/search/search.rs",
-        "engine/src/search/quiescence.rs",
-        "engine/src/search/evaluator.rs",
-        "engine/src/search/piecesquaretable.rs",
-        "bitboard/src/piecebitboards.rs",
-        "bitboard/src/position.rs",
-        "engine/src/core/tt.rs",
-        "bitboard/src/zobrist.rs"
-    ]
-
+    # Dynamically detect relevant Rust files
+    excluded_dirs = {"target", "flycheck"}
     code_context = []
 
     for rs_file in repo_root.rglob("*.rs"):
-        rel_path = rs_file.relative_to(repo_root)
-        if str(rel_path) not in critical_files:
+        if any(excluded_dir in rs_file.parts for excluded_dir in excluded_dirs):
             continue
 
+        rel_path = rs_file.relative_to(repo_root)
         content = rs_file.read_text(encoding='utf-8')
         code_context.append(f"\n// ========== FILE: {rel_path} ==========\n{content}")
 
