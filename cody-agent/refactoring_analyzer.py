@@ -17,13 +17,13 @@ from todo_manager import TodoList, generate_unique_id
 def load_config():
     """Load configuration."""
     config_path = Path(__file__).parent / "config.json"
-    
+
     if not config_path.exists():
         print(f"❌ Error: Configuration file not found at {config_path}")
         print(f"\n   Please create config.json by copying config.sample.json:")
         print(f"   cp {Path(__file__).parent / 'config.sample.json'} {config_path}")
         sys.exit(1)
-    
+
     try:
         with open(config_path) as f:
             config = json.load(f)
@@ -39,9 +39,22 @@ def load_config():
         sys.exit(1)
 
 
+def get_repo_root() -> Path:
+    """Dynamically resolve the repository root."""
+    current_file = Path(__file__).resolve()
+    repo_root = current_file.parent.parent
+
+    # Ensure the resolved path contains the expected structure
+    if not (repo_root / "Cargo.toml").exists():
+        print("❌ Error: Unable to locate repository root. Ensure the script is within the Cody repository.")
+        sys.exit(1)
+
+    return repo_root
+
+
 def get_prompt_template():
     """Load the refactoring analysis prompt."""
-    repo_root = Path(__file__).parent.parent
+    repo_root = get_repo_root()
     prompt_path = repo_root / ".github" / "ai" / "prompts" / "refactoring_analysis.md"
     return prompt_path.read_text(encoding='utf-8')
 
@@ -73,6 +86,11 @@ def gather_code_context(repo_root: Path) -> str:
         content = rs_file.read_text(encoding='utf-8')
         code_context.append(f"\n// ========== FILE: {rel_path} ==========\n{content}")
 
+    if not code_context:
+        print("❌ Error: No relevant Rust files found or code context is empty.")
+        print("   Ensure the repository contains the expected files and paths.")
+        sys.exit(1)
+
     return "\n".join(code_context)
 
 
@@ -98,7 +116,7 @@ def call_ai(prompt: str, config: dict) -> str:
     print(f"🤖 Analyzing with {model}...")
     
     messages = [
-        {"role": "system", "content": "You are a senior Rust architect analyzing code for refactoring opportunities. You MUST respond with ONLY valid JSON. Do not include any text, explanations, or markdown formatting - only output the raw JSON array."},
+        {"role": "system", "content": "You are a senior Rust architect analyzing code for refactoring opportunities. You MUST respond with ONLY valid JSON. Wrap the output in a root key 'items', e.g., {\"items\": [...]}. Do not include any text, explanations, or markdown formatting - only output the raw JSON object."},
         {"role": "user", "content": prompt}
     ]
     
@@ -124,12 +142,19 @@ def call_ai(prompt: str, config: dict) -> str:
 def extract_json_from_response(response: str, repo_root: Path, phase: str) -> list:
     """Extract JSON array from AI response using multiple strategies."""
     json_str = None
-    
+
+    # Log the raw response for debugging
+    logs_dir = repo_root / ".orchestrator_logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    raw_response_path = logs_dir / "debug_raw_response.txt"
+    with raw_response_path.open("w", encoding="utf-8", errors="replace") as f:
+        f.write(response)
+
     # Strategy 1: Try to find JSON in ```json code blocks
     match = re.search(r"```json\s*([\s\S]*?)\s*```", response, re.DOTALL)
     if match:
         json_str = match.group(1).strip()
-    
+
     # Strategy 2: Try generic code blocks (``` ... ```)
     if not json_str:
         match = re.search(r"```\s*([\s\S]*?)\s*```", response, re.DOTALL)
@@ -138,32 +163,33 @@ def extract_json_from_response(response: str, repo_root: Path, phase: str) -> li
             # Only use if it looks like JSON (starts with [ or {)
             if candidate.startswith('[') or candidate.startswith('{'):
                 json_str = candidate
-    
+
     # Strategy 3: Look for JSON array anywhere in response (handles embedded JSON)
     if not json_str:
         match = re.search(r'(\[\s*(?:{[\s\S]*?}\s*,?\s*)*\])', response, re.DOTALL)
         if match:
             json_str = match.group(1).strip()
-    
+
     # Strategy 4: Try the whole response if it starts with [ or {
     if not json_str:
         trimmed = response.strip()
         if trimmed.startswith('[') or trimmed.startswith('{'):
             json_str = trimmed
-    
+
     # If all strategies fail and response doesn't look like JSON, assume empty result
     if not json_str:
         print(f"⚠️ AI did not return JSON format. Response preview: {response[:200]}...")
         print(f"   Returning empty list. This might mean no {phase} items were found.")
         return []
-    
+
     try:
         result = json.loads(json_str)
-        # Ensure we return a list
+        # Handle new object structure with "items" key
+        if isinstance(result, dict) and "items" in result:
+            return result.get("items", [])
+        # Ensure we return a list for backward compatibility
         return result if isinstance(result, list) else []
     except json.JSONDecodeError as e:
-        logs_dir = repo_root / ".orchestrator_logs"
-        logs_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         dump_path = logs_dir / f"{phase}_parse_fail_{timestamp}.txt"
         with dump_path.open("w", encoding="utf-8", errors="replace") as f:
@@ -257,7 +283,7 @@ def analyze(repo_root: Path, config: dict) -> int:
 def main():
     """Main entry point."""
     config = load_config()
-    repo_root = Path(__file__).parent.parent
+    repo_root = get_repo_root()
     
     added = analyze(repo_root, config)
     
