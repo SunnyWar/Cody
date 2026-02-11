@@ -265,27 +265,31 @@ impl Position {
             _ => mv.to,
         };
 
-        match mv.move_type {
-            MoveType::Capture | MoveType::EnPassant => {
-                let cap_mask = BitBoardMask::from_square(capture_sq);
-                for kind in [
-                    PieceKind::Pawn,
-                    PieceKind::Knight,
-                    PieceKind::Bishop,
-                    PieceKind::Rook,
-                    PieceKind::Queen,
-                    PieceKind::King,
-                ] {
-                    let p = Piece::from_parts(them, Some(kind));
-                    let bb = out.pieces.get_mut(p);
-                    if (*bb & cap_mask).is_nonempty() {
-                        // ...removed debug output...
-                        *bb &= !cap_mask;
-                        break;
-                    }
+        let them_occ = match them {
+            Color::White => OccupancyKind::White,
+            Color::Black => OccupancyKind::Black,
+        };
+        let is_promo_capture = matches!(mv.move_type, MoveType::Promotion(_))
+            && (out.occupancy[them_occ] & BitBoardMask::from_square(mv.to)).is_nonempty();
+
+        if matches!(mv.move_type, MoveType::Capture | MoveType::EnPassant) || is_promo_capture {
+            let cap_mask = BitBoardMask::from_square(capture_sq);
+            for kind in [
+                PieceKind::Pawn,
+                PieceKind::Knight,
+                PieceKind::Bishop,
+                PieceKind::Rook,
+                PieceKind::Queen,
+                PieceKind::King,
+            ] {
+                let p = Piece::from_parts(them, Some(kind));
+                let bb = out.pieces.get_mut(p);
+                if (*bb & cap_mask).is_nonempty() {
+                    // ...removed debug output...
+                    *bb &= !cap_mask;
+                    break;
                 }
             }
-            _ => {}
         }
 
         // Handle castling
@@ -347,7 +351,8 @@ impl Position {
         };
 
         // Update halfmove clock
-        let was_capture = matches!(mv.move_type, MoveType::Capture | MoveType::EnPassant);
+        let was_capture =
+            matches!(mv.move_type, MoveType::Capture | MoveType::EnPassant) || is_promo_capture;
         let was_pawn_move = moving_piece.kind() == PieceKind::Pawn;
         out.halfmove_clock = if was_capture || was_pawn_move {
             0
