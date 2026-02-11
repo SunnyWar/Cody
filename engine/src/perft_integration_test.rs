@@ -3,11 +3,152 @@
 #[cfg(test)]
 mod perft_integration_tests {
     use bitboard::Square;
+    use bitboard::mov::ChessMove;
+    use bitboard::mov::MoveType;
     use bitboard::movegen::generate_legal_moves;
+    use bitboard::occupancy::OccupancyKind;
     use bitboard::perft;
     use bitboard::piece::Color;
     use bitboard::piece::Piece;
+    use bitboard::piece::PieceKind;
     use bitboard::position::Position;
+
+    fn moving_piece_kind(pos: &Position, mv: &ChessMove) -> PieceKind {
+        for kind in [
+            PieceKind::Pawn,
+            PieceKind::Knight,
+            PieceKind::Bishop,
+            PieceKind::Rook,
+            PieceKind::Queen,
+            PieceKind::King,
+        ] {
+            let piece = Piece::from_parts(pos.side_to_move, Some(kind));
+            if pos.pieces.get(piece).contains(mv.from()) {
+                return kind;
+            }
+        }
+
+        panic!("No piece found on {}", mv.from());
+    }
+
+    fn is_capture_move(pos: &Position, mv: &ChessMove) -> bool {
+        match mv.move_type {
+            MoveType::Capture | MoveType::EnPassant => true,
+            MoveType::Promotion(_) => {
+                let them = pos.side_to_move.opposite();
+                let occ = match them {
+                    Color::White => OccupancyKind::White,
+                    Color::Black => OccupancyKind::Black,
+                };
+                (pos.occupancy[occ] & mv.to().bitboard()).is_nonempty()
+            }
+            _ => false,
+        }
+    }
+
+    fn resolve_san_like_move(pos: &Position, token: &str) -> ChessMove {
+        let mut move_str = token.trim().to_ascii_lowercase();
+        while matches!(move_str.chars().last(), Some('+') | Some('#')) {
+            move_str.pop();
+        }
+
+        let mut promotion = None;
+        if move_str.len() >= 3 {
+            let bytes = move_str.as_bytes();
+            let last = bytes[bytes.len() - 1] as char;
+            let rank = bytes[bytes.len() - 2] as char;
+            let file = bytes[bytes.len() - 3] as char;
+            if "qrbn".contains(last) && ('1'..='8').contains(&rank) && ('a'..='h').contains(&file) {
+                promotion = PieceKind::from_uci(last);
+                move_str.pop();
+            }
+        }
+
+        let len = move_str.len();
+        assert!(len >= 2, "Invalid move token: {token}");
+
+        let dest_file = move_str.as_bytes()[len - 2] as char;
+        let dest_rank = move_str.as_bytes()[len - 1] as char;
+        let dest_sq = Square::from_coords(dest_file, dest_rank)
+            .unwrap_or_else(|| panic!("Invalid destination in {token}"));
+
+        let is_capture = move_str.contains('x');
+
+        let first = move_str.as_bytes()[0] as char;
+        let (piece_kind, disambig) = if len == 2 {
+            (PieceKind::Pawn, "")
+        } else {
+            match first {
+                'n' => (PieceKind::Knight, &move_str[1..len - 2]),
+                'b' => (PieceKind::Bishop, &move_str[1..len - 2]),
+                'r' => (PieceKind::Rook, &move_str[1..len - 2]),
+                'q' => (PieceKind::Queen, &move_str[1..len - 2]),
+                'k' => (PieceKind::King, &move_str[1..len - 2]),
+                _ => (PieceKind::Pawn, &move_str[..len - 2]),
+            }
+        };
+
+        let mut dis_file = None;
+        let mut dis_rank = None;
+        if piece_kind != PieceKind::Pawn {
+            let mut cleaned = disambig.to_string();
+            cleaned.retain(|c| c != 'x');
+            for ch in cleaned.chars() {
+                if ('a'..='h').contains(&ch) {
+                    dis_file = Some(ch);
+                } else if ('1'..='8').contains(&ch) {
+                    dis_rank = Some(ch);
+                }
+            }
+        }
+
+        let mut candidates: Vec<ChessMove> = Vec::new();
+        for mv in generate_legal_moves(pos) {
+            if mv.to() != dest_sq {
+                continue;
+            }
+            if mv.promotion() != promotion {
+                continue;
+            }
+
+            let moving_kind = moving_piece_kind(pos, &mv);
+            if moving_kind != piece_kind {
+                continue;
+            }
+
+            if is_capture != is_capture_move(pos, &mv) {
+                continue;
+            }
+
+            if moving_kind == PieceKind::Pawn && is_capture {
+                let origin_file = move_str.as_bytes()[0] as char;
+                if mv.from().file_char() != origin_file {
+                    continue;
+                }
+            }
+
+            if let Some(file) = dis_file {
+                if mv.from().file_char() != file {
+                    continue;
+                }
+            }
+            if let Some(rank) = dis_rank {
+                if mv.from().rank_char() != rank {
+                    continue;
+                }
+            }
+
+            candidates.push(mv);
+        }
+
+        assert_eq!(
+            candidates.len(),
+            1,
+            "Ambiguous or missing move for {token}: {candidates:?}"
+        );
+
+        candidates[0]
+    }
 
     #[test]
     fn test_perft_initial_position_depth_2() {
@@ -400,6 +541,78 @@ mod perft_integration_tests {
         assert_eq!(
             moves, expected,
             "Unexpected legal moves in complex position"
+        );
+    }
+
+    #[test]
+    fn test_game_sequence_integrity() {
+        let start_fen = "r2q1rk1/p2nbppp/bpp1pn2/3p4/2PP4/1PB2NP1/P2NPPBP/R2Q1RK1 w - - 0 1";
+        let mut pos = Position::from_fen(start_fen);
+
+        let moves = [
+            "g4", "c5", "e4", "h6", "b4", "e5", "a3", "h5", "h3", "h4", "nxh4", "dxe4", "a4", "e3",
+            "a5", "e2", "axb6", "exf1q", "kh2", "e4", "d5", "qxd1", "nb1", "e3", "b5", "exf2",
+            "ra3", "nxg4", "hxg4", "bb7", "nd2", "nxb6", "g5", "f6",
+        ];
+
+        for token in moves {
+            let mv = resolve_san_like_move(&pos, token);
+            let mut next_pos = Position::default();
+            pos.apply_move_into(&mv, &mut next_pos);
+            pos = next_pos;
+        }
+
+        let final_fen = pos.to_fen();
+        let clean_pos = Position::from_fen(&final_fen);
+
+        for color in [bitboard::piece::Color::White, bitboard::piece::Color::Black] {
+            for kind in [
+                bitboard::piece::PieceKind::Pawn,
+                bitboard::piece::PieceKind::Knight,
+                bitboard::piece::PieceKind::Bishop,
+                bitboard::piece::PieceKind::Rook,
+                bitboard::piece::PieceKind::Queen,
+                bitboard::piece::PieceKind::King,
+            ] {
+                let piece = bitboard::piece::Piece::from_parts(color, Some(kind));
+                assert_eq!(
+                    pos.pieces.get(piece),
+                    clean_pos.pieces.get(piece),
+                    "Bitboard corruption detected for piece {:?}",
+                    piece
+                );
+            }
+        }
+        assert_eq!(
+            pos.occupancy[bitboard::occupancy::OccupancyKind::White],
+            clean_pos.occupancy[bitboard::occupancy::OccupancyKind::White],
+            "White occupancy mismatch after sequence"
+        );
+        assert_eq!(
+            pos.occupancy[bitboard::occupancy::OccupancyKind::Black],
+            clean_pos.occupancy[bitboard::occupancy::OccupancyKind::Black],
+            "Black occupancy mismatch after sequence"
+        );
+        assert_eq!(
+            pos.zobrist_hash(),
+            clean_pos.zobrist_hash(),
+            "Hash corruption: make/apply logic is desynced"
+        );
+
+        let mut played_moves: Vec<String> = generate_legal_moves(&pos)
+            .iter()
+            .map(|m| m.to_string())
+            .collect();
+        let mut clean_moves: Vec<String> = generate_legal_moves(&clean_pos)
+            .iter()
+            .map(|m| m.to_string())
+            .collect();
+        played_moves.sort();
+        clean_moves.sort();
+
+        assert_eq!(
+            played_moves, clean_moves,
+            "The engine found different moves via play than via FEN"
         );
     }
 }
