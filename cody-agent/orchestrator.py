@@ -378,6 +378,8 @@ class Orchestrator:
             self.log("\nAnalyzing clippy warnings and performance lints...")
             added = clippy_analyzer.analyze(self.repo_root, self.config)
             self.log(f"Found {added} clippy opportunities")
+            if added == 0:
+                self.log("\n⚠️ No actionable Clippy tasks found. Ensure warnings are being analyzed correctly.")
             self.state["analysis_done"] = True
             self._save_state()
 
@@ -418,6 +420,8 @@ class Orchestrator:
             else:
                 self.log(f"ℹ️ Task completed but no code changes made (TODO-only): {next_item.id}")
                 # Mark as done in TODO but continue to next task
+                todo_list.mark_completed(next_item.id)
+                todo_list.save()
                 return self._run_clippy_task()
         else:
             self.log(f"❌ Failed: {next_item.id}")
