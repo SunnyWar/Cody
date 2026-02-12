@@ -116,17 +116,50 @@ def run_clippy_with_priority_and_parser(repo_root: Path) -> dict:
     ]
 
     for lints in prioritized_lints:
-        clippy_result = run_clippy_with_parser(repo_root, extra_args=lints)
+        parser_script = repo_root / "cody-agent" / "clippy_parser.py"
+        command = ["python", str(parser_script), "--"] + lints
 
-        if clippy_result["warnings"]:
-            print(f"\n📊 Found {len(clippy_result['warnings'])} warnings with lints: {' '.join(lints)}")
-            return clippy_result
+        print(f"\nRunning Clippy parser command: {' '.join(command)}")
+
+        result = subprocess.run(
+            command,
+            cwd=repo_root,
+            capture_output=True,
+            text=True
+        )
+
+        # Parse stdout for warnings
+        warnings = []
+        for line in result.stdout.strip().split("\n"):
+            if line.strip():
+                try:
+                    warnings.append(json.loads(line))
+                except json.JSONDecodeError:
+                    print(f"⚠️ Failed to parse line as JSON: {line[:200]}...")
+
+        # Check exit code to determine if warnings exist
+        if result.returncode == 1:  # Warnings found
+            print(f"\n📊 Found {len(warnings)} warnings with lints: {' '.join(lints)}")
+            warning_summary = "\n".join(
+                [f"{i+1}. {warning['message']['code']['code']}: {warning['message']['spans'][0]['file_name']}" for i, warning in enumerate(warnings)]
+            )
+            return {
+                "command": " ".join(command),
+                "returncode": result.returncode,
+                "warnings": warnings,
+                "output": warning_summary,
+                "warning_count": len(warnings),
+            }
+        elif result.returncode == 0:  # No warnings
+            print(f"\n📊 Found 0 warnings with lints: {' '.join(lints)}. Continuing to next lint option.")
 
     print("\n✅ No warnings found for any Clippy lint options.")
     return {
         "command": "",
         "returncode": 0,
         "warnings": [],
+        "output": "No warnings found.",
+        "warning_count": 0,
     }
 
 
