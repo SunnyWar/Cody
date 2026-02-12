@@ -100,6 +100,7 @@ def run_clippy_with_parser(repo_root: Path, extra_args: list = None) -> dict:
 def run_clippy_with_priority_and_parser(repo_root: Path) -> dict:
     """Run clippy_parser.py with prioritized lint options, stopping when warnings are found."""
     prioritized_lints = [
+        [],
         ["-W", "clippy::inline_always"],
         ["-W", "clippy::large_stack_arrays"],
         ["-W", "clippy::large_types_passed_by_value"],
@@ -119,7 +120,9 @@ def run_clippy_with_priority_and_parser(repo_root: Path) -> dict:
 
     for lints in prioritized_lints:
         parser_script = repo_root / "cody-agent" / "clippy_parser.py"
-        command = ["python", str(parser_script), "--"] + lints
+        command = ["python", str(parser_script)]
+        if lints:
+            command += ["--"] + lints
 
         print(f"\nRunning Clippy parser command: {' '.join(command)}")
 
@@ -143,10 +146,11 @@ def run_clippy_with_priority_and_parser(repo_root: Path) -> dict:
         all_warnings.extend(warnings)
 
         # Check exit code to determine if warnings exist
+        lint_label = "(default)" if not lints else " ".join(lints)
         if result.returncode == 1:  # Warnings found
-            print(f"\n📊 Found {len(warnings)} warnings with lints: {' '.join(lints)}")
+            print(f"\n📊 Found {len(warnings)} warnings with lints: {lint_label}")
         elif result.returncode == 0:  # No warnings
-            print(f"\n📊 Found 0 warnings with lints: {' '.join(lints)}. Continuing to next lint option.")
+            print(f"\n📊 Found 0 warnings with lints: {lint_label}. Continuing to next lint option.")
 
     if all_warnings:
         warning_summary = "\n".join(
