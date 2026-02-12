@@ -142,5 +142,24 @@
     "lint_message": "Unreadable literal in bishop attack tables",
     "suggested_fix": "Replace hardcoded strings with static references to avoid allocations.",
     "reasoning": "Reduces both memory usage and improves the runtime performance of the application."
+  },
+  {
+    "id": "CLIP-008",
+    "title": "Avoid unreadable literals in tables",
+    "priority": "medium",
+    "category": "general",
+    "description": "Unreadable literals can make the code hard to understand and maintain. This lint helps identify and suggest improvements for better readability.",
+    "status": "not-started",
+    "created_at": "2026-02-12T00:16:05.876568",
+    "completed_at": null,
+    "estimated_complexity": "small",
+    "files_affected": [
+      "bitboard/src/tables/bishop_attack.rs"
+    ],
+    "dependencies": [],
+    "lint_name": "clippy::unreadable_literal",
+    "lint_message": "Avoid unreadable literals in tables",
+    "suggested_fix": "Use meaningful variable names or comments to clarify the purpose of the literal.",
+    "reasoning": "Improving readability makes it easier for other developers to understand the code, reducing cognitive load and potential bugs."
   }
 ]

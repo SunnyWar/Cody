@@ -402,7 +402,19 @@ class Orchestrator:
         self.log(f"Found {added} clippy warnings")
 
         # Execute clippy fixes
-        success = clippy_executor.execute(self.repo_root, self.config)
+        todo_list = TodoList("clippy", self.repo_root)
+        next_item = todo_list.get_next_item()
+
+        if not next_item:
+            self.log("\n✅ Clippy phase complete. No items to fix.")
+            return self._resume_phase_after_clippy()
+
+        self.log(f"\n📝 Working on Clippy item: {next_item.id} - {next_item.title}")
+        success = clippy_executor.execute_clippy_fix(
+            next_item.id,
+            self.repo_root,
+            self.config
+        )
 
         if success:
             self.log("\n✅ Clippy phase complete.")

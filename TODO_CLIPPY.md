@@ -1,6 +1,6 @@
 # TODO List: Clippy
-Generated: 2026-02-11 23:52:01
-**Stats**: 6 total | 0 not started | 1 in progress | 5 completed
+Generated: 2026-02-12 00:16:05
+**Stats**: 7 total | 1 not started | 1 in progress | 5 completed
 ---
 
 ## In Progress
@@ -11,6 +11,16 @@ Generated: 2026-02-11 23:52:01
 - **Complexity**: medium
 
 Consider using underscores to improve readability of large numeric literals.
+
+## Not Started
+
+### [ ] CLIP-008: Avoid unreadable literals in tables
+- **Priority**: medium
+- **Category**: general
+- **Complexity**: small
+- **Files**: bitboard/src/tables/bishop_attack.rs
+
+Unreadable literals can make the code hard to understand and maintain. This lint helps identify and suggest improvements for better readability.
 
 ## Completed
 
