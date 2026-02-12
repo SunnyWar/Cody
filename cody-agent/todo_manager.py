@@ -62,7 +62,6 @@ class TodoItem:
         """Check if this item is a duplicate of another."""
         # Check title similarity (simple string match)
         if self.title.lower() == other.title.lower():
-            print(f"[DEBUG] Duplicate by title: {self.title} == {other.title}")
             return True
 
         # Check file overlap and similar category
@@ -71,15 +70,6 @@ class TodoItem:
             self.files_affected and other.files_affected and
             set(self.files_affected) == set(other.files_affected)
         ):
-            print(f"[DEBUG] Duplicate by files/category: {self.files_affected} == {other.files_affected}")
-            return True
-
-        # Check if the suggestion and replacement are identical
-        if (
-            self.metadata.get("suggestion") == other.metadata.get("suggestion") and
-            self.metadata.get("replacement") == other.metadata.get("replacement")
-        ):
-            print(f"[DEBUG] Duplicate by suggestion/replacement: {self.metadata.get('suggestion')} == {other.metadata.get('suggestion')}")
             return True
 
         return False
