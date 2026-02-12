@@ -115,6 +115,8 @@ def run_clippy_with_priority_and_parser(repo_root: Path) -> dict:
         ["-W", "clippy::correctness"],
     ]
 
+    all_warnings = []
+
     for lints in prioritized_lints:
         parser_script = repo_root / "cody-agent" / "clippy_parser.py"
         command = ["python", str(parser_script), "--"] + lints
@@ -137,21 +139,26 @@ def run_clippy_with_priority_and_parser(repo_root: Path) -> dict:
                 except json.JSONDecodeError:
                     print(f"⚠️ Failed to parse line as JSON: {line[:200]}...")
 
+        # Add warnings to the cumulative list
+        all_warnings.extend(warnings)
+
         # Check exit code to determine if warnings exist
         if result.returncode == 1:  # Warnings found
             print(f"\n📊 Found {len(warnings)} warnings with lints: {' '.join(lints)}")
-            warning_summary = "\n".join(
-                [f"{i+1}. {warning['message']['code']['code']}: {warning['message']['spans'][0]['file_name']}" for i, warning in enumerate(warnings)]
-            )
-            return {
-                "command": " ".join(command),
-                "returncode": result.returncode,
-                "warnings": warnings,
-                "output": warning_summary,
-                "warning_count": len(warnings),
-            }
         elif result.returncode == 0:  # No warnings
             print(f"\n📊 Found 0 warnings with lints: {' '.join(lints)}. Continuing to next lint option.")
+
+    if all_warnings:
+        warning_summary = "\n".join(
+            [f"{i+1}. {warning['message']['code']['code']}: {warning['message']['spans'][0]['file_name']}" for i, warning in enumerate(all_warnings)]
+        )
+        return {
+            "command": "Multiple Clippy Commands",
+            "returncode": 1,
+            "warnings": all_warnings,
+            "output": warning_summary,
+            "warning_count": len(all_warnings),
+        }
 
     print("\n✅ No warnings found for any Clippy lint options.")
     return {
@@ -189,14 +196,17 @@ def call_ai(prompt: str, config: dict) -> str:
         messages=[
             {
                 "role": "system",
-                "content": "You are a senior Rust engineer analyzing clippy output. You MUST respond with ONLY valid JSON. Do not include any text, explanations, or markdown formatting - only output the raw JSON array."
+                "content": "You are a senior Rust engineer analyzing clippy output. Your task is to provide actionable code modifications to fix the issues identified by Clippy. Respond with the modified code directly, and include comments to explain the changes where necessary."
             },
-            {"role": "user", "content": prompt}
+            {
+                "role": "user",
+                "content": prompt
+            }
         ],
         temperature=0.2
     )
 
-    return response.choices[0].message.content
+    return response.choices[0].message.content  # Return the raw response, which may include code
 
 
 def extract_json_from_response(response: str, repo_root: Path, phase: str) -> list:
@@ -257,6 +267,26 @@ def extract_json_from_response(response: str, repo_root: Path, phase: str) -> li
         print(f"⚠️ Returning empty list to continue workflow")
         # Don't raise - return empty list to allow workflow to continue
         return []
+
+
+def extract_code_from_response(response: str, repo_root: Path, phase: str) -> list:
+    """Extract code modifications from the LLM response."""
+    if not response.strip():
+        print("⚠️ Empty response from LLM.")
+        return []
+
+    # Save the response to a temporary file for review
+    logs_dir = repo_root / ".orchestrator_logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    response_path = logs_dir / f"clippy_code_response_{timestamp}.txt"
+    with response_path.open("w", encoding="utf-8", errors="replace") as f:
+        f.write(response)
+
+    print(f"📄 LLM response saved to: {response_path}")
+
+    # Return the raw response for now (future: parse and apply changes automatically)
+    return [response]
 
 
 def analyze(repo_root: Path, config: dict) -> int:
