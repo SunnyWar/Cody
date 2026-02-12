@@ -20,7 +20,7 @@ class TodoItem:
         self.priority = data.get("priority", "medium")
         self.category = data.get("category", "")
         self.description = data.get("description", "")
-        self.status = data.get("status", "not-started")  # not-started, in-progress, completed
+        self.status = data.get("status", "not-started")  # not-started, in-progress, completed, failed, failed
         self.created_at = data.get("created_at", datetime.now().isoformat())
         self.completed_at = data.get("completed_at", None)
         self.estimated_complexity = data.get("estimated_complexity", "medium")
@@ -57,6 +57,11 @@ class TodoItem:
     def mark_in_progress(self):
         """Mark item as in progress."""
         self.status = "in-progress"
+    
+    def mark_failed(self):
+        """Mark item as permanently failed (skip for now)."""
+        self.status = "failed"
+        self.completed_at = datetime.now().isoformat()
     
     def is_duplicate(self, other: 'TodoItem') -> bool:
         """Check if this item is a duplicate of another."""
@@ -163,7 +168,7 @@ class TodoList:
         return added
     
     def get_next_item(self) -> Optional[TodoItem]:
-        """Get the next not-started item with highest priority."""
+        """Get the next not-started item with highest priority (skip failed items)."""
         not_started = [item for item in self.items if item.status == "not-started"]
         
         if not not_started:
@@ -209,6 +214,16 @@ class TodoList:
             if item.id == item_id:
                 item.mark_in_progress()
                 print(f"🔄 Marked in progress: {item_id}")
+                return True
+        print(f"❌ Item not found: {item_id}")
+        return False
+    
+    def mark_failed(self, item_id: str):
+        """Mark an item as permanently failed (skip for now)."""
+        for item in self.items:
+            if item.id == item_id:
+                item.mark_failed()
+                print(f"⛔ Marked failed (skipping): {item_id}")
                 return True
         print(f"❌ Item not found: {item_id}")
         return False

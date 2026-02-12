@@ -335,6 +335,9 @@ References: {item.metadata.get('references', 'None')}
         print("   Rolling back changes...")
         # Rollback all affected files
         rollback_changes(repo_root, item.files_affected if item.files_affected else [file_path])
+        # Mark as failed so orchestrator skips it and moves to next item
+        todo_list.mark_failed(item_id)
+        todo_list.save()
         return False, size_category
     
     # Mark as completed

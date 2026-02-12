@@ -289,6 +289,9 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
         print("❌ CRITICAL: Changes broke the build and could not be fixed automatically.")
         print("   Rolling back changes...")
         rollback_changes(repo_root, [file_path])
+        # Mark as failed so orchestrator skips it and moves to next item
+        todo_list.mark_failed(item_id)
+        todo_list.save()
         return False
 
     # Only mark complete if changes were applied AND build is successful
