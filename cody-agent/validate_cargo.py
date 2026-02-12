@@ -10,6 +10,8 @@ def run_command(cmd, desc):
     return True
 
 def validate_cargo():
+    if not run_command('cargo clean', 'cargo clean'):
+        return False
     if not run_command('cargo build', 'cargo build'):
         return False
     if not run_command('cargo test', 'cargo test'):
