@@ -192,8 +192,14 @@ def main():
         except json.JSONDecodeError:
             continue
 
-        # Keep only Clippy warnings
-        code = msg.get("message", {}).get("code", {}).get("code")
+        # Keep only Clippy warnings - handle None values defensively
+        message = msg.get("message")
+        if not message:
+            continue
+        code_obj = message.get("code")
+        if not code_obj:
+            continue
+        code = code_obj.get("code")
         if code and code.startswith("clippy::"):
             warnings.append(msg)
             print(json.dumps(msg))  # preserve original JSON
