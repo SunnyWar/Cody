@@ -381,20 +381,18 @@ class Orchestrator:
 
         # Analyze clippy warnings
         self.log("Analyzing clippy warnings...")
-        added = clippy_analyzer.analyze(self.repo_root, self.config)
-        self.log(f"Found {added} clippy warnings")
+        items = clippy_analyzer.analyze(self.repo_root, self.config)
+        self.log(f"Found {len(items)} clippy warnings")
 
-        # Execute clippy fixes
-        todo_list = TodoList("clippy", self.repo_root)
-        next_item = todo_list.get_next_item()
-
-        if not next_item:
+        if not items:
             self.log("✅ Clippy phase complete. No items to fix.")
             return self._resume_phase_after_clippy()
 
-        self.log(f"📝 Working on Clippy item: {next_item.id} - {next_item.title}")
-        success = clippy_executor.execute_clippy_fix(
-            next_item.id,
+        item = items[0]
+        title = item.get("title", "clippy warning")
+        self.log(f"📝 Working on Clippy item: {title}")
+        success = clippy_executor.execute_clippy_fix_from_item(
+            item,
             self.repo_root,
             self.config
         )
