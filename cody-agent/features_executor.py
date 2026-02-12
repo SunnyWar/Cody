@@ -242,6 +242,8 @@ def execute_feature(item_id: str, repo_root: Path, config: dict) -> tuple[bool, 
     if not ensure_builds_or_fix(repo_root, config, "PRE-CHANGE"):
         print("❌ CRITICAL: Project does not build before changes and could not be fixed.")
         print("   Aborting to prevent further damage.")
+        todo_list.mark_failed(item_id)
+        todo_list.save()
         return False, "none"
     
     # Build the prompt

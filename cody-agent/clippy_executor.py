@@ -204,6 +204,8 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
     if not ensure_builds_or_fix(repo_root, config, "PRE-CHANGE"):
         print("❌ CRITICAL: Project does not build before changes and could not be fixed.")
         print("   Aborting to prevent further damage.")
+        todo_list.mark_failed(item_id)
+        todo_list.save()
         return False
 
     file_path = item.metadata.get("file")
@@ -267,6 +269,9 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
                 todo_list.save()
                 print(f"\n✅ Clippy fix {item_id} completed successfully")
                 return True
+        # LLM failed to provide valid code - mark as failed and skip
+        todo_list.mark_failed(item_id)
+        todo_list.save()
         return False
     
     # Validate content length (should be similar to original)
@@ -275,6 +280,8 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
     if new_lines < original_lines * 0.5:
         print(f"❌ LLM response is suspiciously short: {new_lines} lines vs {original_lines} original")
         print("   This suggests the LLM used placeholders instead of returning full file")
+        todo_list.mark_failed(item_id)
+        todo_list.save()
         return False
 
     if response_file_path != file_path:
