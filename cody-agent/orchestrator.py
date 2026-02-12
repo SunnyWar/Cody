@@ -379,10 +379,13 @@ class Orchestrator:
         """Run one clippy task. Return True if actual code was merged, False if phase changed."""
         self.log("CLIPPY WARNINGS PHASE")
 
-        # Always run clippy analysis fresh (warnings change as code is fixed)
-        self.log("Analyzing clippy warnings...")
-        added = clippy_analyzer.analyze(self.repo_root, self.config)
-        self.log(f"Found {added} clippy warnings")
+        # Analyze if not yet done
+        if not self.state["analysis_done"]:
+            self.log("Analyzing clippy warnings...")
+            added = clippy_analyzer.analyze(self.repo_root, self.config)
+            self.log(f"Found {added} clippy warnings")
+            self.state["analysis_done"] = True
+            self._save_state()
 
         # Get next task
         todo_list = TodoList("clippy", self.repo_root)

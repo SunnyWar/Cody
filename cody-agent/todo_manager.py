@@ -102,17 +102,6 @@ class TodoList:
     
     def save(self):
         """Save TODO list to both JSON and Markdown."""
-        # Remove completed items
-        self.items = [item for item in self.items if item.status != "completed"]
-
-        # Remove duplicates
-        unique_items = []
-        for item in self.items:
-            if not any(item.is_duplicate(existing) for existing in unique_items):
-                unique_items.append(item)
-        self.items = unique_items
-
-        # Save JSON for programmatic access
         with open(self.json_path, 'w') as f:
             json.dump([item.to_dict() for item in self.items], f, indent=2)
         
