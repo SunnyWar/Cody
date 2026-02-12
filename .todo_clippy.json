@@ -48,8 +48,8 @@
     "line": 307,
     "suggestions": [
       {
-        "suggestion": "(total_nodes as f64 / (total_time_ms as f64 / 1000.0)) as u64",
-        "replacement": "(total_nodes as f64 / (total_time_ms as f64 / 1000.0)) as u64"
+        "suggestion": "let nps = (nodes as f64 / (total_time_ms as f64 / 1000.0)) as u64;",
+        "replacement": "let nps = (nodes as f64 / (total_time_ms as f64 / 1000.0)) as u64;"
       }
     ]
   },
@@ -149,9 +149,9 @@
     "priority": "medium",
     "category": "general",
     "description": "Unreadable literals can make the code hard to understand and maintain. This lint helps identify and suggest improvements for better readability.",
-    "status": "not-started",
+    "status": "completed",
     "created_at": "2026-02-12T00:16:05.876568",
-    "completed_at": null,
+    "completed_at": "2026-02-12T00:31:56.794753",
     "estimated_complexity": "small",
     "files_affected": [
       "bitboard/src/tables/bishop_attack.rs"

@@ -1,6 +1,6 @@
 # TODO List: Clippy
-Generated: 2026-02-12 00:16:05
-**Stats**: 7 total | 1 not started | 1 in progress | 5 completed
+Generated: 2026-02-12 00:31:56
+**Stats**: 7 total | 0 not started | 1 in progress | 6 completed
 ---
 
 ## In Progress
@@ -11,16 +11,6 @@ Generated: 2026-02-12 00:16:05
 - **Complexity**: medium
 
 Consider using underscores to improve readability of large numeric literals.
-
-## Not Started
-
-### [ ] CLIP-008: Avoid unreadable literals in tables
-- **Priority**: medium
-- **Category**: general
-- **Complexity**: small
-- **Files**: bitboard/src/tables/bishop_attack.rs
-
-Unreadable literals can make the code hard to understand and maintain. This lint helps identify and suggest improvements for better readability.
 
 ## Completed
 
@@ -69,3 +59,13 @@ Using references in loops can improve performance by avoiding unnecessary clonin
 Hardcoded string literals can lead to unnecessary memory allocations, especially in hot paths. Replacing them with static references can improve performance by avoiding heap allocations.
 
 *Completed: 2026-02-11T23:52:01.053548*
+
+### [x] CLIP-008: Avoid unreadable literals in tables
+- **Priority**: medium
+- **Category**: general
+- **Complexity**: small
+- **Files**: bitboard/src/tables/bishop_attack.rs
+
+Unreadable literals can make the code hard to understand and maintain. This lint helps identify and suggest improvements for better readability.
+
+*Completed: 2026-02-12T00:31:56.794753*

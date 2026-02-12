@@ -108,10 +108,12 @@ def run_clippy(repo_root: Path) -> dict:
                     file_name = spans[0].get("file_name", "unknown") if spans else "unknown"
                     code = message.get("code")
                     code_value = code.get("code", "unknown") if code else "unknown"
+                    code_snippet = spans[0].get("text", "") if spans else ""
                     warnings.append({
                         "file": file_name,
                         "code": code_value,
-                        "message": message.get("rendered", "")
+                        "message": message.get("rendered", ""),
+                        "snippet": code_snippet
                     })
         except json.JSONDecodeError:
             print(f"⚠️ Failed to parse line as JSON: {line[:200]}...")
