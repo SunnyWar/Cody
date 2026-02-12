@@ -58,7 +58,7 @@ def call_ai(prompt: str, config: dict) -> str:
         messages=[
             {
                 "role": "system",
-                "content": "You are a senior Rust engineer. Return only the full, updated file content in a single rust code block. The first non-empty line must be a comment with the file path."
+                "content": "You are a senior Rust engineer. You MUST return the COMPLETE, FULL file with ALL code included. NEVER use placeholders like '...' or comments like '// rest of code unchanged'. Return only a single ```rust code block with the file path as the first comment."
             },
             {"role": "user", "content": prompt}
         ],
@@ -77,6 +77,22 @@ def extract_file_content(response: str) -> tuple[str, str]:
         end = response.find("```", start)
         if end != -1:
             code = response[start:end].strip()
+            
+            # Reject responses with placeholder markers
+            placeholder_markers = [
+                "...",
+                "existing code",
+                "rest of the code",
+                "unchanged",
+                "// (rest",
+                "// ..."
+            ]
+            code_lower = code.lower()
+            for marker in placeholder_markers:
+                if marker in code_lower:
+                    print(f"⚠️ Response contains placeholder marker: '{marker}'")
+                    return None, None
+            
             lines = code.split("\n")
             file_path = None
             for line in lines[:5]:
@@ -210,10 +226,13 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
         f"- Line: {line}\n"
         f"- Column: {column}\n"
         f"- Message: {rendered}\n\n"
-        f"Instructions:\n"
-        f"- Return ONLY a single ```rust code block.\n"
-        f"- The first non-empty line must be a comment with the file path, e.g. // {file_path}\n"
-        f"- Include the FULL updated file content.\n\n"
+        f"CRITICAL INSTRUCTIONS:\n"
+        f"- Return a SINGLE ```rust code block\n"
+        f"- First line must be: // {file_path}\n"
+        f"- Include the COMPLETE, FULL file with ALL code\n"
+        f"- NEVER use '...' or placeholder comments\n"
+        f"- NEVER omit any code\n"
+        f"- Make ONLY the minimal change to fix the Clippy warning\n\n"
         f"Current file content:\n\n{file_content}\n"
     )
 
@@ -241,6 +260,14 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
                 todo_list.save()
                 print(f"\n✅ Clippy fix {item_id} completed successfully")
                 return True
+        return False
+    
+    # Validate content length (should be similar to original)
+    original_lines = len(file_content.split("\n"))
+    new_lines = len(new_content.split("\n"))
+    if new_lines < original_lines * 0.5:
+        print(f"❌ LLM response is suspiciously short: {new_lines} lines vs {original_lines} original")
+        print("   This suggests the LLM used placeholders instead of returning full file")
         return False
 
     if response_file_path != file_path:

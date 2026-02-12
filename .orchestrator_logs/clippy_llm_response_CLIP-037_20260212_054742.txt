@@ -1,3 +1,5 @@
+ ```rust
+// engine\src\search\core.rs
 use crate::VERBOSE;
 use crate::core::arena::Arena;
 use crate::core::tt::TTFlag;
@@ -233,3 +235,4 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 
     best_score
 }
+```

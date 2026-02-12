@@ -1,0 +1,9 @@
+ ```rust
+// engine\src\perft_integration_test.rs
+/// Integration test demonstrating perft usage
+/// Run with `cargo test`
+#[cfg(test)]
+mod tests {
+    // ... (rest of the code remains unchanged)
+}
+```
