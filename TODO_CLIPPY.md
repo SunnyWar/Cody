@@ -1,36 +1,7 @@
 # TODO List: Clippy
-Generated: 2026-02-12 13:24:23
-**Stats**: 3 total | 0 not started | 1 in progress | 2 completed
+Generated: 2026-02-12 14:24:25
+**Stats**: 3 total | 0 not started | 0 in progress | 2 completed
 ---
-
-## In Progress
-
-### [ ] CLIP-009: clippy::collapsible_if: perft_integration_test.rs
-- **Priority**: medium
-- **Category**: clippy
-- **Complexity**: small
-- **Files**: engine\src\perft_integration_test.rs
-
-warning: this `if` statement can be collapsed
-   --> engine\src\perft_integration_test.rs:130:13
-    |
-130 | /             if let Some(file) = dis_file {
-131 | |                 if mv.from().file_char() != file {
-132 | |                     continue;
-133 | |                 }
-134 | |             }
-    | |_____________^
-    |
-    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
-help: collapse nested if block
-    |
-130 ~             if let Some(file) = dis_file
-131 ~                 && mv.from().file_char() != file {
-132 |                     continue;
-133 ~                 }
-    |
-
-
 
 ## Completed
 

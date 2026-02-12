@@ -123,12 +123,13 @@ class TodoList:
             f"\n**Stats**: {len(self.items)} total | "
             f"{self.count_by_status('not-started')} not started | "
             f"{self.count_by_status('in-progress')} in progress | "
-            f"{self.count_by_status('completed')} completed\n",
+            f"{self.count_by_status('completed')} completed | "
+            f"{self.count_by_status('failed')} failed\n",
             "---\n"
         ]
         
         # Group by status
-        for status in ["in-progress", "not-started", "completed"]:
+        for status in ["in-progress", "not-started", "completed", "failed"]:
             status_items = [item for item in self.items if item.status == status]
             if status_items:
                 lines.append(f"\n## {status.replace('-', ' ').title()}\n")
