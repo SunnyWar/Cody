@@ -1,14 +1,15 @@
 """
 Clippy Executor Agent
 
-Executes a specific clippy warning fix from the TODO list using direct file editing.
-NO LLM patch generation - uses pre-vetted suggestions from TODO list.
+Executes a specific clippy warning fix from the TODO list using an LLM.
 """
 
+import os
 import sys
 import json
 import subprocess
 from pathlib import Path
+from openai import OpenAI
 from todo_manager import TodoList
 
 
@@ -29,6 +30,92 @@ def load_config():
     except Exception as e:
         print(f"❌ Error reading config file: {e}")
         sys.exit(1)
+
+
+def call_ai(prompt: str, config: dict) -> str:
+    """Call the AI with the prompt."""
+    if config.get("use_local"):
+        client = OpenAI(
+            api_key="ollama",
+            base_url=config.get("api_base", "http://localhost:11434/v1"),
+            timeout=3600.0
+        )
+    else:
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            print("\n❌ Error: OPENAI_API_KEY environment variable not set")
+            print("\n   Set your API key:")
+            print("   export OPENAI_API_KEY=sk-...")
+            print("\n   Or configure 'use_local': true in config.json to use a local LLM.\n")
+            sys.exit(1)
+        client = OpenAI(api_key=api_key, timeout=3600.0)
+
+    model = config["model"]
+    print(f"🤖 Fixing clippy warning with {model}...")
+
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a senior Rust engineer. Return only the full, updated file content in a single rust code block. The first non-empty line must be a comment with the file path."
+            },
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.2
+    )
+
+    return response.choices[0].message.content
+
+
+def extract_file_content(response: str) -> tuple[str, str]:
+    """Extract file path and content from LLM response.
+    Returns (file_path, content) or (None, None) if extraction fails.
+    """
+    if "```rust" in response:
+        start = response.find("```rust") + 7
+        end = response.find("```", start)
+        if end != -1:
+            code = response[start:end].strip()
+            lines = code.split("\n")
+            file_path = None
+            for line in lines[:5]:
+                if "//" in line and (".rs" in line or "/" in line):
+                    path_part = line.split("//", 1)[1].strip()
+                    if path_part and not path_part.startswith(" "):
+                        file_path = path_part
+                    break
+
+            code_lines = []
+            skip_comments = True
+            for line in lines:
+                if skip_comments and line.strip().startswith("//"):
+                    continue
+                skip_comments = False
+                code_lines.append(line)
+
+            content = "\n".join(code_lines).strip()
+            return file_path, content
+
+    print("⚠️ No clear code block found in response")
+    return None, None
+
+
+def apply_code_changes(repo_root: Path, file_path: str, new_content: str) -> bool:
+    """Write new content directly to file."""
+    try:
+        full_path = repo_root / file_path
+        if not full_path.parent.exists():
+            print(f"❌ Parent directory does not exist: {full_path.parent}")
+            return False
+
+        full_path.write_text(new_content, encoding="utf-8")
+        print(f"✅ Updated {file_path}")
+        return True
+
+    except Exception as e:
+        print(f"❌ Error writing file: {e}")
+        return False
 
 
 def apply_direct_fixes(repo_root: Path, item) -> bool:
@@ -71,12 +158,8 @@ def apply_direct_fixes(repo_root: Path, item) -> bool:
         return False
 
 
-    """Placeholder - LLM calls removed. Use direct fixes instead."""
-    pass
-
-
 def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
-    """Execute a specific clippy fix using direct file editing (no LLM)."""
+    """Execute a specific clippy fix using the LLM."""
     print("=" * 60)
     print(f"EXECUTING CLIPPY FIX: {item_id}")
     print("=" * 60)
@@ -100,26 +183,64 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
     todo_list.mark_in_progress(item_id)
     todo_list.save()
 
-    # Apply fixes directly from TODO list suggestions (no LLM needed)
-    if item.metadata.get("suggestions"):
-        print("📝 Applying pre-vetted fixes from TODO item...")
-        if apply_direct_fixes(repo_root, item):
-            todo_list.mark_completed(item_id)
-            todo_list.save()
-            print(f"\n✅ Clippy fix {item_id} completed successfully")
-            return True
-        else:
-            print("❌ Failed to apply direct fixes")
-            todo_list.mark_in_progress(item_id)  # Keep as in-progress for retry
-            todo_list.save()
-            return False
-    else:
-        # No suggestions available - mark as completed with note
-        print("⚠️ No fix suggestions available in TODO item")
+    file_path = item.metadata.get("file")
+    if not file_path and item.files_affected:
+        file_path = item.files_affected[0]
+
+    if not file_path:
+        print("❌ No file path available for this clippy item")
+        return False
+
+    full_path = repo_root / file_path
+    if not full_path.exists():
+        print(f"❌ File not found: {full_path}")
+        return False
+
+    file_content = full_path.read_text(encoding="utf-8")
+    lint_name = item.metadata.get("lint_name", "clippy")
+    line = item.metadata.get("line", 0)
+    column = item.metadata.get("column", 0)
+    rendered = item.metadata.get("rendered", item.description)
+
+    prompt = (
+        f"Fix the following Clippy warning by editing the file.\n\n"
+        f"Warning:\n"
+        f"- Lint: {lint_name}\n"
+        f"- File: {file_path}\n"
+        f"- Line: {line}\n"
+        f"- Column: {column}\n"
+        f"- Message: {rendered}\n\n"
+        f"Instructions:\n"
+        f"- Return ONLY a single ```rust code block.\n"
+        f"- The first non-empty line must be a comment with the file path, e.g. // {file_path}\n"
+        f"- Include the FULL updated file content.\n\n"
+        f"Current file content:\n\n{file_content}\n"
+    )
+
+    response = call_ai(prompt, config)
+    response_file_path, new_content = extract_file_content(response)
+
+    if not response_file_path or not new_content:
+        print("❌ LLM response did not include updated file content")
+        if item.metadata.get("suggestions"):
+            print("📝 Falling back to pre-vetted fixes from TODO item...")
+            if apply_direct_fixes(repo_root, item):
+                todo_list.mark_completed(item_id)
+                todo_list.save()
+                print(f"\n✅ Clippy fix {item_id} completed successfully")
+                return True
+        return False
+
+    if response_file_path != file_path:
+        print(f"⚠️ LLM returned a different file path: {response_file_path}")
+
+    if apply_code_changes(repo_root, file_path, new_content):
         todo_list.mark_completed(item_id)
         todo_list.save()
-        print(f"⏭️ Skipped {item_id} - no actionable fixes")
+        print(f"\n✅ Clippy fix {item_id} completed successfully")
         return True
+
+    return False
 
 
 def main():
