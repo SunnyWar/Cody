@@ -1,3 +1,6 @@
+ ```rust
+// engine\src\search\mod.rs
+
 pub mod search;
 
 pub mod engine;
@@ -11,3 +14,4 @@ pub mod quiescence;
 mod core;
 
 pub use core::*;
+```

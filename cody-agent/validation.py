@@ -1,0 +1,183 @@
+"""
+Validation utilities for executors.
+Ensures the project always builds before AND after code changes.
+"""
+
+import subprocess
+import sys
+from pathlib import Path
+from typing import Optional, Tuple
+import json
+import openai
+
+
+def run_validation(repo_root: Path) -> bool:
+    """Run validate_cargo.py and return True if successful."""
+    result = subprocess.run(
+        [sys.executable, str(repo_root / "cody-agent" / "validate_cargo.py")],
+        cwd=repo_root,
+        capture_output=True,
+        text=True
+    )
+    return result.returncode == 0
+
+
+def get_build_errors(repo_root: Path) -> str:
+    """Get cargo build errors as a string."""
+    result = subprocess.run(
+        ["cargo", "build", "--all-targets", "--all-features"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True
+    )
+    
+    if result.returncode == 0:
+        return ""
+    
+    # Combine stderr and stdout for complete error context
+    return f"{result.stderr}\n{result.stdout}".strip()
+
+
+def fix_build_with_llm(repo_root: Path, config: dict, errors: str) -> bool:
+    """
+    Ask LLM to fix build errors.
+    Returns True if fix was applied and build succeeded.
+    """
+    client = openai.OpenAI(
+        base_url=config["llm"]["base_url"],
+        api_key=config["llm"]["api_key"]
+    )
+    
+    system_message = """You are an expert Rust programmer fixing compilation errors.
+You will receive cargo build errors and must provide COMPLETE, BUILDABLE file contents to fix them.
+
+CRITICAL RULES:
+1. Return ONLY the complete file contents wrapped in ```rust code blocks
+2. Include the file path as a comment on the first line: // path/to/file.rs
+3. NEVER use placeholders like "...", "existing code", or "unchanged"
+4. NEVER omit any code - return the FULL file
+5. Make MINIMAL changes - only fix the specific error
+6. Preserve all existing functionality
+
+Format your response EXACTLY like this:
+```rust
+// engine/src/search/core.rs
+[COMPLETE FILE CONTENTS HERE - EVERY SINGLE LINE]
+```"""
+
+    user_message = f"""The cargo build has failed with these errors:
+
+{errors}
+
+Please provide the COMPLETE fixed file(s) to resolve these errors.
+Remember: FULL file contents only, no placeholders or omissions."""
+
+    try:
+        response = client.chat.completions.create(
+            model=config["llm"]["model"],
+            messages=[
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": user_message}
+            ],
+            temperature=0.1,
+            max_tokens=16000
+        )
+        
+        llm_response = response.choices[0].message.content
+        
+        # Extract and apply file changes
+        import re
+        code_blocks = re.findall(r'```rust\n(.*?)\n```', llm_response, re.DOTALL)
+        
+        if not code_blocks:
+            print("❌ LLM did not return any code blocks")
+            return False
+        
+        for block in code_blocks:
+            # Extract file path from first line comment
+            lines = block.split('\n')
+            if not lines[0].strip().startswith('//'):
+                print(f"❌ Code block missing file path comment: {lines[0][:50]}")
+                continue
+            
+            file_path_comment = lines[0].strip()
+            # Extract path from comment: "// engine/src/file.rs" -> "engine/src/file.rs"
+            file_path = file_path_comment[2:].strip().replace('/', '\\')
+            full_path = repo_root / file_path
+            
+            if not full_path.exists():
+                print(f"❌ File does not exist: {full_path}")
+                continue
+            
+            # Get new content (skip the comment line)
+            new_content = '\n'.join(lines[1:])
+            
+            # Validate no placeholders
+            placeholder_markers = ['...', 'existing code', 'unchanged', 'rest of']
+            if any(marker in new_content.lower() for marker in placeholder_markers):
+                print(f"❌ LLM response contains placeholders for {file_path}")
+                return False
+            
+            # Write the file
+            full_path.write_text(new_content, encoding='utf-8')
+            print(f"✅ Applied fix to {file_path}")
+        
+        # Verify build now succeeds
+        return run_validation(repo_root)
+        
+    except Exception as e:
+        print(f"❌ LLM fix failed: {e}")
+        return False
+
+
+def ensure_builds_or_fix(repo_root: Path, config: dict, stage: str, max_attempts: int = 3) -> bool:
+    """
+    Ensure the project builds. If not, attempt to fix with LLM.
+    
+    Args:
+        repo_root: Path to the repository root
+        config: Configuration dict with LLM settings
+        stage: String describing the stage ("pre-change", "post-change")
+        max_attempts: Maximum number of fix attempts
+    
+    Returns:
+        True if project builds successfully, False if unable to fix
+    """
+    if run_validation(repo_root):
+        print(f"✅ {stage} validation: Build successful")
+        return True
+    
+    print(f"⚠️ {stage} validation: Build FAILED")
+    
+    attempts = 0
+    while attempts < max_attempts:
+        attempts += 1
+        print(f"   Attempting fix {attempts}/{max_attempts}...")
+        
+        errors = get_build_errors(repo_root)
+        if not errors:
+            # Build succeeded this time
+            print(f"✅ Build fixed on attempt {attempts}")
+            return True
+        
+        print(f"   Build errors:\n{errors[:500]}...")
+        
+        if fix_build_with_llm(repo_root, config, errors):
+            print(f"✅ LLM fixed build on attempt {attempts}")
+            return True
+        else:
+            print(f"   Fix attempt {attempts} failed")
+    
+    print(f"❌ Could not fix build after {max_attempts} attempts")
+    return False
+
+
+def rollback_changes(repo_root: Path, file_paths: list):
+    """Roll back changes to specific files."""
+    for path in file_paths:
+        subprocess.run(
+            ["git", "checkout", "HEAD", "--", path],
+            cwd=repo_root,
+            capture_output=True
+        )
+    print(f"🔄 Rolled back changes to {len(file_paths)} file(s)")
