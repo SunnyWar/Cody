@@ -33,7 +33,18 @@ todo_list.mark_in_progress(item_id)
 todo_list.save()
 ```
 
-### 2. Gather File Content
+### 2. **MANDATORY** Pre-Validation
+```python
+from validation import ensure_builds_or_fix, rollback_changes
+
+# MANDATORY: Ensure project builds BEFORE making any changes
+if not ensure_builds_or_fix(repo_root, config, "PRE-CHANGE"):
+    print("❌ CRITICAL: Project does not build before changes and could not be fixed.")
+    print("   Aborting to prevent further damage.")
+    return False
+```
+
+### 3. Gather File Content
 ```python
 file_path = item.metadata.get("file") or item.files_affected[0]
 full_path = repo_root / file_path
@@ -45,7 +56,7 @@ if not full_path.exists():
 file_content = full_path.read_text(encoding="utf-8")
 ```
 
-### 3. Build Prompt
+### 4. Build Prompt
 ```python
 prompt = (
     f"Fix/implement the following task:\n\n"
@@ -60,12 +71,12 @@ prompt = (
 )
 ```
 
-### 4. Call LLM
+### 5. Call LLM
 ```python
 response = call_ai(prompt, config)
 ```
 
-### 5. Extract File Content
+### 6. Extract File Content
 ```python
 def extract_file_content(response: str) -> tuple[str, str]:
     """Extract file path and content from LLM response.
@@ -108,7 +119,7 @@ if not response_file_path or not new_content:
     return False
 ```
 
-### 6. Apply Changes
+### 7. Apply Changes
 ```python
 def apply_code_changes(repo_root: Path, file_path: str, new_content: str) -> bool:
     """Write new content directly to file."""
@@ -127,10 +138,21 @@ def apply_code_changes(repo_root: Path, file_path: str, new_content: str) -> boo
         return False
 
 if not apply_code_changes(repo_root, file_path, new_content):
+    print("❌ Failed to apply changes")
     return False
 ```
 
-### 7. Mark Complete
+### 8. **MANDATORY** Post-Validation
+```python
+# MANDATORY: Ensure project still builds AFTER changes
+if not ensure_builds_or_fix(repo_root, config, "POST-CHANGE"):
+    print("❌ CRITICAL: Changes broke the build and could not be fixed automatically.")
+    print("   Rolling back changes...")
+    rollback_changes(repo_root, [file_path])
+    return False
+```
+
+### 9. Mark Complete
 ```python
 todo_list.mark_completed(item_id)
 todo_list.save()
@@ -174,9 +196,27 @@ def call_ai(prompt: str, config: dict) -> str:
 ```
 
 ## Key Points
+
+### CRITICAL: Mandatory Validation
+**EVERY executor MUST:**
+1. **PRE-VALIDATE**: Call `ensure_builds_or_fix(repo_root, config, "PRE-CHANGE")` **BEFORE** making any changes
+   - If validation fails and cannot be fixed: **ABORT** immediately
+   - Never proceed if the project is already broken
+   
+2. **POST-VALIDATE**: Call `ensure_builds_or_fix(repo_root, config, "POST-CHANGE")` **AFTER** applying changes
+   - If validation fails and cannot be fixed: **ROLLBACK** all changes immediately
+   - Never commit broken code
+   
+3. **ROLLBACK ON FAILURE**: Use `rollback_changes(repo_root, [file_paths])` to undo changes that broke the build
+
+**These rules are NON-NEGOTIABLE. Never finish with the project in a worse state than it started.**
+
+### Standard Flow
 1. **Always** mark TODO item in-progress before starting
-2. **Always** read full file content (not snippets)
-3. **Always** instruct LLM to return full file in code block
-4. **Always** extract file path from comment in LLM response
-5. **Always** mark completed on success
-6. **Never** parse JSON from LLM for code (use code blocks)
+2. **Always** run pre-validation before gathering files
+3. **Always** read full file content (not snippets)
+4. **Always** instruct LLM to return full file in code block
+5. **Always** extract file path from comment in LLM response
+6. **Always** run post-validation before marking complete
+7. **Always** rollback changes if post-validation fails
+8. **Never** parse JSON from LLM for code (use code blocks)

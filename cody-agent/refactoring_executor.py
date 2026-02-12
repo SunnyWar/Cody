@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from openai import OpenAI
 from todo_manager import TodoList
+from validation import ensure_builds_or_fix, rollback_changes
 
 
 def load_config():
@@ -210,6 +211,12 @@ def execute_refactoring(item_id: str, repo_root: Path, config: dict) -> bool:
     todo_list.mark_in_progress(item_id)
     todo_list.save()
     
+    # MANDATORY PRE-VALIDATION: Ensure project builds BEFORE making changes
+    if not ensure_builds_or_fix(repo_root, config, "PRE-CHANGE"):
+        print("❌ CRITICAL: Project does not build before changes and could not be fixed.")
+        print("   Aborting to prevent further damage.")
+        return False
+    
     # Build the prompt
     prompt_template = get_prompt_template()
     
@@ -271,10 +278,11 @@ Files Affected: {', '.join(item.files_affected)}
         print("❌ Failed to apply changes")
         return False
     
-    # Validate
-    if not validate_changes(repo_root):
-        print("❌ Validation failed, rolling back...")
-        subprocess.run(["git", "checkout", "."], cwd=repo_root)
+    # MANDATORY POST-VALIDATION: Ensure project still builds AFTER changes
+    if not ensure_builds_or_fix(repo_root, config, "POST-CHANGE"):
+        print("❌ CRITICAL: Changes broke the build and could not be fixed automatically.")
+        print("   Rolling back changes...")
+        rollback_changes(repo_root, [file_path])
         return False
     
     # Mark as completed

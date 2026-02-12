@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 from openai import OpenAI
 from todo_manager import TodoList
+from validation import ensure_builds_or_fix, rollback_changes
 
 
 def load_config():
@@ -273,13 +274,22 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
     if response_file_path != file_path:
         print(f"⚠️ LLM returned a different file path: {response_file_path}")
 
-    if apply_code_changes(repo_root, file_path, new_content):
-        todo_list.mark_completed(item_id)
-        todo_list.save()
-        print(f"\n✅ Clippy fix {item_id} completed successfully")
-        return True
+    if not apply_code_changes(repo_root, file_path, new_content):
+        print("❌ Failed to apply code changes")
+        return False
 
-    return False
+    # MANDATORY POST-VALIDATION: Ensure project still builds AFTER changes
+    if not ensure_builds_or_fix(repo_root, config, "POST-CHANGE"):
+        print("❌ CRITICAL: Changes broke the build and could not be fixed automatically.")
+        print("   Rolling back changes...")
+        rollback_changes(repo_root, [file_path])
+        return False
+
+    # Only mark complete if changes were applied AND build is successful
+    todo_list.mark_completed(item_id)
+    todo_list.save()
+    print(f"\n✅ Clippy fix {item_id} completed successfully")
+    return True
 
 
 def main():
