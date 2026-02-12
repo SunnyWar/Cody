@@ -13,6 +13,7 @@ import subprocess
 from pathlib import Path
 from openai import OpenAI
 from todo_manager import TodoList, generate_unique_id
+from console_utils import safe_print
 
 
 CLIPPY_LINT_ARGS = [
@@ -27,9 +28,9 @@ def load_config():
     config_path = Path(__file__).parent / "config.json"
     
     if not config_path.exists():
-        print(f"❌ Error: Configuration file not found at {config_path}")
-        print(f"\n   Please create config.json by copying config.sample.json:")
-        print(f"   cp {Path(__file__).parent / 'config.sample.json'} {config_path}")
+        safe_print(f"❌ Error: Configuration file not found at {config_path}")
+        safe_print(f"\n   Please create config.json by copying config.sample.json:")
+        safe_print(f"   cp {Path(__file__).parent / 'config.sample.json'} {config_path}")
         sys.exit(1)
     
     try:
@@ -39,11 +40,11 @@ def load_config():
             raise ValueError("Config file is empty")
         return config
     except json.JSONDecodeError as e:
-        print(f"❌ Error: Invalid JSON in {config_path}")
-        print(f"   {e}")
+        safe_print(f"❌ Error: Invalid JSON in {config_path}")
+        safe_print(f"   {e}")
         sys.exit(1)
     except Exception as e:
-        print(f"❌ Error reading config file: {e}")
+        safe_print(f"❌ Error reading config file: {e}")
         sys.exit(1)
 
 
@@ -63,7 +64,7 @@ def run_clippy_with_parser(repo_root: Path, extra_args: list = None) -> dict:
         command.append("--")
         command.extend(extra_args)
 
-    print(f"\nRunning Clippy parser command: {' '.join(command)}")
+    safe_print(f"\nRunning Clippy parser command: {' '.join(command)}")
 
     result = subprocess.run(
         command,
@@ -73,7 +74,7 @@ def run_clippy_with_parser(repo_root: Path, extra_args: list = None) -> dict:
     )
 
     if result.returncode not in (0, 1):
-        print(f"\n⚠️ Clippy parser exited with code {result.returncode}")
+        safe_print(f"\n⚠️ Clippy parser exited with code {result.returncode}")
 
     warnings = []
     for line in result.stdout.strip().split('\n'):
@@ -82,7 +83,7 @@ def run_clippy_with_parser(repo_root: Path, extra_args: list = None) -> dict:
         try:
             warnings.append(json.loads(line))
         except json.JSONDecodeError:
-            print(f"⚠️ Failed to parse line as JSON: {line[:200]}...")
+            safe_print(f"⚠️ Failed to parse line as JSON: {line[:200]}...")
 
     return {
         "command": " ".join(command),
@@ -109,7 +110,7 @@ def run_clippy_with_priority_and_parser(repo_root: Path) -> dict:
         if lints:
             command += ["--"] + lints
 
-        print(f"\nRunning Clippy parser command: {' '.join(command)}")
+        safe_print(f"\nRunning Clippy parser command: {' '.join(command)}")
 
         result = subprocess.run(
             command,
@@ -125,7 +126,7 @@ def run_clippy_with_priority_and_parser(repo_root: Path) -> dict:
                 try:
                     warnings.append(json.loads(line))
                 except json.JSONDecodeError:
-                    print(f"⚠️ Failed to parse line as JSON: {line[:200]}...")
+                    safe_print(f"⚠️ Failed to parse line as JSON: {line[:200]}...")
 
         # Add warnings to the cumulative list
         all_warnings.extend(warnings)
@@ -133,9 +134,9 @@ def run_clippy_with_priority_and_parser(repo_root: Path) -> dict:
         # Check exit code to determine if warnings exist
         lint_label = "(default)" if not lints else " ".join(lints)
         if result.returncode == 1:  # Warnings found
-            print(f"\n📊 Found {len(warnings)} warnings with lints: {lint_label}")
+            safe_print(f"\n📊 Found {len(warnings)} warnings with lints: {lint_label}")
         elif result.returncode == 0:  # No warnings
-            print(f"\n📊 Found 0 warnings with lints: {lint_label}. Continuing to next lint option.")
+            safe_print(f"\n📊 Found 0 warnings with lints: {lint_label}. Continuing to next lint option.")
 
     if all_warnings:
         warning_summary = "\n".join(
@@ -149,7 +150,7 @@ def run_clippy_with_priority_and_parser(repo_root: Path) -> dict:
             "warning_count": len(all_warnings),
         }
 
-    print("\n✅ No warnings found for any Clippy lint options.")
+    safe_print("\n✅ No warnings found for any Clippy lint options.")
     return {
         "command": "",
         "returncode": 0,
@@ -170,15 +171,15 @@ def call_ai(prompt: str, config: dict) -> str:
     else:
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
-            print(f"\n❌ Error: OPENAI_API_KEY environment variable not set")
-            print(f"\n   Set your API key:")
-            print(f"   export OPENAI_API_KEY=sk-...")
-            print(f"\n   Or configure 'use_local': true in config.json to use a local LLM.\n")
+            safe_print(f"\n❌ Error: OPENAI_API_KEY environment variable not set")
+            safe_print(f"\n   Set your API key:")
+            safe_print(f"   export OPENAI_API_KEY=sk-...")
+            safe_print(f"\n   Or configure 'use_local': true in config.json to use a local LLM.\n")
             sys.exit(1)
         client = OpenAI(api_key=api_key, timeout=3600.0)
 
     model = config["model"]
-    print(f"🤖 Analyzing clippy with {model}...")
+    safe_print(f"🤖 Analyzing clippy with {model}...")
 
     response = client.chat.completions.create(
         model=model,
@@ -230,8 +231,8 @@ def extract_json_from_response(response: str, repo_root: Path, phase: str) -> li
     
     # If all strategies fail and response doesn't look like JSON, assume empty result
     if not json_str:
-        print(f"⚠️ AI did not return JSON format. Response preview: {response[:200]}...")
-        print(f"   Returning empty list. This might mean no {phase} items were found.")
+        safe_print(f"⚠️ AI did not return JSON format. Response preview: {response[:200]}...")
+        safe_print(f"   Returning empty list. This might mean no {phase} items were found.")
         return []
     
     try:
@@ -250,10 +251,10 @@ def extract_json_from_response(response: str, repo_root: Path, phase: str) -> li
             f.write(json_str)
             f.write("\n\n=== Full Response ===\n")
             f.write(response)
-        print(f"❌ Failed to parse JSON: {e}")
-        print(f"Response preview: {response[:500]}...")
-        print(f"📄 Full response saved to: {dump_path}")
-        print(f"⚠️ Returning empty list to continue workflow")
+        safe_print(f"❌ Failed to parse JSON: {e}")
+        safe_print(f"Response preview: {response[:500]}...")
+        safe_print(f"📄 Full response saved to: {dump_path}")
+        safe_print(f"⚠️ Returning empty list to continue workflow")
         # Don't raise - return empty list to allow workflow to continue
         return []
 
@@ -261,7 +262,7 @@ def extract_json_from_response(response: str, repo_root: Path, phase: str) -> li
 def extract_code_from_response(response: str, repo_root: Path, phase: str) -> list:
     """Extract code modifications from the LLM response."""
     if not response.strip():
-        print("⚠️ Empty response from LLM.")
+        safe_print("⚠️ Empty response from LLM.")
         return []
 
     # Save the response to a temporary file for review
@@ -272,7 +273,7 @@ def extract_code_from_response(response: str, repo_root: Path, phase: str) -> li
     with response_path.open("w", encoding="utf-8", errors="replace") as f:
         f.write(response)
 
-    print(f"📄 LLM response saved to: {response_path}")
+    safe_print(f"📄 LLM response saved to: {response_path}")
 
     # Return the raw response for now (future: parse and apply changes automatically)
     return [response]
@@ -280,9 +281,9 @@ def extract_code_from_response(response: str, repo_root: Path, phase: str) -> li
 
 def analyze(repo_root: Path, config: dict) -> int:
     """Run clippy analysis and update TODO list."""
-    print("=" * 60)
-    print("CLIPPY ANALYSIS")
-    print("=" * 60)
+    safe_print("=" * 60)
+    safe_print("CLIPPY ANALYSIS")
+    safe_print("=" * 60)
 
     todo_list = TodoList("clippy", repo_root)
     existing_ids = todo_list.get_all_ids()
@@ -292,10 +293,10 @@ def analyze(repo_root: Path, config: dict) -> int:
 
     # Show warning summary
     warning_count = clippy_result["warning_count"]
-    print(f"\n📊 Found {warning_count} clippy warnings")
+    safe_print(f"\n📊 Found {warning_count} clippy warnings")
 
     if warning_count == 0:
-        print("\n✅ No warnings to process.")
+        safe_print("\n✅ No warnings to process.")
         return 0
 
     new_items = []
@@ -331,7 +332,7 @@ def analyze(repo_root: Path, config: dict) -> int:
         })
 
     if not new_items:
-        print("⚠️ No clippy opportunities found")
+        safe_print("⚠️ No clippy opportunities found")
         return 0
 
     for item in new_items:
@@ -343,9 +344,9 @@ def analyze(repo_root: Path, config: dict) -> int:
 
     if added > 0:
         todo_list.save()
-        print(f"\n✅ Added {added} new clippy items to TODO list")
+        safe_print(f"\n✅ Added {added} new clippy items to TODO list")
     else:
-        print("\n⏭️ No new items added (all were duplicates)")
+        safe_print("\n⏭️ No new items added (all were duplicates)")
 
     return added
 
@@ -357,9 +358,9 @@ def main():
 
     added = analyze(repo_root, config)
 
-    print(f"\n{'=' * 60}")
-    print(f"Analysis complete: {added} new items added")
-    print(f"{'=' * 60}")
+    safe_print(f"\n{'=' * 60}")
+    safe_print(f"Analysis complete: {added} new items added")
+    safe_print(f"{'=' * 60}")
 
 
 if __name__ == "__main__":
