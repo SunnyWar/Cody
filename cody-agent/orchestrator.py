@@ -65,7 +65,14 @@ class Orchestrator:
 
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_line = f"[{timestamp}] {content}"
-        print(log_line)
+        
+        # Try to print with unicode; fall back to ASCII if console doesn't support it
+        try:
+            print(log_line)
+        except UnicodeEncodeError:
+            # Windows console doesn't support emoji - print ASCII version
+            ascii_line = log_line.encode('ascii', 'ignore').decode('ascii')
+            print(ascii_line)
         
         with open(self.log_file, 'a', encoding='utf-8') as f:
             f.write(log_line + "\n")
