@@ -130,9 +130,9 @@
     "priority": "high",
     "category": "performance",
     "description": "Hardcoded string literals can lead to unnecessary memory allocations, especially in hot paths. Replacing them with static references can improve performance by avoiding heap allocations.",
-    "status": "not-started",
+    "status": "completed",
     "created_at": "2026-02-11T17:40:08.378581",
-    "completed_at": null,
+    "completed_at": "2026-02-11T23:52:01.053548",
     "estimated_complexity": "medium",
     "files_affected": [
       "bitboard/src/tables/bishop_attack.rs"
