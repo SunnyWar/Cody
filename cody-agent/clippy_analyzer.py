@@ -85,6 +85,9 @@ def run_clippy(repo_root: Path) -> dict:
     if result.returncode not in (0, 1):  # Clippy returns 0 for success, 1 for warnings
         print(f"\n⚠️ Clippy exited with code {result.returncode}")
 
+    # Limit the Clippy output to the first 100 lines for the AI prompt
+    limited_output = '\n'.join(result.stdout.strip().split('\n')[:100])
+
     # Log raw Clippy output for debugging
     logs_dir = repo_root / ".orchestrator_logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
@@ -92,6 +95,9 @@ def run_clippy(repo_root: Path) -> dict:
     with raw_output_path.open("w", encoding="utf-8") as f:
         f.write(result.stdout)
     print(f"\n📄 Raw Clippy output saved to: {raw_output_path}")
+
+    # Use the limited output for AI processing
+    clippy_output = limited_output
 
     # Parse JSON output and filter for warning-level diagnostics
     warnings = []
