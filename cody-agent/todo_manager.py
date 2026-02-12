@@ -213,6 +213,17 @@ class TodoList:
         print(f"❌ Item not found: {item_id}")
         return False
     
+    def reset_in_progress(self) -> int:
+        """Reset all in-progress items to not-started (for crash recovery)."""
+        count = 0
+        for item in self.items:
+            if item.status == "in-progress":
+                item.status = "not-started"
+                count += 1
+        if count > 0:
+            self.save()
+        return count
+    
     def count_by_status(self, status: str) -> int:
         """Count items by status."""
         return sum(1 for item in self.items if item.status == status)

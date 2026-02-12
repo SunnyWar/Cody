@@ -389,6 +389,12 @@ class Orchestrator:
 
         # Get next task
         todo_list = TodoList("clippy", self.repo_root)
+        
+        # Reset any stuck in-progress items from crashed runs
+        reset_count = todo_list.reset_in_progress()
+        if reset_count > 0:
+            self.log(f"🔄 Reset {reset_count} stuck in-progress item(s) from previous run")
+        
         next_item = todo_list.get_next_item()
 
         if not next_item:
