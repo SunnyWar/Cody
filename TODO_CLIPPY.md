@@ -1,6 +1,6 @@
 # TODO List: Clippy
-Generated: 2026-02-11 17:40:08
-**Stats**: 6 total | 1 not started | 1 in progress | 4 completed
+Generated: 2026-02-11 23:52:01
+**Stats**: 6 total | 0 not started | 1 in progress | 5 completed
 ---
 
 ## In Progress
@@ -11,16 +11,6 @@ Generated: 2026-02-11 17:40:08
 - **Complexity**: medium
 
 Consider using underscores to improve readability of large numeric literals.
-
-## Not Started
-
-### [ ] CLIP-006: Avoid unnecessary string allocations in hot paths
-- **Priority**: high
-- **Category**: performance
-- **Complexity**: medium
-- **Files**: bitboard/src/tables/bishop_attack.rs
-
-Hardcoded string literals can lead to unnecessary memory allocations, especially in hot paths. Replacing them with static references can improve performance by avoiding heap allocations.
 
 ## Completed
 
@@ -59,3 +49,13 @@ Using `!is_empty` is clearer and more explicit than comparing the length of a co
 Using references in loops can improve performance by avoiding unnecessary cloning of elements.
 
 *Completed: 2026-02-10T00:18:18.257542*
+
+### [x] CLIP-006: Avoid unnecessary string allocations in hot paths
+- **Priority**: high
+- **Category**: performance
+- **Complexity**: medium
+- **Files**: bitboard/src/tables/bishop_attack.rs
+
+Hardcoded string literals can lead to unnecessary memory allocations, especially in hot paths. Replacing them with static references can improve performance by avoiding heap allocations.
+
+*Completed: 2026-02-11T23:52:01.053548*
