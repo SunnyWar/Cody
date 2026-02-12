@@ -293,14 +293,35 @@ def analyze(repo_root: Path, config: dict) -> int:
         else f"Clippy exited with code {clippy_result['returncode']}."
     )
 
+    for warning in clippy_result["warnings"]:
+        file_path = repo_root / warning["message"]["spans"][0]["file_name"]
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                file_content = f.read()
+        except Exception as e:
+            print(f"⚠️ Failed to read file {file_path}: {e}")
+            file_content = ""
+
+        warning["file_content"] = file_content
+
     full_prompt = (
         f"{prompt_template}\n\n"
         f"{existing_todos_info}\n\n"
         f"## CLIPPY COMMAND\n\n{clippy_result['command']}\n\n"
         f"## CLIPPY STATUS\n\n{clippy_status}\n\n"
         f"## CLIPPY OUTPUT\n\n{clippy_output}\n\n"
-        f"## TASK: Generate actionable fixes for the above Clippy warnings."
+        f"## TASK: Generate actionable fixes for the above Clippy warnings.\n\n"
     )
+
+    for warning in clippy_result["warnings"]:
+        full_prompt += (
+            f"### Warning\n"
+            f"- File: {warning['message']['spans'][0]['file_name']}\n"
+            f"- Line: {warning['message']['spans'][0]['line_start']}\n"
+            f"- Column: {warning['message']['spans'][0]['column_start']}\n"
+            f"- Message: {warning['message']['rendered']}\n"
+            f"\n{warning['file_content']}\n"
+        )
 
     # Call AI with error handling
     try:
