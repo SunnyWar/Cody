@@ -1,11 +1,11 @@
 # TODO List: Clippy
-Generated: 2026-02-12 05:21:04
+Generated: 2026-02-12 05:33:48
 **Stats**: 3 total | 2 not started | 1 in progress | 0 completed
 ---
 
 ## In Progress
 
-### [ ] CLIP-018: clippy::module_inception: mod.rs
+### [ ] CLIP-027: clippy::module_inception: mod.rs
 - **Priority**: medium
 - **Category**: clippy
 - **Complexity**: small
@@ -24,7 +24,7 @@ warning: module has the same name as its containing module
 
 ## Not Started
 
-### [ ] CLIP-019: clippy::too_many_arguments: core.rs
+### [ ] CLIP-028: clippy::too_many_arguments: core.rs
 - **Priority**: medium
 - **Category**: clippy
 - **Complexity**: small
@@ -47,7 +47,7 @@ warning: this function has too many arguments (11/7)
 
 
 
-### [ ] CLIP-026: clippy::collapsible_if: perft_integration_test.rs
+### [ ] CLIP-035: clippy::collapsible_if: perft_integration_test.rs
 - **Priority**: medium
 - **Category**: clippy
 - **Complexity**: small

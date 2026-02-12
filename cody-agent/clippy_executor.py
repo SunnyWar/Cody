@@ -218,10 +218,22 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
     )
 
     response = call_ai(prompt, config)
+    
+    # Save response for debugging
+    from datetime import datetime
+    logs_dir = repo_root / ".orchestrator_logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    response_path = logs_dir / f"clippy_llm_response_{item_id}_{timestamp}.txt"
+    with response_path.open("w", encoding="utf-8", errors="replace") as f:
+        f.write(response)
+    print(f"📄 LLM response saved to: {response_path}")
+    
     response_file_path, new_content = extract_file_content(response)
 
     if not response_file_path or not new_content:
         print("❌ LLM response did not include updated file content")
+        print(f"   Response preview: {response[:500]}...")
         if item.metadata.get("suggestions"):
             print("📝 Falling back to pre-vetted fixes from TODO item...")
             if apply_direct_fixes(repo_root, item):
