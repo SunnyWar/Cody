@@ -1,165 +1,65 @@
 [
   {
-    "id": "CLIP-001",
-    "title": "Avoid long literals lacking separators",
+    "id": "CLIP-018",
+    "title": "clippy::module_inception: mod.rs",
     "priority": "medium",
-    "category": "",
-    "description": "Consider using underscores to improve readability of large numeric literals.",
-    "status": "completed",
-    "created_at": "2026-02-09T11:07:22.850141",
-    "completed_at": "2026-02-09T21:43:43.432412",
-    "estimated_complexity": "medium",
-    "files_affected": [],
-    "dependencies": [],
-    "file": "bitboard/src/tables/bishop_attack.rs",
-    "line": 6,
-    "suggestions": [
-      {
-        "suggestion": "BitBoardMask(0x8040201008040200)",
-        "replacement": "BitBoardMask(0x8040_2010_0804_0200)"
-      },
-      {
-        "suggestion": "BitBoardMask(0x0000000000000200)",
-        "replacement": "BitBoardMask(0x0000_0000_0000_0200)"
-      },
-      {
-        "suggestion": "BitBoardMask(0x0000000000040200)",
-        "replacement": "BitBoardMask(0x0000_0000_0004_0200)"
-      },
-      {
-        "suggestion": "BitBoardMask(0x0000000000000200)",
-        "replacement": "BitBoardMask(0x0000_0000_0000_0200)"
-      }
-    ]
-  },
-  {
-    "id": "CLIP-002",
-    "title": "Use underscores in numeric literals for readability",
-    "priority": "medium",
-    "category": "",
-    "description": "Consider using underscores to improve readability of large numeric literals.",
+    "category": "clippy",
+    "description": "warning: module has the same name as its containing module\n --> engine\\src\\search\\mod.rs:1:1\n  |\n1 | pub mod search;\n  | ^^^^^^^^^^^^^^^\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#module_inception\n  = note: `#[warn(clippy::module_inception)]` on by default\n\n",
     "status": "in-progress",
-    "created_at": "2026-02-09T11:07:22.851785",
+    "created_at": "2026-02-12T05:21:04.078439",
     "completed_at": null,
-    "estimated_complexity": "medium",
-    "files_affected": [],
-    "dependencies": [],
-    "file": "engine/src/api/uciapi.rs",
-    "line": 307,
-    "suggestions": [
-      {
-        "suggestion": "let nps = (nodes as f64 / (total_time_ms as f64 / 1000.0)) as u64;",
-        "replacement": "let nps = (nodes as f64 / (total_time_ms as f64 / 1000.0)) as u64;"
-      }
-    ]
-  },
-  {
-    "id": "CLIP-003",
-    "title": "Use direct variable access in format strings",
-    "priority": "medium",
-    "category": "",
-    "description": "Consider using direct variable access in `format!` string for better readability and performance.",
-    "status": "completed",
-    "created_at": "2026-02-09T11:07:22.852490",
-    "completed_at": "2026-02-10T00:18:18.152982",
-    "estimated_complexity": "medium",
-    "files_affected": [],
-    "dependencies": [],
-    "file": "engine/src/api/uciapi.rs",
-    "line": 310,
-    "suggestions": [
-      {
-        "suggestion": "&format!(\"Total time (ms) : {}\", total_time_ms)",
-        "replacement": "&format!(\"Total time (ms) : {total_time_ms}\")"
-      },
-      {
-        "suggestion": "&format!(\"Nodes searched  : {}\", total_nodes)",
-        "replacement": "&format!(\"Nodes searched  : {total_nodes}\")"
-      },
-      {
-        "suggestion": "&format!(\"Nodes/second    : {}\", total_nps)",
-        "replacement": "&format!(\"Nodes/second    : {total_nps}\")"
-      }
-    ]
-  },
-  {
-    "id": "CLIP-004",
-    "title": "Prefer `!is_empty` over length comparison to zero",
-    "priority": "medium",
-    "category": "",
-    "description": "Using `!is_empty` is clearer and more explicit than comparing the length of a collection to zero.",
-    "status": "completed",
-    "created_at": "2026-02-09T11:07:22.852863",
-    "completed_at": "2026-02-10T00:18:18.206099",
-    "estimated_complexity": "medium",
-    "files_affected": [],
-    "dependencies": [],
-    "file": "engine/src/main.rs",
-    "line": 17,
-    "suggestions": [
-      {
-        "suggestion": "args.is_empty() || (args.len() > 0 && args[0] != \"perft\")",
-        "replacement": "!args.is_empty() || (!args.is_empty() && args[0] != \"perft\")"
-      }
-    ]
-  },
-  {
-    "id": "CLIP-005",
-    "title": "Use references in loop over containers for better performance",
-    "priority": "medium",
-    "category": "",
-    "description": "Using references in loops can improve performance by avoiding unnecessary cloning of elements.",
-    "status": "completed",
-    "created_at": "2026-02-09T11:07:22.853263",
-    "completed_at": "2026-02-10T00:18:18.257542",
-    "estimated_complexity": "medium",
-    "files_affected": [],
-    "dependencies": [],
-    "file": "engine/src/main.rs",
-    "line": 19,
-    "suggestions": [
-      {
-        "suggestion": "for a in args.iter()",
-        "replacement": "for &a in &args"
-      }
-    ]
-  },
-  {
-    "id": "CLIP-006",
-    "title": "Avoid unnecessary string allocations in hot paths",
-    "priority": "high",
-    "category": "performance",
-    "description": "Hardcoded string literals can lead to unnecessary memory allocations, especially in hot paths. Replacing them with static references can improve performance by avoiding heap allocations.",
-    "status": "completed",
-    "created_at": "2026-02-11T17:40:08.378581",
-    "completed_at": "2026-02-11T23:52:01.053548",
-    "estimated_complexity": "medium",
-    "files_affected": [
-      "bitboard/src/tables/bishop_attack.rs"
-    ],
-    "dependencies": [],
-    "lint_name": "clippy::unreadable_literal",
-    "lint_message": "Unreadable literal in bishop attack tables",
-    "suggested_fix": "Replace hardcoded strings with static references to avoid allocations.",
-    "reasoning": "Reduces both memory usage and improves the runtime performance of the application."
-  },
-  {
-    "id": "CLIP-008",
-    "title": "Avoid unreadable literals in tables",
-    "priority": "medium",
-    "category": "general",
-    "description": "Unreadable literals can make the code hard to understand and maintain. This lint helps identify and suggest improvements for better readability.",
-    "status": "completed",
-    "created_at": "2026-02-12T00:16:05.876568",
-    "completed_at": "2026-02-12T00:31:56.794753",
     "estimated_complexity": "small",
     "files_affected": [
-      "bitboard/src/tables/bishop_attack.rs"
+      "engine\\src\\search\\mod.rs"
     ],
     "dependencies": [],
-    "lint_name": "clippy::unreadable_literal",
-    "lint_message": "Avoid unreadable literals in tables",
-    "suggested_fix": "Use meaningful variable names or comments to clarify the purpose of the literal.",
-    "reasoning": "Improving readability makes it easier for other developers to understand the code, reducing cognitive load and potential bugs."
+    "file": "engine\\src\\search\\mod.rs",
+    "line": 1,
+    "column": 1,
+    "lint_name": "clippy::module_inception",
+    "lint_message": "module has the same name as its containing module",
+    "rendered": "warning: module has the same name as its containing module\n --> engine\\src\\search\\mod.rs:1:1\n  |\n1 | pub mod search;\n  | ^^^^^^^^^^^^^^^\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#module_inception\n  = note: `#[warn(clippy::module_inception)]` on by default\n\n"
+  },
+  {
+    "id": "CLIP-019",
+    "title": "clippy::too_many_arguments: core.rs",
+    "priority": "medium",
+    "category": "clippy",
+    "description": "warning: this function has too many arguments (11/7)\n  --> engine\\src\\search\\core.rs:79:1\n   |\n79 | / pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(\n80 | |     movegen: &M,\n81 | |     evaluator: &E,\n82 | |     arena: &mut Arena,\n...  |\n90 | |     start_time: Option<&std::time::Instant>,\n91 | | ) -> i32 {\n   | |________^\n   |\n   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments\n   = note: `#[warn(clippy::too_many_arguments)]` on by default\n\n",
+    "status": "not-started",
+    "created_at": "2026-02-12T05:21:04.078439",
+    "completed_at": null,
+    "estimated_complexity": "small",
+    "files_affected": [
+      "engine\\src\\search\\core.rs"
+    ],
+    "dependencies": [],
+    "file": "engine\\src\\search\\core.rs",
+    "line": 79,
+    "column": 1,
+    "lint_name": "clippy::too_many_arguments",
+    "lint_message": "this function has too many arguments (11/7)",
+    "rendered": "warning: this function has too many arguments (11/7)\n  --> engine\\src\\search\\core.rs:79:1\n   |\n79 | / pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(\n80 | |     movegen: &M,\n81 | |     evaluator: &E,\n82 | |     arena: &mut Arena,\n...  |\n90 | |     start_time: Option<&std::time::Instant>,\n91 | | ) -> i32 {\n   | |________^\n   |\n   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments\n   = note: `#[warn(clippy::too_many_arguments)]` on by default\n\n"
+  },
+  {
+    "id": "CLIP-026",
+    "title": "clippy::collapsible_if: perft_integration_test.rs",
+    "priority": "medium",
+    "category": "clippy",
+    "description": "warning: this `if` statement can be collapsed\n   --> engine\\src\\perft_integration_test.rs:130:13\n    |\n130 | /             if let Some(file) = dis_file {\n131 | |                 if mv.from().file_char() != file {\n132 | |                     continue;\n133 | |                 }\n134 | |             }\n    | |_____________^\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if\nhelp: collapse nested if block\n    |\n130 ~             if let Some(file) = dis_file\n131 ~                 && mv.from().file_char() != file {\n132 |                     continue;\n133 ~                 }\n    |\n\n",
+    "status": "not-started",
+    "created_at": "2026-02-12T05:21:04.078439",
+    "completed_at": null,
+    "estimated_complexity": "small",
+    "files_affected": [
+      "engine\\src\\perft_integration_test.rs"
+    ],
+    "dependencies": [],
+    "file": "engine\\src\\perft_integration_test.rs",
+    "line": 130,
+    "column": 13,
+    "lint_name": "clippy::collapsible_if",
+    "lint_message": "this `if` statement can be collapsed",
+    "rendered": "warning: this `if` statement can be collapsed\n   --> engine\\src\\perft_integration_test.rs:130:13\n    |\n130 | /             if let Some(file) = dis_file {\n131 | |                 if mv.from().file_char() != file {\n132 | |                     continue;\n133 | |                 }\n134 | |             }\n    | |_____________^\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if\nhelp: collapse nested if block\n    |\n130 ~             if let Some(file) = dis_file\n131 ~                 && mv.from().file_char() != file {\n132 |                     continue;\n133 ~                 }\n    |\n\n"
   }
 ]
