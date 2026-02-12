@@ -73,12 +73,25 @@ def run_clippy(repo_root: Path) -> dict:
         *CLIPPY_LINT_ARGS,
     ]
 
+    print(f"\nRunning Clippy command: {' '.join(command)}")
+
     result = subprocess.run(
         command,
         cwd=repo_root,
         capture_output=True,
         text=True
     )
+
+    if result.returncode not in (0, 1):  # Clippy returns 0 for success, 1 for warnings
+        print(f"\n⚠️ Clippy exited with code {result.returncode}")
+
+    # Log raw Clippy output for debugging
+    logs_dir = repo_root / ".orchestrator_logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    raw_output_path = logs_dir / "clippy_raw_output.json"
+    with raw_output_path.open("w", encoding="utf-8") as f:
+        f.write(result.stdout)
+    print(f"\n📄 Raw Clippy output saved to: {raw_output_path}")
 
     # Parse JSON output and filter for warning-level diagnostics
     warnings = []
@@ -88,15 +101,21 @@ def run_clippy(repo_root: Path) -> dict:
         try:
             msg = json.loads(line)
             # Extract compiler/clippy messages
-            if msg.get("level") == "warning" and "message" in msg:
-                warnings.append({
-                    "file": msg.get("message", {}).get("message", "unknown"),
-                    "code": msg.get("message", {}).get("code", {}).get("code", ""),
-                    "spans": msg.get("message", {}).get("spans", [])
-                })
+            if msg.get("reason") == "compiler-message":
+                message = msg.get("message", {})
+                if message and message.get("level") == "warning":
+                    spans = message.get("spans", [])
+                    file_name = spans[0].get("file_name", "unknown") if spans else "unknown"
+                    code = message.get("code")
+                    code_value = code.get("code", "unknown") if code else "unknown"
+                    warnings.append({
+                        "file": file_name,
+                        "code": code_value,
+                        "message": message.get("rendered", "")
+                    })
         except json.JSONDecodeError:
-            pass
-    
+            print(f"⚠️ Failed to parse line as JSON: {line[:200]}...")
+
     # Format warnings compactly for AI
     warning_text = ""
     if warnings:
@@ -231,6 +250,10 @@ def analyze(repo_root: Path, config: dict) -> int:
     warning_count = clippy_result["warning_count"]
     print(f"\n📊 Found {warning_count} clippy warnings")
 
+    if warning_count == 0:
+        print("\n✅ No warnings to process.")
+        return 0
+
     existing_todos_info = ""
     if todo_list.items:
         existing_todos_info = "\n## Existing TODO Items (DO NOT DUPLICATE)\n\n"
@@ -248,7 +271,8 @@ def analyze(repo_root: Path, config: dict) -> int:
         f"{existing_todos_info}\n\n"
         f"## CLIPPY COMMAND\n\n{clippy_result['command']}\n\n"
         f"## CLIPPY STATUS\n\n{clippy_status}\n\n"
-        f"## CLIPPY OUTPUT\n\n{clippy_output}"
+        f"## CLIPPY OUTPUT\n\n{clippy_output}\n\n"
+        f"## TASK: Generate actionable fixes for the above Clippy warnings."
     )
 
     # Call AI with error handling
@@ -269,12 +293,12 @@ def analyze(repo_root: Path, config: dict) -> int:
         raise RuntimeError(f"clippy AI call failed; see {error_path}")
 
     new_items = extract_json_from_response(response, repo_root, "clippy")
-    
+
     # Validate that new_items is a list of dicts
     if not isinstance(new_items, list):
         print(f"⚠️ Expected list of items, got {type(new_items).__name__}")
         return 0
-    
+
     # Filter out non-dict items
     new_items = [item for item in new_items if isinstance(item, dict)]
     if not new_items:
