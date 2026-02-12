@@ -120,10 +120,33 @@ class Orchestrator:
         self.state["phase_started"] = datetime.now().isoformat()
         self._save_state()
     
+    def _validate_and_exit_if_ready(self):
+        """Validate changes using validate_cargo.py and exit if ready to commit."""
+        self.log("\n🔍 Validating changes with validate_cargo.py...")
+        try:
+            result = subprocess.run(
+                ["python", "cody-agent/validate_cargo.py"],
+                cwd=self.repo_root,
+                capture_output=True,
+                text=True,
+                check=False
+            )
+
+            if result.returncode == 0:
+                self.log("\n✅ Validation passed. Changes are ready to be committed.")
+                sys.exit(0)
+            else:
+                self.log("\n❌ Validation failed. Please fix the issues below:")
+                self.log(result.stdout)
+                self.log(result.stderr)
+                sys.exit(1)
+        except Exception as e:
+            self.log(f"\n⚠️ Validation failed due to an error: {e}")
+            sys.exit(1)
+
     def _has_code_changes(self) -> bool:
         """Check if git diff contains actual code changes (not just TODO files).
-        
-        Returns True if .rs files or data files (not TODO lists) were modified.
+        If .rs files are changed, validate and exit.
         """
         try:
             # Get list of modified files
@@ -134,19 +157,19 @@ class Orchestrator:
                 text=True,
                 check=False
             )
-            
+
             if result.returncode != 0:
                 return False
-            
+
             changed_files = result.stdout.strip().split('\n')
-            
+
             # Check if any non-TODO files were changed
             for file in changed_files:
                 if not file:
                     continue
                 # Include .rs files and any non-todo data files
                 if file.endswith('.rs'):
-                    return True
+                    self._validate_and_exit_if_ready()
                 if file.endswith('.json') and 'todo' not in file.lower():
                     return True
                 if file.endswith('.toml') and 'todo' not in file.lower():
@@ -158,7 +181,7 @@ class Orchestrator:
                 # Data files in specific directories
                 if '.rs' in file or ('data' in file and 'todo' not in file.lower()):
                     return True
-            
+
             return False
         except Exception as e:
             self.log(f"⚠️ Could not check for code changes: {e}")
@@ -368,67 +391,42 @@ class Orchestrator:
             return False
 
     def _run_clippy_task(self) -> bool:
-        """Run one clippy task. Return True if actual code was merged, False if phase changed."""
+        """Run clippy tasks and resume the next phase."""
         self.log("\n" + "=" * 70)
         self.log("CLIPPY WARNINGS PHASE")
         self.log("=" * 70)
 
-        # Analyze if not yet done
-        if not self.state["analysis_done"]:
-            self.log("\nAnalyzing clippy warnings and performance lints...")
-            added = clippy_analyzer.analyze(self.repo_root, self.config)
-            self.log(f"Found {added} clippy opportunities")
-            if added == 0:
-                self.log("\n⚠️ No actionable Clippy tasks found. Ensure warnings are being analyzed correctly.")
-            self.state["analysis_done"] = True
-            self._save_state()
+        # Analyze clippy warnings
+        self.log("\nAnalyzing clippy warnings...")
+        added = clippy_analyzer.analyze(self.repo_root, self.config)
+        self.log(f"Found {added} clippy warnings")
 
-        # Get next task
-        todo_list = TodoList("clippy", self.repo_root)
-        next_item = todo_list.get_next_item()
-
-        if not next_item:
-            resume_phase = self.state.get("resume_phase")
-            if resume_phase:
-                self.log(f"\n✅ Clippy phase complete, moving to {resume_phase}...")
-                self.state["current_phase"] = resume_phase
-                self.state["resume_phase"] = None
-                self.state["analysis_done"] = False
-                self.state["phase_started"] = datetime.now().isoformat()
-                self._save_state()
-                return self.run_single_improvement()
-
-            self.log("\n✅ Clippy phase complete. WORKFLOW COMPLETE!")
-            self._save_state()
-            return False
-
-        # Execute the single task
-        self.log(f"\n📝 Working on: {next_item.id} - {next_item.title}")
-        success = clippy_executor.execute_clippy_fix(
-            next_item.id,
-            self.repo_root,
-            self.config
-        )
+        # Execute clippy fixes
+        success = clippy_executor.execute(self.repo_root, self.config)
 
         if success:
-            # Check for actual code changes (exclude TODO files)
-            if self._has_code_changes():
-                self.log(f"✅ Successfully completed: {next_item.id}")
-                self._create_checkpoint(f"Clippy: {next_item.id}")
-                self._save_state()
-                return True
-            else:
-                self.log(f"ℹ️ Task completed but no code changes made (TODO-only): {next_item.id}")
-                # Mark as done in TODO but continue to next task
-                todo_list.mark_completed(next_item.id)
-                todo_list.save()
-                return self._run_clippy_task()
+            self.log("\n✅ Clippy phase complete.")
+            return self._resume_phase_after_clippy()
         else:
-            self.log(f"❌ Failed: {next_item.id}")
-            self._save_state()
+            self.log("❌ Clippy phase failed.")
             return False
-        
-    
+
+    def _resume_phase_after_clippy(self):
+        """Resume the intended phase after completing clippy."""
+        resume_phase = self.state.get("resume_phase")
+        if resume_phase:
+            self.log(f"\nResuming phase: {resume_phase.upper()} after clippy.")
+            self.state["current_phase"] = resume_phase
+            self.state["resume_phase"] = None
+            self.state["analysis_done"] = False
+            self.state["phase_started"] = datetime.now().isoformat()
+            self._save_state()
+            return self.run_single_improvement()
+        else:
+            self.log("\n✅ Clippy phase complete. No phase to resume.")
+            self.log("   Workflow complete - all tasks finished.")
+            return False
+
     def _create_checkpoint(self, name: str):
         """Create a git checkpoint."""
         self.log(f"📌 Committing: {name}")
