@@ -376,32 +376,44 @@ class Orchestrator:
             return False
 
     def _run_clippy_task(self) -> bool:
-        """Run clippy tasks and resume the next phase."""
+        """Run one clippy task. Return True if actual code was merged, False if phase changed."""
         self.log("CLIPPY WARNINGS PHASE")
 
-        # Analyze clippy warnings
+        # Always run clippy analysis fresh (warnings change as code is fixed)
         self.log("Analyzing clippy warnings...")
-        items = clippy_analyzer.analyze(self.repo_root, self.config)
-        self.log(f"Found {len(items)} clippy warnings")
+        added = clippy_analyzer.analyze(self.repo_root, self.config)
+        self.log(f"Found {added} clippy warnings")
 
-        if not items:
-            self.log("✅ Clippy phase complete. No items to fix.")
+        # Get next task
+        todo_list = TodoList("clippy", self.repo_root)
+        next_item = todo_list.get_next_item()
+
+        if not next_item:
+            self.log("✅ Clippy phase complete, resuming next phase...")
             return self._resume_phase_after_clippy()
 
-        item = items[0]
-        title = item.get("title", "clippy warning")
-        self.log(f"📝 Working on Clippy item: {title}")
-        success = clippy_executor.execute_clippy_fix_from_item(
-            item,
+        # Execute the single task
+        self.log(f"📝 Working on: {next_item.id} - {next_item.title}")
+        success = clippy_executor.execute_clippy_fix(
+            next_item.id,
             self.repo_root,
             self.config
         )
 
         if success:
-            self.log("✅ Clippy phase complete.")
-            return self._resume_phase_after_clippy()
+            # Check for actual code changes (exclude TODO files)
+            if self._has_code_changes():
+                self.log(f"✅ Successfully completed: {next_item.id}")
+                self._create_checkpoint(f"Clippy: {next_item.id}")
+                self._save_state()
+                return True
+            else:
+                self.log(f"ℹ️ Task completed but no code changes made (TODO-only): {next_item.id}")
+                # Mark as done in TODO but continue to next task
+                return self._run_clippy_task()
         else:
-            self.log("❌ Clippy phase failed.")
+            self.log(f"❌ Failed: {next_item.id}")
+            self._save_state()
             return False
 
     def _resume_phase_after_clippy(self):

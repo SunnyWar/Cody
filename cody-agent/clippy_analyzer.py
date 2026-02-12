@@ -278,14 +278,17 @@ def extract_code_from_response(response: str, repo_root: Path, phase: str) -> li
     return [response]
 
 
-def analyze(repo_root: Path, config: dict) -> list:
-    """Run clippy analysis and return warning items."""
+def analyze(repo_root: Path, config: dict) -> int:
+    """Run clippy analysis and update TODO list."""
     print("=" * 60)
     print("CLIPPY ANALYSIS")
     print("=" * 60)
 
     todo_list = TodoList("clippy", repo_root)
     existing_ids = todo_list.get_all_ids()
+
+    # Clear existing clippy items (warnings are transient, re-scan each time)
+    todo_list.items = []
 
     clippy_result = run_clippy_with_priority_and_parser(repo_root)
     clippy_output = clippy_result["output"]
@@ -296,7 +299,7 @@ def analyze(repo_root: Path, config: dict) -> list:
 
     if warning_count == 0:
         print("\n✅ No warnings to process.")
-        return []
+        return 0
 
     new_items = []
     for warning in clippy_result["warnings"]:
@@ -332,14 +335,15 @@ def analyze(repo_root: Path, config: dict) -> list:
 
     if not new_items:
         print("⚠️ No clippy opportunities found")
-        return []
+        return 0
 
     for item in new_items:
         if "id" not in item or not item["id"]:
             existing_new_ids = [i.get("id") for i in new_items if isinstance(i, dict) and i.get("id")]
             item["id"] = generate_unique_id("clippy", existing_ids + existing_new_ids)
 
-    added = todo_list.add_items(new_items, check_duplicates=True)
+    # Add all items without duplicate checking (we cleared the list above)
+    added = todo_list.add_items(new_items, check_duplicates=False)
 
     if added > 0:
         todo_list.save()
@@ -347,7 +351,7 @@ def analyze(repo_root: Path, config: dict) -> list:
     else:
         print("\n⏭️ No new items added (all were duplicates)")
 
-    return new_items
+    return added
 
 
 def main():
@@ -355,10 +359,10 @@ def main():
     config = load_config()
     repo_root = Path(__file__).parent.parent
 
-    items = analyze(repo_root, config)
+    added = analyze(repo_root, config)
 
     print(f"\n{'=' * 60}")
-    print(f"Analysis complete: {len(items)} warnings detected")
+    print(f"Analysis complete: {added} new items added")
     print(f"{'=' * 60}")
 
 
