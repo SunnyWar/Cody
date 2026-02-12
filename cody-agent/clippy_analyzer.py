@@ -17,15 +17,9 @@ from todo_manager import TodoList, generate_unique_id
 
 CLIPPY_LINT_ARGS = [
     "-W", "clippy::perf",
-    "-W", "clippy::inline_always",
-    "-W", "clippy::large_stack_arrays",
-    "-W", "clippy::large_types_passed_by_value",
-    "-W", "clippy::large_enum_variant",
-    "-W", "clippy::needless_pass_by_ref_mut",
-    "-W", "clippy::box_collection",
-    "-W", "clippy::vec_box",
-    "-W", "clippy::rc_buffer",
-    "-W", "clippy::undocumented_unsafe_blocks",
+    "-W", "clippy::style",
+    "-W", "clippy::complexity",
+    "-W", "clippy::correctness",
 ]
 
 def load_config():
@@ -101,18 +95,9 @@ def run_clippy_with_priority_and_parser(repo_root: Path) -> dict:
     """Run clippy_parser.py with prioritized lint options, stopping when warnings are found."""
     prioritized_lints = [
         [],
-        ["-W", "clippy::inline_always"],
-        ["-W", "clippy::large_stack_arrays"],
-        ["-W", "clippy::large_types_passed_by_value"],
-        ["-W", "clippy::large_enum_variant"],
-        ["-W", "clippy::needless_pass_by_ref_mut"],
-        ["-W", "clippy::box_collection"],
-        ["-W", "clippy::vec_box"],
-        ["-W", "clippy::rc_buffer"],
-        ["-W", "clippy::undocumented_unsafe_blocks"],
-        ["-W", "clippy::pedantic"],
         ["-W", "clippy::perf"],
         ["-W", "clippy::style"],
+        ["-W", "clippy::complexity"],
         ["-W", "clippy::correctness"],
     ]
 
@@ -293,8 +278,8 @@ def extract_code_from_response(response: str, repo_root: Path, phase: str) -> li
     return [response]
 
 
-def analyze(repo_root: Path, config: dict) -> int:
-    """Run clippy analysis and update TODO list."""
+def analyze(repo_root: Path, config: dict) -> list:
+    """Run clippy analysis and return warning items."""
     print("=" * 60)
     print("CLIPPY ANALYSIS")
     print("=" * 60)
@@ -311,7 +296,7 @@ def analyze(repo_root: Path, config: dict) -> int:
 
     if warning_count == 0:
         print("\n✅ No warnings to process.")
-        return 0
+        return []
 
     new_items = []
     for warning in clippy_result["warnings"]:
@@ -347,7 +332,7 @@ def analyze(repo_root: Path, config: dict) -> int:
 
     if not new_items:
         print("⚠️ No clippy opportunities found")
-        return 0
+        return []
 
     for item in new_items:
         if "id" not in item or not item["id"]:
@@ -362,7 +347,7 @@ def analyze(repo_root: Path, config: dict) -> int:
     else:
         print("\n⏭️ No new items added (all were duplicates)")
 
-    return added
+    return new_items
 
 
 def main():
@@ -370,10 +355,10 @@ def main():
     config = load_config()
     repo_root = Path(__file__).parent.parent
 
-    added = analyze(repo_root, config)
+    items = analyze(repo_root, config)
 
     print(f"\n{'=' * 60}")
-    print(f"Analysis complete: {added} new items added")
+    print(f"Analysis complete: {len(items)} warnings detected")
     print(f"{'=' * 60}")
 
 

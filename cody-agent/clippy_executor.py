@@ -243,6 +243,55 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
     return False
 
 
+def execute_clippy_fix_from_item(item: dict, repo_root: Path, config: dict) -> bool:
+    """Execute a clippy fix directly from a warning item dict (no TODO)."""
+    file_path = item.get("file")
+    if not file_path and item.get("files_affected"):
+        file_path = item["files_affected"][0]
+
+    if not file_path:
+        print("❌ No file path available for this clippy item")
+        return False
+
+    full_path = repo_root / file_path
+    if not full_path.exists():
+        print(f"❌ File not found: {full_path}")
+        return False
+
+    file_content = full_path.read_text(encoding="utf-8")
+    lint_name = item.get("lint_name", "clippy")
+    line = item.get("line", 0)
+    column = item.get("column", 0)
+    rendered = item.get("rendered", item.get("description", ""))
+
+    prompt = (
+        f"Fix the following Clippy warning by editing the file.\n\n"
+        f"Warning:\n"
+        f"- Lint: {lint_name}\n"
+        f"- File: {file_path}\n"
+        f"- Line: {line}\n"
+        f"- Column: {column}\n"
+        f"- Message: {rendered}\n\n"
+        f"Instructions:\n"
+        f"- Return ONLY a single ```rust code block.\n"
+        f"- The first non-empty line must be a comment with the file path, e.g. // {file_path}\n"
+        f"- Include the FULL updated file content.\n\n"
+        f"Current file content:\n\n{file_content}\n"
+    )
+
+    response = call_ai(prompt, config)
+    response_file_path, new_content = extract_file_content(response)
+
+    if not response_file_path or not new_content:
+        print("❌ LLM response did not include updated file content")
+        return False
+
+    if response_file_path != file_path:
+        print(f"⚠️ LLM returned a different file path: {response_file_path}")
+
+    return apply_code_changes(repo_root, file_path, new_content)
+
+
 def main():
     """Main entry point."""
     import sys
