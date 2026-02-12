@@ -26,9 +26,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: this function has too many arguments (11/7)\n  --> engine\\src\\search\\core.rs:79:1\n   |\n79 | / pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(\n80 | |     movegen: &M,\n81 | |     evaluator: &E,\n82 | |     arena: &mut Arena,\n...  |\n90 | |     start_time: Option<&std::time::Instant>,\n91 | | ) -> i32 {\n   | |________^\n   |\n   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments\n   = note: `#[warn(clippy::too_many_arguments)]` on by default\n\n",
-    "status": "not-started",
+    "status": "completed",
     "created_at": "2026-02-12T05:41:35.955615",
-    "completed_at": null,
+    "completed_at": "2026-02-12T05:47:42.183362",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\search\\core.rs"
@@ -47,9 +47,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: this `if` statement can be collapsed\n   --> engine\\src\\perft_integration_test.rs:130:13\n    |\n130 | /             if let Some(file) = dis_file {\n131 | |                 if mv.from().file_char() != file {\n132 | |                     continue;\n133 | |                 }\n134 | |             }\n    | |_____________^\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if\nhelp: collapse nested if block\n    |\n130 ~             if let Some(file) = dis_file\n131 ~                 && mv.from().file_char() != file {\n132 |                     continue;\n133 ~                 }\n    |\n\n",
-    "status": "not-started",
+    "status": "completed",
     "created_at": "2026-02-12T05:41:35.956611",
-    "completed_at": null,
+    "completed_at": "2026-02-12T05:54:48.551453",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\perft_integration_test.rs"

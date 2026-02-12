@@ -1,6 +1,6 @@
 # TODO List: Clippy
-Generated: 2026-02-12 05:41:35
-**Stats**: 3 total | 2 not started | 1 in progress | 0 completed
+Generated: 2026-02-12 05:54:48
+**Stats**: 3 total | 0 not started | 1 in progress | 2 completed
 ---
 
 ## In Progress
@@ -22,9 +22,9 @@ warning: module has the same name as its containing module
 
 
 
-## Not Started
+## Completed
 
-### [ ] CLIP-037: clippy::too_many_arguments: core.rs
+### [x] CLIP-037: clippy::too_many_arguments: core.rs
 - **Priority**: medium
 - **Category**: clippy
 - **Complexity**: small
@@ -47,7 +47,9 @@ warning: this function has too many arguments (11/7)
 
 
 
-### [ ] CLIP-044: clippy::collapsible_if: perft_integration_test.rs
+*Completed: 2026-02-12T05:47:42.183362*
+
+### [x] CLIP-044: clippy::collapsible_if: perft_integration_test.rs
 - **Priority**: medium
 - **Category**: clippy
 - **Complexity**: small
@@ -73,3 +75,5 @@ help: collapse nested if block
     |
 
 
+
+*Completed: 2026-02-12T05:54:48.551453*
