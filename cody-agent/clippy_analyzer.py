@@ -25,7 +25,6 @@ CLIPPY_LINT_ARGS = [
     "-W", "clippy::box_collection",
     "-W", "clippy::vec_box",
     "-W", "clippy::rc_buffer",
-    "-W", "clippy::pedantic",
     "-W", "clippy::undocumented_unsafe_blocks",
 ]
 
@@ -61,86 +60,82 @@ def get_prompt_template():
     return prompt_path.read_text(encoding='utf-8')
 
 
-def run_clippy(repo_root: Path) -> dict:
-    """Run cargo clippy with JSON output and filter for warnings."""
-    command = [
-        "cargo",
-        "clippy",
-        "--all-targets",
-        "--all-features",
-        "--message-format=json",
-        "--",
-        *CLIPPY_LINT_ARGS,
+def run_clippy_with_priority(repo_root: Path) -> dict:
+    """Run Clippy with prioritized lint options, stopping when warnings are found."""
+    prioritized_lints = [
+        ["-W", "clippy::inline_always"],
+        ["-W", "clippy::large_stack_arrays"],
+        ["-W", "clippy::large_types_passed_by_value"],
+        ["-W", "clippy::large_enum_variant"],
+        ["-W", "clippy::needless_pass_by_ref_mut"],
+        ["-W", "clippy::box_collection"],
+        ["-W", "clippy::vec_box"],
+        ["-W", "clippy::rc_buffer"],
+        ["-W", "clippy::undocumented_unsafe_blocks"],
+        ["-W", "clippy::pedantic"],
+        ["-W", "clippy::perf"],
+        ["-W", "clippy::style"],
+        ["-W", "clippy::correctness"],
     ]
 
-    print(f"\nRunning Clippy command: {' '.join(command)}")
+    for lints in prioritized_lints:
+        command = [
+            "cargo",
+            "clippy",
+            "--all-targets",
+            "--all-features",
+            "--message-format=json",
+            "--",
+            *lints,
+        ]
 
-    result = subprocess.run(
-        command,
-        cwd=repo_root,
-        capture_output=True,
-        text=True
-    )
+        print(f"\nRunning Clippy command: {' '.join(command)}")
 
-    if result.returncode not in (0, 1):  # Clippy returns 0 for success, 1 for warnings
-        print(f"\n⚠️ Clippy exited with code {result.returncode}")
+        result = subprocess.run(
+            command,
+            cwd=repo_root,
+            capture_output=True,
+            text=True
+        )
 
-    # Limit the Clippy output to the first 100 lines for the AI prompt
-    limited_output = '\n'.join(result.stdout.strip().split('\n')[:100])
+        if result.returncode not in (0, 1):  # Clippy returns 0 for success, 1 for warnings
+            print(f"\n⚠️ Clippy exited with code {result.returncode}")
 
-    # Log raw Clippy output for debugging
-    logs_dir = repo_root / ".orchestrator_logs"
-    logs_dir.mkdir(parents=True, exist_ok=True)
-    raw_output_path = logs_dir / "clippy_raw_output.json"
-    with raw_output_path.open("w", encoding="utf-8") as f:
-        f.write(result.stdout)
-    print(f"\n📄 Raw Clippy output saved to: {raw_output_path}")
+        # Parse JSON output and filter for warning-level diagnostics
+        warnings = []
+        for line in result.stdout.strip().split('\n'):
+            if not line.strip():
+                continue
+            try:
+                msg = json.loads(line)
+                if msg.get("reason") == "compiler-message":
+                    message = msg.get("message", {})
+                    if message and message.get("level") == "warning":
+                        spans = message.get("spans", [])
+                        file_name = spans[0].get("file_name", "unknown") if spans else "unknown"
+                        code = message.get("code")
+                        code_value = code.get("code", "unknown") if code else "unknown"
+                        warnings.append({
+                            "file": file_name,
+                            "code": code_value,
+                            "message": message.get("rendered", ""),
+                        })
+            except json.JSONDecodeError:
+                print(f"⚠️ Failed to parse line as JSON: {line[:200]}...")
 
-    # Use the limited output for AI processing
-    clippy_output = limited_output
+        if warnings:
+            print(f"\n📊 Found {len(warnings)} warnings with lints: {' '.join(lints)}")
+            return {
+                "command": " ".join(command),
+                "returncode": result.returncode,
+                "warnings": warnings,
+            }
 
-    # Parse JSON output and filter for warning-level diagnostics
-    warnings = []
-    for line in result.stdout.strip().split('\n'):
-        if not line.strip():
-            continue
-        try:
-            msg = json.loads(line)
-            # Extract compiler/clippy messages
-            if msg.get("reason") == "compiler-message":
-                message = msg.get("message", {})
-                if message and message.get("level") == "warning":
-                    spans = message.get("spans", [])
-                    file_name = spans[0].get("file_name", "unknown") if spans else "unknown"
-                    code = message.get("code")
-                    code_value = code.get("code", "unknown") if code else "unknown"
-                    code_snippet = spans[0].get("text", "") if spans else ""
-                    warnings.append({
-                        "file": file_name,
-                        "code": code_value,
-                        "message": message.get("rendered", ""),
-                        "snippet": code_snippet
-                    })
-        except json.JSONDecodeError:
-            print(f"⚠️ Failed to parse line as JSON: {line[:200]}...")
-
-    # Format warnings compactly for AI
-    warning_text = ""
-    if warnings:
-        warning_text = f"Found {len(warnings)} clippy warnings:\n\n"
-        for i, warning in enumerate(warnings[:50], 1):  # Limit to first 50
-            warning_text += f"{i}. {warning['code']}: {warning['file']}\n"
-        if len(warnings) > 50:
-            warning_text += f"\n... and {len(warnings) - 50} more warnings\n"
-    else:
-        warning_text = "No clippy warnings found."
-
+    print("\n✅ No warnings found for any Clippy lint options.")
     return {
-        "command": " ".join(command),
-        "returncode": result.returncode,
-        "output": warning_text,
-        "warning_count": len(warnings),
-        "raw_warnings": warnings
+        "command": "",
+        "returncode": 0,
+        "warnings": [],
     }
 
 
@@ -251,7 +246,7 @@ def analyze(repo_root: Path, config: dict) -> int:
 
     prompt_template = get_prompt_template()
 
-    clippy_result = run_clippy(repo_root)
+    clippy_result = run_clippy_with_priority(repo_root)
     clippy_output = clippy_result["output"]
 
     # Show warning summary
