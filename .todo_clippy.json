@@ -123,5 +123,24 @@
         "replacement": "for &a in &args"
       }
     ]
+  },
+  {
+    "id": "CLIP-006",
+    "title": "Avoid unnecessary string allocations in hot paths",
+    "priority": "high",
+    "category": "performance",
+    "description": "Hardcoded string literals can lead to unnecessary memory allocations, especially in hot paths. Replacing them with static references can improve performance by avoiding heap allocations.",
+    "status": "not-started",
+    "created_at": "2026-02-11T17:40:08.378581",
+    "completed_at": null,
+    "estimated_complexity": "medium",
+    "files_affected": [
+      "bitboard/src/tables/bishop_attack.rs"
+    ],
+    "dependencies": [],
+    "lint_name": "clippy::unreadable_literal",
+    "lint_message": "Unreadable literal in bishop attack tables",
+    "suggested_fix": "Replace hardcoded strings with static references to avoid allocations.",
+    "reasoning": "Reduces both memory usage and improves the runtime performance of the application."
   }
 ]
