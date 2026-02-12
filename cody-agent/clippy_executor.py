@@ -200,6 +200,12 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
     todo_list.mark_in_progress(item_id)
     todo_list.save()
 
+    # MANDATORY PRE-VALIDATION: Ensure project builds BEFORE making changes
+    if not ensure_builds_or_fix(repo_root, config, "PRE-CHANGE"):
+        print("❌ CRITICAL: Project does not build before changes and could not be fixed.")
+        print("   Aborting to prevent further damage.")
+        return False
+
     file_path = item.metadata.get("file")
     if not file_path and item.files_affected:
         file_path = item.files_affected[0]
