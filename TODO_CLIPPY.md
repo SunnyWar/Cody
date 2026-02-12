@@ -1,71 +1,75 @@
 # TODO List: Clippy
-Generated: 2026-02-12 00:31:56
-**Stats**: 7 total | 0 not started | 1 in progress | 6 completed
+Generated: 2026-02-12 05:21:04
+**Stats**: 3 total | 2 not started | 1 in progress | 0 completed
 ---
 
 ## In Progress
 
-### [ ] CLIP-002: Use underscores in numeric literals for readability
+### [ ] CLIP-018: clippy::module_inception: mod.rs
 - **Priority**: medium
-- **Category**: 
-- **Complexity**: medium
-
-Consider using underscores to improve readability of large numeric literals.
-
-## Completed
-
-### [x] CLIP-001: Avoid long literals lacking separators
-- **Priority**: medium
-- **Category**: 
-- **Complexity**: medium
-
-Consider using underscores to improve readability of large numeric literals.
-
-*Completed: 2026-02-09T21:43:43.432412*
-
-### [x] CLIP-003: Use direct variable access in format strings
-- **Priority**: medium
-- **Category**: 
-- **Complexity**: medium
-
-Consider using direct variable access in `format!` string for better readability and performance.
-
-*Completed: 2026-02-10T00:18:18.152982*
-
-### [x] CLIP-004: Prefer `!is_empty` over length comparison to zero
-- **Priority**: medium
-- **Category**: 
-- **Complexity**: medium
-
-Using `!is_empty` is clearer and more explicit than comparing the length of a collection to zero.
-
-*Completed: 2026-02-10T00:18:18.206099*
-
-### [x] CLIP-005: Use references in loop over containers for better performance
-- **Priority**: medium
-- **Category**: 
-- **Complexity**: medium
-
-Using references in loops can improve performance by avoiding unnecessary cloning of elements.
-
-*Completed: 2026-02-10T00:18:18.257542*
-
-### [x] CLIP-006: Avoid unnecessary string allocations in hot paths
-- **Priority**: high
-- **Category**: performance
-- **Complexity**: medium
-- **Files**: bitboard/src/tables/bishop_attack.rs
-
-Hardcoded string literals can lead to unnecessary memory allocations, especially in hot paths. Replacing them with static references can improve performance by avoiding heap allocations.
-
-*Completed: 2026-02-11T23:52:01.053548*
-
-### [x] CLIP-008: Avoid unreadable literals in tables
-- **Priority**: medium
-- **Category**: general
+- **Category**: clippy
 - **Complexity**: small
-- **Files**: bitboard/src/tables/bishop_attack.rs
+- **Files**: engine\src\search\mod.rs
 
-Unreadable literals can make the code hard to understand and maintain. This lint helps identify and suggest improvements for better readability.
+warning: module has the same name as its containing module
+ --> engine\src\search\mod.rs:1:1
+  |
+1 | pub mod search;
+  | ^^^^^^^^^^^^^^^
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#module_inception
+  = note: `#[warn(clippy::module_inception)]` on by default
 
-*Completed: 2026-02-12T00:31:56.794753*
+
+
+## Not Started
+
+### [ ] CLIP-019: clippy::too_many_arguments: core.rs
+- **Priority**: medium
+- **Category**: clippy
+- **Complexity**: small
+- **Files**: engine\src\search\core.rs
+
+warning: this function has too many arguments (11/7)
+  --> engine\src\search\core.rs:79:1
+   |
+79 | / pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
+80 | |     movegen: &M,
+81 | |     evaluator: &E,
+82 | |     arena: &mut Arena,
+...  |
+90 | |     start_time: Option<&std::time::Instant>,
+91 | | ) -> i32 {
+   | |________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments
+   = note: `#[warn(clippy::too_many_arguments)]` on by default
+
+
+
+### [ ] CLIP-026: clippy::collapsible_if: perft_integration_test.rs
+- **Priority**: medium
+- **Category**: clippy
+- **Complexity**: small
+- **Files**: engine\src\perft_integration_test.rs
+
+warning: this `if` statement can be collapsed
+   --> engine\src\perft_integration_test.rs:130:13
+    |
+130 | /             if let Some(file) = dis_file {
+131 | |                 if mv.from().file_char() != file {
+132 | |                     continue;
+133 | |                 }
+134 | |             }
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
+help: collapse nested if block
+    |
+130 ~             if let Some(file) = dis_file
+131 ~                 && mv.from().file_char() != file {
+132 |                     continue;
+133 ~                 }
+    |
+
+
