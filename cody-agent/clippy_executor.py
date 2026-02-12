@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 from openai import OpenAI
 from todo_manager import TodoList
+from console_utils import safe_print
 from validation import ensure_builds_or_fix, rollback_changes
 
 
@@ -19,7 +20,7 @@ def load_config():
     config_path = Path(__file__).parent / "config.json"
     
     if not config_path.exists():
-        print(f"❌ Error: Configuration file not found at {config_path}")
+        safe_print(f"❌ Error: Configuration file not found at {config_path}")
         sys.exit(1)
     
     try:
@@ -29,7 +30,7 @@ def load_config():
             raise ValueError("Config file is empty")
         return config
     except Exception as e:
-        print(f"❌ Error reading config file: {e}")
+        safe_print(f"❌ Error reading config file: {e}")
         sys.exit(1)
 
 
@@ -44,15 +45,15 @@ def call_ai(prompt: str, config: dict) -> str:
     else:
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
-            print("\n❌ Error: OPENAI_API_KEY environment variable not set")
-            print("\n   Set your API key:")
-            print("   export OPENAI_API_KEY=sk-...")
-            print("\n   Or configure 'use_local': true in config.json to use a local LLM.\n")
+            safe_print("\n❌ Error: OPENAI_API_KEY environment variable not set")
+            safe_print("\n   Set your API key:")
+            safe_print("   export OPENAI_API_KEY=sk-...")
+            safe_print("\n   Or configure 'use_local': true in config.json to use a local LLM.\n")
             sys.exit(1)
         client = OpenAI(api_key=api_key, timeout=3600.0)
 
     model = config["model"]
-    print(f"🤖 Fixing clippy warning with {model}...")
+    safe_print(f"🤖 Fixing clippy warning with {model}...")
 
     response = client.chat.completions.create(
         model=model,
@@ -91,7 +92,7 @@ def extract_file_content(response: str) -> tuple[str, str]:
             code_lower = code.lower()
             for marker in placeholder_markers:
                 if marker in code_lower:
-                    print(f"⚠️ Response contains placeholder marker: '{marker}'")
+                    safe_print(f"⚠️ Response contains placeholder marker: '{marker}'")
                     return None, None
             
             lines = code.split("\n")
@@ -114,7 +115,7 @@ def extract_file_content(response: str) -> tuple[str, str]:
             content = "\n".join(code_lines).strip()
             return file_path, content
 
-    print("⚠️ No clear code block found in response")
+    safe_print("⚠️ No clear code block found in response")
     return None, None
 
 
@@ -123,15 +124,15 @@ def apply_code_changes(repo_root: Path, file_path: str, new_content: str) -> boo
     try:
         full_path = repo_root / file_path
         if not full_path.parent.exists():
-            print(f"❌ Parent directory does not exist: {full_path.parent}")
+            safe_print(f"❌ Parent directory does not exist: {full_path.parent}")
             return False
 
         full_path.write_text(new_content, encoding="utf-8")
-        print(f"✅ Updated {file_path}")
+        safe_print(f"✅ Updated {file_path}")
         return True
 
     except Exception as e:
-        print(f"❌ Error writing file: {e}")
+        safe_print(f"❌ Error writing file: {e}")
         return False
 
 
@@ -139,12 +140,12 @@ def apply_direct_fixes(repo_root: Path, item) -> bool:
     """Apply fixes directly using suggestions from TODO item."""
     suggestions = item.metadata.get("suggestions", [])
     if not suggestions:
-        print("⚠️ No suggestions found in TODO item")
+        safe_print("⚠️ No suggestions found in TODO item")
         return False
     
     file_path = repo_root / item.metadata.get("file", "")
     if not file_path.exists():
-        print(f"❌ File not found: {file_path}")
+        safe_print(f"❌ File not found: {file_path}")
         return False
     
     try:
@@ -159,27 +160,27 @@ def apply_direct_fixes(repo_root: Path, item) -> bool:
             if old_text and new_text and old_text in content:
                 content = content.replace(old_text, new_text, 1)  # Replace only first occurrence
                 applied_count += 1
-                print(f"  ✓ {old_text[:60]}... → {new_text[:60]}...")
+                safe_print(f"  ✓ {old_text[:60]}... → {new_text[:60]}...")
         
         if content != original_content:
             file_path.write_text(content, encoding="utf-8")
             rel_path = file_path.relative_to(repo_root)
-            print(f"✅ Applied {applied_count} fix(es) to {rel_path}")
+            safe_print(f"✅ Applied {applied_count} fix(es) to {rel_path}")
             return True
         else:
-            print(f"⚠️ No changes made - suggestions not found in file")
+            safe_print(f"⚠️ No changes made - suggestions not found in file")
             return False
             
     except Exception as e:
-        print(f"❌ Error applying fixes: {e}")
+        safe_print(f"❌ Error applying fixes: {e}")
         return False
 
 
 def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
     """Execute a specific clippy fix using the LLM."""
-    print("=" * 60)
-    print(f"EXECUTING CLIPPY FIX: {item_id}")
-    print("=" * 60)
+    safe_print("=" * 60)
+    safe_print(f"EXECUTING CLIPPY FIX: {item_id}")
+    safe_print("=" * 60)
 
     todo_list = TodoList("clippy", repo_root)
 
@@ -190,11 +191,11 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
             break
 
     if not item:
-        print(f"❌ Item {item_id} not found in TODO list")
+        safe_print(f"❌ Item {item_id} not found in TODO list")
         return False
 
     if item.status == "completed":
-        print(f"⏭️ Item {item_id} is already completed")
+        safe_print(f"⏭️ Item {item_id} is already completed")
         return True
 
     todo_list.mark_in_progress(item_id)
@@ -202,8 +203,8 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
 
     # MANDATORY PRE-VALIDATION: Ensure project builds BEFORE making changes
     if not ensure_builds_or_fix(repo_root, config, "PRE-CHANGE"):
-        print("❌ CRITICAL: Project does not build before changes and could not be fixed.")
-        print("   Aborting to prevent further damage.")
+        safe_print("❌ CRITICAL: Project does not build before changes and could not be fixed.")
+        safe_print("   Aborting to prevent further damage.")
         todo_list.mark_failed(item_id)
         todo_list.save()
         return False
@@ -213,12 +214,12 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
         file_path = item.files_affected[0]
 
     if not file_path:
-        print("❌ No file path available for this clippy item")
+        safe_print("❌ No file path available for this clippy item")
         return False
 
     full_path = repo_root / file_path
     if not full_path.exists():
-        print(f"❌ File not found: {full_path}")
+        safe_print(f"❌ File not found: {full_path}")
         return False
 
     file_content = full_path.read_text(encoding="utf-8")
@@ -255,19 +256,19 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
     response_path = logs_dir / f"clippy_llm_response_{item_id}_{timestamp}.txt"
     with response_path.open("w", encoding="utf-8", errors="replace") as f:
         f.write(response)
-    print(f"📄 LLM response saved to: {response_path}")
+    safe_print(f"📄 LLM response saved to: {response_path}")
     
     response_file_path, new_content = extract_file_content(response)
 
     if not response_file_path or not new_content:
-        print("❌ LLM response did not include updated file content")
-        print(f"   Response preview: {response[:500]}...")
+        safe_print("❌ LLM response did not include updated file content")
+        safe_print(f"   Response preview: {response[:500]}...")
         if item.metadata.get("suggestions"):
-            print("📝 Falling back to pre-vetted fixes from TODO item...")
+            safe_print("📝 Falling back to pre-vetted fixes from TODO item...")
             if apply_direct_fixes(repo_root, item):
                 todo_list.mark_completed(item_id)
                 todo_list.save()
-                print(f"\n✅ Clippy fix {item_id} completed successfully")
+                safe_print(f"\n✅ Clippy fix {item_id} completed successfully")
                 return True
         # LLM failed to provide valid code - mark as failed and skip
         todo_list.mark_failed(item_id)
@@ -278,23 +279,23 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
     original_lines = len(file_content.split("\n"))
     new_lines = len(new_content.split("\n"))
     if new_lines < original_lines * 0.5:
-        print(f"❌ LLM response is suspiciously short: {new_lines} lines vs {original_lines} original")
-        print("   This suggests the LLM used placeholders instead of returning full file")
+        safe_print(f"❌ LLM response is suspiciously short: {new_lines} lines vs {original_lines} original")
+        safe_print("   This suggests the LLM used placeholders instead of returning full file")
         todo_list.mark_failed(item_id)
         todo_list.save()
         return False
 
     if response_file_path != file_path:
-        print(f"⚠️ LLM returned a different file path: {response_file_path}")
+        safe_print(f"⚠️ LLM returned a different file path: {response_file_path}")
 
     if not apply_code_changes(repo_root, file_path, new_content):
-        print("❌ Failed to apply code changes")
+        safe_print("❌ Failed to apply code changes")
         return False
 
     # MANDATORY POST-VALIDATION: Ensure project still builds AFTER changes
     if not ensure_builds_or_fix(repo_root, config, "POST-CHANGE"):
-        print("❌ CRITICAL: Changes broke the build and could not be fixed automatically.")
-        print("   Rolling back changes...")
+        safe_print("❌ CRITICAL: Changes broke the build and could not be fixed automatically.")
+        safe_print("   Rolling back changes...")
         rollback_changes(repo_root, [file_path])
         # Mark as failed so orchestrator skips it and moves to next item
         todo_list.mark_failed(item_id)
@@ -304,7 +305,7 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
     # Only mark complete if changes were applied AND build is successful
     todo_list.mark_completed(item_id)
     todo_list.save()
-    print(f"\n✅ Clippy fix {item_id} completed successfully")
+    safe_print(f"\n✅ Clippy fix {item_id} completed successfully")
     return True
 
 
@@ -313,8 +314,8 @@ def main():
     import sys
 
     if len(sys.argv) < 2:
-        print("Usage: python clippy_executor.py <item_id>")
-        print("   or: python clippy_executor.py next")
+        safe_print("Usage: python clippy_executor.py <item_id>")
+        safe_print("   or: python clippy_executor.py next")
         sys.exit(1)
 
     config = load_config()
@@ -326,21 +327,21 @@ def main():
         todo_list = TodoList("clippy", repo_root)
         next_item = todo_list.get_next_item()
         if not next_item:
-            print("No items available to work on")
+            safe_print("No items available to work on")
             sys.exit(0)
         item_id = next_item.id
-        print(f"Working on next item: {item_id}")
+        safe_print(f"Working on next item: {item_id}")
 
     success = execute_clippy_fix(item_id, repo_root, config)
 
     if success:
-        print(f"\n{'=' * 60}")
-        print("Clippy fix completed successfully")
-        print(f"{'=' * 60}")
+        safe_print(f"\n{'=' * 60}")
+        safe_print("Clippy fix completed successfully")
+        safe_print(f"{'=' * 60}")
     else:
-        print(f"\n{'=' * 60}")
-        print("Clippy fix failed")
-        print(f"{'=' * 60}")
+        safe_print(f"\n{'=' * 60}")
+        safe_print("Clippy fix failed")
+        safe_print(f"{'=' * 60}")
         sys.exit(1)
 
 

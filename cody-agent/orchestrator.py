@@ -31,6 +31,7 @@ from typing import Optional, Dict, Any
 
 # Import our modules
 from todo_manager import TodoList
+from console_utils import safe_print
 import refactoring_analyzer
 import refactoring_executor
 import performance_analyzer
@@ -492,9 +493,9 @@ def main():
     improvement_made = orchestrator.run_single_improvement()
     
     if improvement_made:
-        print("✅ Run completed - one code change merged")
+        safe_print("✅ Run completed - one code change merged")
     else:
-        print("✅ Workflow complete - all tasks finished")
+        safe_print("✅ Workflow complete - all tasks finished")
 
 
 if __name__ == "__main__":

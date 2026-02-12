@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
+from console_utils import safe_print
+
 
 class TodoItem:
     """Represents a single TODO item."""
@@ -98,12 +100,12 @@ class TodoList:
                 with open(self.json_path, 'r') as f:
                     data = json.load(f)
                     self.items = [TodoItem(item) for item in data]
-                    print(f"✅ Loaded {len(self.items)} items from {self.json_path}")
+                    safe_print(f"✅ Loaded {len(self.items)} items from {self.json_path}")
             except Exception as e:
-                print(f"⚠️ Error loading {self.json_path}: {e}")
+                safe_print(f"⚠️ Error loading {self.json_path}: {e}")
                 self.items = []
         else:
-            print(f"📝 No existing TODO list found at {self.json_path}, starting fresh")
+            safe_print(f"📝 No existing TODO list found at {self.json_path}, starting fresh")
     
     def save(self):
         """Save TODO list to both JSON and Markdown."""
@@ -113,7 +115,7 @@ class TodoList:
         # Save Markdown for human readability
         self._save_markdown()
         
-        print(f"💾 Saved {len(self.items)} items to {self.json_path} and {self.file_path}")
+        safe_print(f"💾 Saved {len(self.items)} items to {self.json_path} and {self.file_path}")
     
     def _save_markdown(self):
         """Generate markdown representation."""
@@ -159,12 +161,12 @@ class TodoList:
             if check_duplicates:
                 is_dup = any(new_item.is_duplicate(existing) for existing in self.items)
                 if is_dup:
-                    print(f"⏭️ Skipping duplicate: {new_item.id} - {new_item.title}")
+                    safe_print(f"⏭️ Skipping duplicate: {new_item.id} - {new_item.title}")
                     continue
             
             self.items.append(new_item)
             added += 1
-            print(f"➕ Added: {new_item.id} - {new_item.title}")
+            safe_print(f"➕ Added: {new_item.id} - {new_item.title}")
         
         return added
     
@@ -190,7 +192,7 @@ class TodoList:
                     available.append(item)
         
         if not available:
-            print("⚠️ All remaining items have unmet dependencies")
+            safe_print("⚠️ All remaining items have unmet dependencies")
             return None
         
         # Sort by priority
@@ -204,9 +206,9 @@ class TodoList:
         for item in self.items:
             if item.id == item_id:
                 item.mark_completed()
-                print(f"✅ Marked completed: {item_id}")
+                safe_print(f"✅ Marked completed: {item_id}")
                 return True
-        print(f"❌ Item not found: {item_id}")
+        safe_print(f"❌ Item not found: {item_id}")
         return False
     
     def mark_in_progress(self, item_id: str):
@@ -214,9 +216,9 @@ class TodoList:
         for item in self.items:
             if item.id == item_id:
                 item.mark_in_progress()
-                print(f"🔄 Marked in progress: {item_id}")
+                safe_print(f"🔄 Marked in progress: {item_id}")
                 return True
-        print(f"❌ Item not found: {item_id}")
+        safe_print(f"❌ Item not found: {item_id}")
         return False
     
     def mark_failed(self, item_id: str):
@@ -224,9 +226,9 @@ class TodoList:
         for item in self.items:
             if item.id == item_id:
                 item.mark_failed()
-                print(f"⛔ Marked failed (skipping): {item_id}")
+                safe_print(f"⛔ Marked failed (skipping): {item_id}")
                 return True
-        print(f"❌ Item not found: {item_id}")
+        safe_print(f"❌ Item not found: {item_id}")
         return False
     
     def reset_in_progress(self) -> int:
@@ -252,7 +254,7 @@ class TodoList:
         """Validate all items are still relevant, remove obsolete ones."""
         # This would need code analysis to determine if items are still valid
         # For now, just a placeholder
-        print(f"🔍 Validating {len(self.items)} items...")
+        safe_print(f"🔍 Validating {len(self.items)} items...")
         # TODO: Add validation logic based on current codebase state
         return 0
 
@@ -289,15 +291,15 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         category = sys.argv[1]
         todo = TodoList(category, repo_root)
-        print(f"\n{category.title()} TODO List:")
-        print(f"Total: {len(todo.items)}")
-        print(f"Not started: {todo.count_by_status('not-started')}")
-        print(f"In progress: {todo.count_by_status('in-progress')}")
-        print(f"Completed: {todo.count_by_status('completed')}")
+        safe_print(f"\n{category.title()} TODO List:")
+        safe_print(f"Total: {len(todo.items)}")
+        safe_print(f"Not started: {todo.count_by_status('not-started')}")
+        safe_print(f"In progress: {todo.count_by_status('in-progress')}")
+        safe_print(f"Completed: {todo.count_by_status('completed')}")
         
         next_item = todo.get_next_item()
         if next_item:
-            print(f"\nNext item to work on: {next_item.id} - {next_item.title}")
+            safe_print(f"\nNext item to work on: {next_item.id} - {next_item.title}")
     else:
-        print("Usage: python todo_manager.py <category>")
-        print("Categories: refactoring, performance, features")
+        safe_print("Usage: python todo_manager.py <category>")
+        safe_print("Categories: refactoring, performance, features")
