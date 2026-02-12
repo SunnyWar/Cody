@@ -298,8 +298,6 @@ def analyze(repo_root: Path, config: dict) -> int:
     todo_list = TodoList("clippy", repo_root)
     existing_ids = todo_list.get_all_ids()
 
-    prompt_template = get_prompt_template()
-
     clippy_result = run_clippy_with_priority_and_parser(repo_root)
     clippy_output = clippy_result["output"]
 
@@ -311,76 +309,40 @@ def analyze(repo_root: Path, config: dict) -> int:
         print("\n✅ No warnings to process.")
         return 0
 
-    existing_todos_info = ""
-    if todo_list.items:
-        existing_todos_info = "\n## Existing TODO Items (DO NOT DUPLICATE)\n\n"
-        for item in todo_list.items:
-            existing_todos_info += f"- {item.id}: {item.title} [{item.status}]\n"
-
-    clippy_status = (
-        "Clippy completed successfully."
-        if clippy_result["returncode"] == 0
-        else f"Clippy exited with code {clippy_result['returncode']}."
-    )
-
+    new_items = []
     for warning in clippy_result["warnings"]:
-        file_path = repo_root / warning["message"]["spans"][0]["file_name"]
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                file_content = f.read()
-        except Exception as e:
-            print(f"⚠️ Failed to read file {file_path}: {e}")
-            file_content = ""
+        message = warning.get("message", {})
+        spans = message.get("spans", [])
+        span = spans[0] if spans else {}
 
-        warning["file_content"] = file_content
+        file_name = span.get("file_name", "")
+        line_start = span.get("line_start", 0)
+        column_start = span.get("column_start", 0)
+        lint_code = message.get("code", {}).get("code", "clippy")
+        rendered = message.get("rendered", message.get("message", ""))
 
-    full_prompt = (
-        f"{prompt_template}\n\n"
-        f"{existing_todos_info}\n\n"
-        f"## CLIPPY COMMAND\n\n{clippy_result['command']}\n\n"
-        f"## CLIPPY STATUS\n\n{clippy_status}\n\n"
-        f"## CLIPPY OUTPUT\n\n{clippy_output}\n\n"
-        f"## TASK: Generate actionable fixes for the above Clippy warnings.\n\n"
-    )
+        title = f"{lint_code}: {Path(file_name).name}" if file_name else lint_code
 
-    for warning in clippy_result["warnings"]:
-        full_prompt += (
-            f"### Warning\n"
-            f"- File: {warning['message']['spans'][0]['file_name']}\n"
-            f"- Line: {warning['message']['spans'][0]['line_start']}\n"
-            f"- Column: {warning['message']['spans'][0]['column_start']}\n"
-            f"- Message: {warning['message']['rendered']}\n"
-            f"\n{warning['file_content']}\n"
-        )
+        new_items.append({
+            "id": "",
+            "title": title,
+            "priority": "medium",
+            "category": "clippy",
+            "description": rendered,
+            "status": "not-started",
+            "estimated_complexity": "small",
+            "files_affected": [file_name] if file_name else [],
+            "dependencies": [],
+            "file": file_name,
+            "line": line_start,
+            "column": column_start,
+            "lint_name": lint_code,
+            "lint_message": message.get("message", ""),
+            "rendered": rendered,
+        })
 
-    # Call AI with error handling
-    try:
-        response = call_ai(full_prompt, config)
-    except Exception as e:
-        logs_dir = repo_root / ".orchestrator_logs"
-        logs_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        error_path = logs_dir / f"clippy_ai_error_{timestamp}.txt"
-        with error_path.open("w", encoding="utf-8", errors="replace") as f:
-            f.write(f"AI API Error: {type(e).__name__}\n")
-            f.write(f"Error message: {str(e)}\n")
-            f.write("\n=== Clippy output ===\n")
-            f.write(clippy_output[:2000])
-        print(f"❌ AI API Error: {type(e).__name__}: {str(e)[:200]}")
-        print(f"📄 Error details saved to: {error_path}")
-        raise RuntimeError(f"clippy AI call failed; see {error_path}")
-
-    new_items = extract_json_from_response(response, repo_root, "clippy")
-
-    # Validate that new_items is a list of dicts
-    if not isinstance(new_items, list):
-        print(f"⚠️ Expected list of items, got {type(new_items).__name__}")
-        return 0
-
-    # Filter out non-dict items
-    new_items = [item for item in new_items if isinstance(item, dict)]
     if not new_items:
-        print("⚠️ No clippy opportunities found or failed to parse response")
+        print("⚠️ No clippy opportunities found")
         return 0
 
     for item in new_items:
