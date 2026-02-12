@@ -385,6 +385,7 @@ class Orchestrator:
             added = clippy_analyzer.analyze(self.repo_root, self.config)
             self.log(f"Found {added} clippy warnings")
             self.state["analysis_done"] = True
+            self.state["clippy_reanalyzed"] = False  # Track if we've re-analyzed this cycle
             self._save_state()
 
         # Get next task
@@ -398,6 +399,18 @@ class Orchestrator:
         next_item = todo_list.get_next_item()
 
         if not next_item:
+            # Check if we have any not-started items at all
+            not_started_count = todo_list.count_by_status("not-started")
+            reanalyzed = self.state.get("clippy_reanalyzed", False)
+            
+            if not_started_count == 0 and not reanalyzed:
+                # All items are completed/failed - re-analyze ONCE to find new warnings
+                self.log("All items processed. Re-analyzing for new clippy warnings...")
+                self.state["analysis_done"] = False
+                self.state["clippy_reanalyzed"] = True
+                self._save_state()
+                return self._run_clippy_task()  # Retry with fresh analysis
+            
             self.log("✅ Clippy phase complete, resuming next phase...")
             return self._resume_phase_after_clippy()
 
