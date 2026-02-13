@@ -13,6 +13,7 @@ from openai import OpenAI
 from todo_manager import TodoList
 from console_utils import safe_print
 from validation import ensure_builds_or_fix, rollback_changes
+from datetime import datetime
 
 
 def load_config():
@@ -60,7 +61,7 @@ def call_ai(prompt: str, config: dict) -> str:
         messages=[
             {
                 "role": "system",
-                "content": "You are a senior Rust engineer. You MUST return the COMPLETE, FULL file with ALL code included. NEVER use placeholders like '...' or comments like '// rest of code unchanged'. Return only a single ```rust code block with the file path as the first comment."
+                "content": "You are a senior Rust engineer. You MUST return the COMPLETE, FULL file with ALL code included. NEVER use placeholders like '...' or comments like '// rest of code unchanged'. Return only a single ```rust code block with the file path as the first comment. Focus exclusively on the provided Clippy diagnostic and do not fix other warnings."
             },
             {"role": "user", "content": prompt}
         ],
@@ -176,6 +177,76 @@ def apply_direct_fixes(repo_root: Path, item) -> bool:
         return False
 
 
+def mark_infeasible(todo_list: TodoList, item_id: str) -> bool:
+    """Mark an item as infeasible to avoid loops."""
+    for item in todo_list.items:
+        if item.id == item_id:
+            item.status = "infeasible"
+            item.completed_at = datetime.now().isoformat()
+            safe_print(f"Marked infeasible: {item_id}")
+            return True
+    safe_print(f"❌ Item not found: {item_id}")
+    return False
+
+
+def run_clippy_parser(repo_root: Path) -> tuple[list, int]:
+    """Run clippy_parser.py and return (warnings, returncode)."""
+    parser_script = repo_root / "cody-agent" / "clippy_parser.py"
+    command = [sys.executable, str(parser_script)]
+    result = subprocess.run(
+        command,
+        cwd=repo_root,
+        capture_output=True,
+        text=True
+    )
+
+    warnings = []
+    for line in result.stdout.strip().split("\n"):
+        if not line.strip():
+            continue
+        try:
+            warnings.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+
+    return warnings, result.returncode
+
+
+def warning_persists(warnings: list, file_path: str, lint_name: str, line: int) -> bool:
+    """Check whether the target warning still appears in clippy output."""
+    for warning in warnings:
+        message = warning.get("message", {})
+        code = message.get("code", {}).get("code", "")
+        spans = message.get("spans", [])
+        span = spans[0] if spans else {}
+        file_name = span.get("file_name", "")
+        line_start = int(span.get("line_start", 0) or 0)
+
+        if code != lint_name:
+            continue
+        if file_name != file_path:
+            continue
+        if line and line_start and line_start != line:
+            continue
+        return True
+    return False
+
+
+def run_cargo_test(repo_root: Path) -> bool:
+    """Run cargo test to ensure no regressions."""
+    result = subprocess.run(
+        ["cargo", "test"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True
+    )
+    if result.returncode != 0:
+        safe_print("❌ cargo test failed")
+        safe_print(result.stderr[:2000])
+        return False
+    return True
+
+
 def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
     """Execute a specific clippy fix using the LLM."""
     safe_print("=" * 60)
@@ -243,6 +314,7 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
         f"- NEVER use '...' or placeholder comments\n"
         f"- NEVER omit any code\n"
         f"- Make ONLY the minimal change to fix the Clippy warning\n\n"
+        f"- You are being shown one specific warning among many. Do not attempt to fix other warnings in the file; focus exclusively on the provided diagnostic.\n\n"
         f"Current file content:\n\n{file_content}\n"
     )
 
@@ -274,6 +346,12 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
         todo_list.mark_failed(item_id)
         todo_list.save()
         return False
+
+    if new_content == file_content:
+        safe_print("⚠️ LLM returned identical content; marking as infeasible")
+        mark_infeasible(todo_list, item_id)
+        todo_list.save()
+        return False
     
     # Validate content length (should be similar to original)
     original_lines = len(file_content.split("\n"))
@@ -292,15 +370,27 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
         safe_print("❌ Failed to apply code changes")
         return False
 
-    # MANDATORY POST-VALIDATION: Ensure project still builds AFTER changes
-    if not ensure_builds_or_fix(repo_root, config, "POST-CHANGE"):
-        safe_print("❌ CRITICAL: Changes broke the build and could not be fixed automatically.")
-        safe_print("   Rolling back changes...")
+    warnings, clippy_code = run_clippy_parser(repo_root)
+    warning_still_present = warning_persists(warnings, file_path, lint_name, line)
+
+    test_ok = run_cargo_test(repo_root)
+
+    if warning_still_present:
+        safe_print("❌ Warning persists after fix. Marking as failed.")
         rollback_changes(repo_root, [file_path])
-        # Mark as failed so orchestrator skips it and moves to next item
         todo_list.mark_failed(item_id)
         todo_list.save()
         return False
+
+    if not test_ok:
+        safe_print("❌ Changes failed cargo test. Rolling back...")
+        rollback_changes(repo_root, [file_path])
+        todo_list.mark_failed(item_id)
+        todo_list.save()
+        return False
+
+    if clippy_code != 0:
+        safe_print("⚠️ Clippy still reports other warnings; target warning cleared.")
 
     # Only mark complete if changes were applied AND build is successful
     todo_list.mark_completed(item_id)

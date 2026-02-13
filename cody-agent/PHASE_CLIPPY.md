@@ -42,8 +42,7 @@ You are an expert Rust Developer. Your task is to resolve a specific Clippy warn
 2. **Exact Path**: Your response must start with a comment indicating the file path: `// path/to/file.rs`.
 3. **Minimal Change**: Fix only the specific issue described in the Clippy diagnostic. Do not perform unrelated refactoring.
 4. **Single-warning focus**: You are being shown one specific warning among many. Do not attempt to fix other warnings in the file; focus exclusively on the provided diagnostic.
-5. **Metric Compliance**: If any code comments or documentation are touched, ensure all measurements use metric units.
-6. **Metric enforcement (time/data)**: If the lint involves time or data sizes, the fix must use metric units (milliseconds, bytes) [cite: 2026-02-12].
+
 
 ### Implementation Task
 

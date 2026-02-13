@@ -35,7 +35,6 @@ Return a JSON array of objects:
 * `id`: Unique slug (e.g., `optimize-vec-allocation`).
 * `description`: Detailed explanation of the bottleneck and the proposed fix.
 * `file_path`: Path to the target file.
-* `metric_improvement`: Estimated impact in metric units (e.g., "reduce latency by 10ms").
 
 ---
 
@@ -52,7 +51,6 @@ You are a Principal Software Engineer. You will implement the specific performan
 1. **Full File Only**: Return the **entire** content of the file; do not use `// ...` or placeholders.
 2. **Path Comment**: Start your response with the file path comment: `// path/to/file.rs`.
 3. **Correctness First**: Ensure the optimization does not change the functional output of the program.
-4. **Metric Reporting**: Ensure any internal comments or logs regarding speed or memory use metric units (e.g., KiB, MB, ms, ns).
 
 ### Implementation Task
 

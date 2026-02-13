@@ -1,6 +1,6 @@
 # TODO List: Clippy
-Generated: 2026-02-12 22:26:28
-**Stats**: 50 total | 48 not started | 1 in progress | 1 completed | 0 failed
+Generated: 2026-02-13 16:35:41
+**Stats**: 54 total | 52 not started | 1 in progress | 1 completed | 0 failed
 ---
 
 ## In Progress
@@ -1114,6 +1114,101 @@ help: collapse nested if block
 136 ~                 && mv.from().rank_char() != rank {
 137 |                     continue;
 138 ~                 }
+    |
+
+
+
+### [ ] clippy-engine_src_search_core.rs-78-clippy_too_many_arguments: clippy::too_many_arguments: core.rs
+- **Priority**: medium
+- **Category**: clippy
+- **Complexity**: small
+- **Files**: engine\src\search\core.rs
+
+warning: this function has too many arguments (11/7)
+  --> engine\src\search\core.rs:78:1
+   |
+78 | / pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
+79 | |     movegen: &M,
+80 | |     evaluator: &E,
+81 | |     arena: &mut Arena,
+...  |
+89 | |     start_time: Option<&std::time::Instant>,
+90 | | ) -> i32 {
+   | |________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments
+   = note: `#[warn(clippy::too_many_arguments)]` on by default
+
+
+
+### [ ] clippy-engine_src_search_core.rs-155-clippy_collapsible_if: clippy::collapsible_if: core.rs
+- **Priority**: medium
+- **Category**: clippy
+- **Complexity**: small
+- **Files**: engine\src\search\core.rs
+
+warning: this `if` statement can be collapsed
+   --> engine\src\search\core.rs:155:5
+    |
+155 | /     if let Some(e) = tt_exact_needs_verify {
+156 | |         if moves.iter().any(|mm| *mm == e.best_move) {
+157 | |             return e.value;
+158 | |         }
+159 | |     }
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
+    = note: `#[warn(clippy::collapsible_if)]` on by default
+help: collapse nested if block
+    |
+155 ~     if let Some(e) = tt_exact_needs_verify
+156 ~         && moves.iter().any(|mm| *mm == e.best_move) {
+157 |             return e.value;
+158 ~         }
+    |
+
+
+
+### [ ] clippy-engine_src_search_core.rs-156-clippy_manual_contains: clippy::manual_contains: core.rs
+- **Priority**: medium
+- **Category**: clippy
+- **Complexity**: small
+- **Files**: engine\src\search\core.rs
+
+warning: using `contains()` instead of `iter().any()` is more efficient
+   --> engine\src\search\core.rs:156:12
+    |
+156 |         if moves.iter().any(|mm| *mm == e.best_move) {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `moves.contains(&e.best_move)`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_contains
+    = note: `#[warn(clippy::manual_contains)]` on by default
+
+
+
+### [ ] clippy-engine_src_perft_integration_test.rs-130-clippy_collapsible_if: clippy::collapsible_if: perft_integration_test.rs
+- **Priority**: medium
+- **Category**: clippy
+- **Complexity**: small
+- **Files**: engine\src\perft_integration_test.rs
+
+warning: this `if` statement can be collapsed
+   --> engine\src\perft_integration_test.rs:130:13
+    |
+130 | /             if let Some(file) = dis_file {
+131 | |                 if mv.from().file_char() != file {
+132 | |                     continue;
+133 | |                 }
+134 | |             }
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
+help: collapse nested if block
+    |
+130 ~             if let Some(file) = dis_file
+131 ~                 && mv.from().file_char() != file {
+132 |                     continue;
+133 ~                 }
     |
 
 
