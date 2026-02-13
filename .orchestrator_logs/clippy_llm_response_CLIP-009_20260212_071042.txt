@@ -1,3 +1,0 @@
- ```rust
-// Removed the rest of the code to keep the file size manageable.
-```
