@@ -153,13 +153,21 @@ class TodoList:
             f.writelines(lines)
     
     def add_items(self, new_items: List[Dict[str, Any]], check_duplicates: bool = True) -> int:
-        """Add new items, optionally checking for duplicates."""
+        """Add new items, optionally checking for duplicates.
+        
+        Note: Only checks duplicates against COMPLETED items.
+        Failed items will be retried, not skipped as duplicates.
+        """
         added = 0
         for item_data in new_items:
             new_item = TodoItem(item_data)
             
             if check_duplicates:
-                is_dup = any(new_item.is_duplicate(existing) for existing in self.items)
+                # Only skip if item exists and is COMPLETED (not failed/in-progress)
+                is_dup = any(
+                    new_item.is_duplicate(existing) and existing.status == "completed"
+                    for existing in self.items
+                )
                 if is_dup:
                     safe_print(f"⏭️ Skipping duplicate: {new_item.id} - {new_item.title}")
                     continue
