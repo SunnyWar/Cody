@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 import json
 import openai
+from console_utils import safe_print
 
 
 def run_validation(repo_root: Path) -> bool:
