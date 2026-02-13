@@ -78,7 +78,6 @@ You are a Principal Software Engineer. You will implement the specific feature t
 * **Limit Progress**: Per the master mission, a maximum of 3 feature tasks should be executed before returning to a Clippy cleanup phase to ensure the new code is lint-free.
 * **Validation**: Every new feature task must pass `cargo build` and any new or existing `cargo test`.
 * **No-Op Check**: If the LLM generates code that already exists, mark the task as `SKIPPED`.
-* **Documentation**: Any new public functions or structs must include doc-comments in metric units where applicable.
 
 ---
 

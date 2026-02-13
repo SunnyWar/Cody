@@ -12,7 +12,7 @@ from datetime import datetime
 import subprocess
 from pathlib import Path
 from openai import OpenAI
-from todo_manager import TodoList, generate_unique_id
+from todo_manager import TodoList
 from console_utils import safe_print
 
 
@@ -22,6 +22,14 @@ CLIPPY_LINT_ARGS = [
     "-W", "clippy::complexity",
     "-W", "clippy::correctness",
 ]
+
+MAX_CLIPPY_WARNINGS = 50
+
+
+def sanitize_id_component(value: str) -> str:
+    """Sanitize strings for deterministic IDs."""
+    cleaned = re.sub(r"[^A-Za-z0-9_.-]+", "_", (value or "").strip())
+    return cleaned if cleaned else "unknown"
 
 def load_config():
     """Load configuration."""
@@ -299,22 +307,62 @@ def analyze(repo_root: Path, config: dict) -> int:
         safe_print("\n✅ No warnings to process.")
         return 0
 
-    new_items = []
+    deduped_warnings = []
+    seen_keys = set()
     for warning in clippy_result["warnings"]:
+        message = warning.get("message", {})
+        lint_code = message.get("code", {}).get("code", "")
+        spans = message.get("spans", [])
+        span = spans[0] if spans else {}
+        file_name = span.get("file_name", "")
+
+        if not lint_code or not file_name:
+            continue
+
+        key = (lint_code, file_name)
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        deduped_warnings.append(warning)
+
+    sampled_warnings = deduped_warnings[:MAX_CLIPPY_WARNINGS]
+    safe_print(
+        f"\n📊 Processing {len(sampled_warnings)} warnings "
+        f"(deduped from {len(deduped_warnings)})"
+    )
+
+    new_items = []
+    for warning in sampled_warnings:
         message = warning.get("message", {})
         spans = message.get("spans", [])
         span = spans[0] if spans else {}
 
         file_name = span.get("file_name", "")
-        line_start = span.get("line_start", 0)
-        column_start = span.get("column_start", 0)
+        line_start = int(span.get("line_start", 0) or 0)
+        column_start = int(span.get("column_start", 0) or 0)
         lint_code = message.get("code", {}).get("code", "clippy")
         rendered = message.get("rendered", message.get("message", ""))
+        message_text = message.get("message", "")
+
+        text_entries = span.get("text") or []
+        if text_entries and isinstance(text_entries[0], dict):
+            code_snippet = text_entries[0].get("text", "")
+        elif text_entries and isinstance(text_entries[0], str):
+            code_snippet = text_entries[0]
+        else:
+            code_snippet = ""
 
         title = f"{lint_code}: {Path(file_name).name}" if file_name else lint_code
 
+        safe_file = sanitize_id_component(Path(file_name).as_posix())
+        safe_code = sanitize_id_component(lint_code)
+        item_id = f"clippy-{safe_file}-{line_start}-{safe_code}"
+
+        if item_id in existing_ids:
+            continue
+
         new_items.append({
-            "id": "",
+            "id": item_id,
             "title": title,
             "priority": "medium",
             "category": "clippy",
@@ -323,22 +371,21 @@ def analyze(repo_root: Path, config: dict) -> int:
             "estimated_complexity": "small",
             "files_affected": [file_name] if file_name else [],
             "dependencies": [],
+            "message": message_text,
+            "file_path": file_name,
+            "line_number": line_start,
+            "code_snippet": code_snippet,
             "file": file_name,
             "line": line_start,
             "column": column_start,
             "lint_name": lint_code,
-            "lint_message": message.get("message", ""),
+            "lint_message": message_text,
             "rendered": rendered,
         })
 
     if not new_items:
         safe_print("⚠️ No clippy opportunities found")
         return 0
-
-    for item in new_items:
-        if "id" not in item or not item["id"]:
-            existing_new_ids = [i.get("id") for i in new_items if isinstance(i, dict) and i.get("id")]
-            item["id"] = generate_unique_id("clippy", existing_ids + existing_new_ids)
 
     added = todo_list.add_items(new_items, check_duplicates=True)
 
