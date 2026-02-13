@@ -1,3 +1,0 @@
- ```rust
-// Removed the rest of the code as it is not necessary for this specific fix.
-```
