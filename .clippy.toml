@@ -1,0 +1,5 @@
+# .clippy.toml
+# Set strict limits to keep files LLM-friendly
+too-many-lines-threshold = 300       # Adjust based on your LLM's comfort zone
+type-complexity-threshold = 150      # Prevent "token-heavy" type definitions
+cognitive-complexity-threshold = 20  # Ensure logic is simple enough for LLM reasoning

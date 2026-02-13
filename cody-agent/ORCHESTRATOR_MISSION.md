@@ -1,97 +1,61 @@
-# Orchestrator Mission & Workflow
+# Orchestrator Mission
 
 ## Core Mission
-The orchestrator runs automated code improvement cycles. Each run:
-1. Finds ONE improvement opportunity (refactoring, performance, feature, or clippy warning)
-2. Calls an LLM to generate the fix/implementation
-3. Applies the code changes
-4. Validates with tests/builds
-5. Commits to git
-6. Exits (next run picks up the next task)
+The orchestrator runs automated code improvement cycles. Each run follows a "single-task" constraint to ensure stability and traceability:
 
-## Phase Flow
-1. **Refactoring** → clippy cleanup → **Performance** → clippy cleanup → **Features** (max 3) → clippy cleanup → Done
-2. Clippy runs between each main phase to clean up any warnings introduced
+1. Identify: Find one improvement opportunity via deterministic tools or an analysis LLM.
+2. Implement: Call an execution LLM to generate the fix.
+3. Apply: Overwrite the target file with the new content.
+4. Validate: Verify changes with `cargo build` and `cargo test`.
+5. Commit: Record the success in Git.
+6. Exit: Terminate the process so the next run starts fresh.
+
+## Split-Prompt Architecture
+Each phase (refactoring, performance, features, clippy) is governed by its own dedicated document. These documents define two distinct prompt types.
+
+### Analysis Prompts (the "what")
+- Purpose: Scan the codebase to identify specific, actionable tasks.
+- Trigger: Run by the `_analyzer.py` script when the `.todo_<category>.json` is empty or missing.
+- Clippy exception: Clippy does not use an LLM for analysis; it uses `cargo clippy --json` output directly.
+- Output: A structured list of TODO items saved to JSON.
+
+### Execution Prompts (the "how")
+- Purpose: Direct the LLM to implement a specific TODO item.
+- Constraint: Must always include the full file content and require a full file return.
+- Reference: These prompts are stored in the phase-specific satellite documents (for example, `PHASE_REFACTOR.md`).
 
 ## Standard Executor Pattern
-All executors (refactoring, performance, features, clippy) follow this pattern:
+All executors (refactoring, performance, features, clippy) follow this pattern.
 
-### 1. Analyzer Phase
-- Runs analysis tool (clippy, benchmarks, code review)
-- Generates TODO items with structured metadata
-- Saves to `.todo_<category>.json`
-- Returns: count of items added
+1. Pre-execution validation: Run `validate_cargo.py` before the phase starts. If it fails, abort with the error message: "Aborting: Base code is broken. Fix existing errors before running automated improvements."
+2. Workspace sanity check: Verify `git status` is clean before proceeding.
+3. Analyzer phase: Run analysis tools, generate TODO items with structured metadata, save to `.todo_<category>.json`.
+4. Executor phase: Load the next TODO item, gather full file context, call the LLM, overwrite files with full-file output, and validate with `cargo build` and `cargo test`.
+5. Orchestrator integration: Execute a single task, commit on success, and exit so the next run can continue.
 
-### 2. Executor Phase
-- Loads next TODO item from list
-- Gathers file content for context
-- Builds prompt with:
-  - Task description from TODO
-  - Affected file(s) full content
-  - Specific instructions (return full file in ```rust block with file path comment)
-- Calls LLM
-- Extracts updated file content from response
-- Writes file(s) to disk
-- Validates (cargo build, cargo test)
-- Marks TODO item complete
-- Returns: success/failure
+## Phase Flow and Delegation
+The orchestrator moves through phases in a strict linear sequence. After any successful refactoring, performance, or feature task, the Clippy phase is re-triggered automatically to keep the codebase clean. For detailed prompt engineering and phase-specific rules, refer to the satellite files.
 
-### 3. Orchestrator Integration
-```python
-# Analysis (once per phase)
-if not self.state["analysis_done"]:
-    added = analyzer.analyze(repo_root, config)
-    self.state["analysis_done"] = True
-    
-# Execute one task
-todo_list = TodoList(category, repo_root)
-next_item = todo_list.get_next_item()
+| Phase       | Analysis Method                 | Satellite Document |
+|-------------|---------------------------------|--------------------|
+| Refactoring | LLM discovery prompt            | `PHASE_REFACTOR.md`|
+| Clippy      | Deterministic (`cargo clippy`)  | `PHASE_CLIPPY.md`  |
+| Performance | LLM discovery + benchmarks      | `PHASE_PERFORMANCE.md` |
+| Features    | LLM discovery / user input      | `PHASE_FEATURE.md` |
 
-if not next_item:
-    # Phase complete, advance to next
-    self._advance_main_phase(current_phase)
-    return self.run_single_improvement()
+## LLM Implementation Instructions (for code generation)
+When generating or fixing the Python scripts (`orchestrator.py`, `executor.py`, etc.), the following rules are non-negotiable:
 
-# Execute the task
-success = executor.execute_task(next_item.id, repo_root, config)
-
-if success and self._has_code_changes():
-    self._create_checkpoint(f"{category}: {next_item.id}")
-    return True  # Exit, next run continues
-```
-
-## Critical Rules
-1. **One task per run** - orchestrator exits after each successful code change
-2. **LLM always gets full file content** - not snippets, not patches
-3. **LLM returns full updated file** - in ```rust block with file path comment
-4. **Validate before commit** - cargo build && cargo test must pass
-5. **No code changes = continue to next task** - don't exit if only TODO files changed
-
-## Clippy-Specific Flow
-Clippy warnings are treated like any other task category:
-
-1. **Analyzer**: Run `clippy_parser.py` → parse JSON warnings → create TODO items
-2. **Executor**: 
-   - Load TODO item
-   - Read affected file
-   - Send to LLM with warning details + full file content
-   - Extract updated file from LLM response
-   - Apply changes
-   - Validate with cargo
-   - Mark complete
-3. **Orchestrator**: Same pattern as other phases
-
-## File Structure
-- `orchestrator.py` - Main loop, phase management
-- `{category}_analyzer.py` - Find opportunities, create TODOs
-- `{category}_executor.py` - Execute one task with LLM
-- `todo_manager.py` - Shared TODO list management
-- `.todo_{category}.json` - Persistent task tracking
-- `orchestrator_state.json` - Phase tracking, run count
+- Idempotency: `orchestrator.py` must toggle `analysis_done` to `False` whenever the main phase advances so the next category's analyzer runs.
+- Anti-lazy coding: `executor.py` must explicitly forbid ellipses (`// ...`) or placeholders in its prompt templates.
+- Change verification: If the LLM returns code identical to the source, the executor must mark the task as `SKIPPED` or `INFEASIBLE` to prevent infinite loops.
+- Path mapping: Use regex to extract code blocks strictly following the `// path/to/file.rs` header format.
+- Validation rigidity: Treat any non-zero exit code from cargo as a failure; revert changes immediately using `git checkout -- <file>` or `git restore <file>` in `executor.py`.
+- No LLM in orchestrator logic: The core orchestrator logic must remain deterministic; LLM calls are reserved for the executor and analyzer modules.
 
 ## Common Mistakes to Avoid
-1. ❌ Calling LLM in analyzer (analysis should be deterministic)
-2. ❌ Returning JSON from LLM for code (always return full files in code blocks)
-3. ❌ Executing multiple tasks per run (one and done)
-4. ❌ Skipping validation (always run cargo build + test)
-5. ❌ Forgetting file path comment in LLM prompt (needed for extraction)
+- Merging tasks: Never attempt to fix two TODOs in one run.
+- Snippet updates: Never accept partial code; always process full files.
+- State stagnation: Do not forget to reset phase tracking in `orchestrator_state.json`.
+- Blind commits: Do not commit code that failed `cargo test`.
+- Hardcoded prompts: Load prompts from the phase-specific `.md` files or specialized templates, not in `orchestrator.py`.
