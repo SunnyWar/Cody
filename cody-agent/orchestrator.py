@@ -47,6 +47,7 @@ class Orchestrator:
     
     STATE_FILE = "orchestrator_state.json"
     MAIN_PHASES = ["refactoring", "performance", "features"]
+    GENERATED_PREFIXES = ("target/",)
     
     def __init__(self, repo_root: Path, config: dict):
         self.repo_root = repo_root
@@ -120,8 +121,8 @@ class Orchestrator:
         self.state["phase_started"] = datetime.now().isoformat()
         self._save_state()
     
-    def _validate_and_exit_if_ready(self):
-        """Validate changes using validate_cargo.py and exit if ready to commit."""
+    def _validate_changes(self) -> bool:
+        """Validate changes using validate_cargo.py."""
         self.log("\n🔍 Validating changes with validate_cargo.py...")
         try:
             result = subprocess.run(
@@ -134,42 +135,57 @@ class Orchestrator:
 
             if result.returncode == 0:
                 self.log("\n✅ Validation passed. Changes are ready to be committed.")
-                sys.exit(0)
+                return True
             else:
                 self.log("\n❌ Validation failed. Please fix the issues below:")
                 self.log(result.stdout)
                 self.log(result.stderr)
-                sys.exit(1)
+                return False
         except Exception as e:
             self.log(f"\n⚠️ Validation failed due to an error: {e}")
-            sys.exit(1)
+            return False
+
+    def _is_generated_file(self, file_path: str) -> bool:
+        """Return True if the path matches known generated outputs."""
+        normalized = file_path.replace("\\", "/")
+        return normalized.startswith(self.GENERATED_PREFIXES)
 
     def _has_code_changes(self) -> bool:
-        """Check if git diff contains actual code changes (not just TODO files).
-        If .rs files are changed, validate and exit.
-        """
+        """Check if git diff contains actual code changes (not just TODO files)."""
         try:
-            # Get list of modified files
-            result = subprocess.run(
+            staged = subprocess.run(
                 ["git", "diff", "--name-only", "--cached"],
                 cwd=self.repo_root,
                 capture_output=True,
                 text=True,
                 check=False
             )
+            unstaged = subprocess.run(
+                ["git", "diff", "--name-only"],
+                cwd=self.repo_root,
+                capture_output=True,
+                text=True,
+                check=False
+            )
 
-            if result.returncode != 0:
+            if staged.returncode != 0 or unstaged.returncode != 0:
                 return False
 
-            changed_files = result.stdout.strip().split('\n')
+            changed_files = set()
+            for output in (staged.stdout, unstaged.stdout):
+                for file in output.strip().split('\n'):
+                    if file:
+                        changed_files.add(file)
 
             # Check if any non-TODO files were changed
-            for file in changed_files:
+            for file in sorted(changed_files):
                 if not file:
+                    continue
+                if self._is_generated_file(file):
                     continue
                 # Include .rs files and any non-todo data files
                 if file.endswith('.rs'):
-                    self._validate_and_exit_if_ready()
+                    return True
                 if file.endswith('.json') and 'todo' not in file.lower():
                     return True
                 if file.endswith('.toml') and 'todo' not in file.lower():
@@ -260,6 +276,9 @@ class Orchestrator:
         if success:
             # Check for actual code changes (exclude TODO files)
             if self._has_code_changes():
+                if not self._validate_changes():
+                    self._save_state()
+                    return False
                 self.log(f"✅ Successfully completed: {next_item.id}")
                 self._create_checkpoint(f"Refactoring: {next_item.id}")
                 self._save_state()
@@ -306,6 +325,9 @@ class Orchestrator:
         if success:
             # Check for actual code changes (exclude TODO files)
             if self._has_code_changes():
+                if not self._validate_changes():
+                    self._save_state()
+                    return False
                 self.log(f"✅ Successfully completed: {next_item.id}")
                 self._create_checkpoint(f"Performance: {next_item.id}")
                 self._save_state()
@@ -360,6 +382,9 @@ class Orchestrator:
         if success:
             # Check for actual code changes (exclude TODO files)
             if self._has_code_changes():
+                if not self._validate_changes():
+                    self._save_state()
+                    return False
                 self.log(f"✅ Successfully completed: {next_item.id}")
                 self._create_checkpoint(f"Feature: {next_item.id}")
                 self.state["features_completed"] = features_done + 1
@@ -434,6 +459,9 @@ class Orchestrator:
         if success:
             # Check for actual code changes (exclude TODO files)
             if self._has_code_changes():
+                if not self._validate_changes():
+                    self._save_state()
+                    return False
                 self.log(f"✅ Successfully completed: {next_item.id}")
                 self._create_checkpoint(f"Clippy: {next_item.id}")
                 self._save_state()
