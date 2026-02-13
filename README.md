@@ -13,6 +13,9 @@ Unlike traditional engines (like Stockfish) or NNUE-based engines tuned by human
 - **Goal:** Achieve a competitive ELO rating with a codebase birthed from prompt engineering.
 
 ## 🛠 Features (Current Status)
+*** CURRENTLY NOT WORKING ***
+The engine can be used to play chess. That functionss. The problem is the orchestration to get the LLM to try to improve the engine is not working. I've had tried many dozens of iterations of Copilot to try to get it to make an LLM orchestration that will make it work. Unfortunately it often forgets what it's trying to do, generates response after response after response of syntactically wrong code and often claims that it's done when it did nothing.
+At this point I have little confident that LLM's can even make a rudimentary set of scripts to interate on the code to improve it.
 
 - **Bitboard representation:** High-performance board state management.
 - **UCI protocol support:** Works with standard chess GUIs like Arena, Cute Chess, or Scid vs. PC.
