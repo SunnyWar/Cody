@@ -69,6 +69,7 @@ pub const KING_ATTACKS: [BitBoardMask; 64] = [
     BitBoardMask(0x40C0000000000000),
 ];
 
+#[allow(clippy::collapsible_if)]
 #[test]
 fn test_king_attacks_corner() {
     let attacks = KING_ATTACKS[Square::A1.index()];

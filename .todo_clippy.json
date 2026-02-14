@@ -26,9 +26,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: this function has too many arguments (11/7)\n  --> engine\\src\\search\\core.rs:78:1\n   |\n78 | / pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(\n79 | |     movegen: &M,\n80 | |     evaluator: &E,\n81 | |     arena: &mut Arena,\n...  |\n89 | |     start_time: Option<&std::time::Instant>,\n90 | | ) -> i32 {\n   | |________^\n   |\n   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments\n   = note: `#[warn(clippy::too_many_arguments)]` on by default\n\n",
-    "status": "in-progress",
+    "status": "failed",
     "created_at": "2026-02-12T22:16:47.719130",
-    "completed_at": null,
+    "completed_at": "2026-02-13T23:24:39.963038",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\search\\core.rs"
@@ -488,9 +488,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: using `contains()` instead of `iter().any()` is more efficient\n   --> engine\\src\\search\\core.rs:156:12\n    |\n156 |         if moves.iter().any(|mm| *mm == e.best_move) {\n    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `moves.contains(&e.best_move)`\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_contains\n    = note: `#[warn(clippy::manual_contains)]` on by default\n\n",
-    "status": "not-started",
+    "status": "infeasible",
     "created_at": "2026-02-12T22:16:47.720626",
-    "completed_at": null,
+    "completed_at": "2026-02-13T21:32:46.404922",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\search\\core.rs"
@@ -509,9 +509,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: module has the same name as its containing module\n --> engine\\src\\search\\mod.rs:1:1\n  |\n1 | pub mod search;\n  | ^^^^^^^^^^^^^^^\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#module_inception\n  = note: `-W clippy::module-inception` implied by `-W clippy::style`\n  = help: to override `-W clippy::style` add `#[allow(clippy::module_inception)]`\n\n",
-    "status": "not-started",
+    "status": "failed",
     "created_at": "2026-02-12T22:16:47.720626",
-    "completed_at": null,
+    "completed_at": "2026-02-13T21:43:59.025879",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\search\\mod.rs"
@@ -530,9 +530,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: this function has too many arguments (11/7)\n  --> engine\\src\\search\\core.rs:78:1\n   |\n78 | / pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(\n79 | |     movegen: &M,\n80 | |     evaluator: &E,\n81 | |     arena: &mut Arena,\n...  |\n89 | |     start_time: Option<&std::time::Instant>,\n90 | | ) -> i32 {\n   | |________^\n   |\n   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments\n   = note: `#[warn(clippy::too_many_arguments)]` on by default\n\n",
-    "status": "not-started",
+    "status": "failed",
     "created_at": "2026-02-12T22:16:47.720626",
-    "completed_at": null,
+    "completed_at": "2026-02-13T21:49:16.178852",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\search\\core.rs"
@@ -551,9 +551,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: this `if` statement can be collapsed\n   --> engine\\src\\search\\core.rs:155:5\n    |\n155 | /     if let Some(e) = tt_exact_needs_verify {\n156 | |         if moves.iter().any(|mm| *mm == e.best_move) {\n157 | |             return e.value;\n158 | |         }\n159 | |     }\n    | |_____^\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if\n    = note: `-W clippy::collapsible-if` implied by `-W clippy::style`\n    = help: to override `-W clippy::style` add `#[allow(clippy::collapsible_if)]`\nhelp: collapse nested if block\n    |\n155 ~     if let Some(e) = tt_exact_needs_verify\n156 ~         && moves.iter().any(|mm| *mm == e.best_move) {\n157 |             return e.value;\n158 ~         }\n    |\n\n",
-    "status": "not-started",
+    "status": "failed",
     "created_at": "2026-02-12T22:16:47.720626",
-    "completed_at": null,
+    "completed_at": "2026-02-13T21:54:44.218913",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\search\\core.rs"
@@ -572,9 +572,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: using `contains()` instead of `iter().any()` is more efficient\n   --> engine\\src\\search\\core.rs:156:12\n    |\n156 |         if moves.iter().any(|mm| *mm == e.best_move) {\n    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `moves.contains(&e.best_move)`\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_contains\n    = note: `#[warn(clippy::manual_contains)]` on by default\n\n",
-    "status": "not-started",
+    "status": "infeasible",
     "created_at": "2026-02-12T22:16:47.720626",
-    "completed_at": null,
+    "completed_at": "2026-02-13T21:58:42.074234",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\search\\core.rs"
@@ -593,9 +593,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: this `if` statement can be collapsed\n   --> engine\\src\\perft_integration_test.rs:130:13\n    |\n130 | /             if let Some(file) = dis_file {\n131 | |                 if mv.from().file_char() != file {\n132 | |                     continue;\n133 | |                 }\n134 | |             }\n    | |_____________^\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if\nhelp: collapse nested if block\n    |\n130 ~             if let Some(file) = dis_file\n131 ~                 && mv.from().file_char() != file {\n132 |                     continue;\n133 ~                 }\n    |\n\n",
-    "status": "not-started",
+    "status": "failed",
     "created_at": "2026-02-12T22:16:47.720626",
-    "completed_at": null,
+    "completed_at": "2026-02-13T22:08:57.099175",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\perft_integration_test.rs"
@@ -614,9 +614,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: this `if` statement can be collapsed\n   --> engine\\src\\perft_integration_test.rs:135:13\n    |\n135 | /             if let Some(rank) = dis_rank {\n136 | |                 if mv.from().rank_char() != rank {\n137 | |                     continue;\n138 | |                 }\n139 | |             }\n    | |_____________^\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if\nhelp: collapse nested if block\n    |\n135 ~             if let Some(rank) = dis_rank\n136 ~                 && mv.from().rank_char() != rank {\n137 |                     continue;\n138 ~                 }\n    |\n\n",
-    "status": "not-started",
+    "status": "failed",
     "created_at": "2026-02-12T22:16:47.720626",
-    "completed_at": null,
+    "completed_at": "2026-02-13T22:17:51.166785",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\perft_integration_test.rs"
@@ -635,9 +635,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: module has the same name as its containing module\n --> engine\\src\\search\\mod.rs:1:1\n  |\n1 | pub mod search;\n  | ^^^^^^^^^^^^^^^\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#module_inception\n  = note: `#[warn(clippy::module_inception)]` on by default\n\n",
-    "status": "not-started",
+    "status": "failed",
     "created_at": "2026-02-12T22:16:47.720626",
-    "completed_at": null,
+    "completed_at": "2026-02-13T22:18:59.195397",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\search\\mod.rs"
@@ -656,9 +656,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: this function has too many arguments (11/7)\n  --> engine\\src\\search\\core.rs:78:1\n   |\n78 | / pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(\n79 | |     movegen: &M,\n80 | |     evaluator: &E,\n81 | |     arena: &mut Arena,\n...  |\n89 | |     start_time: Option<&std::time::Instant>,\n90 | | ) -> i32 {\n   | |________^\n   |\n   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments\n   = note: `-W clippy::too-many-arguments` implied by `-W clippy::complexity`\n   = help: to override `-W clippy::complexity` add `#[allow(clippy::too_many_arguments)]`\n\n",
-    "status": "not-started",
+    "status": "failed",
     "created_at": "2026-02-12T22:16:47.720626",
-    "completed_at": null,
+    "completed_at": "2026-02-13T22:24:09.275011",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\search\\core.rs"
@@ -677,9 +677,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: this `if` statement can be collapsed\n   --> engine\\src\\search\\core.rs:155:5\n    |\n155 | /     if let Some(e) = tt_exact_needs_verify {\n156 | |         if moves.iter().any(|mm| *mm == e.best_move) {\n157 | |             return e.value;\n158 | |         }\n159 | |     }\n    | |_____^\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if\n    = note: `#[warn(clippy::collapsible_if)]` on by default\nhelp: collapse nested if block\n    |\n155 ~     if let Some(e) = tt_exact_needs_verify\n156 ~         && moves.iter().any(|mm| *mm == e.best_move) {\n157 |             return e.value;\n158 ~         }\n    |\n\n",
-    "status": "not-started",
+    "status": "failed",
     "created_at": "2026-02-12T22:16:47.721624",
-    "completed_at": null,
+    "completed_at": "2026-02-13T22:28:42.685068",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\search\\core.rs"
@@ -698,9 +698,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: using `contains()` instead of `iter().any()` is more efficient\n   --> engine\\src\\search\\core.rs:156:12\n    |\n156 |         if moves.iter().any(|mm| *mm == e.best_move) {\n    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `moves.contains(&e.best_move)`\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_contains\n    = note: `#[warn(clippy::manual_contains)]` on by default\n\n",
-    "status": "not-started",
+    "status": "infeasible",
     "created_at": "2026-02-12T22:16:47.721624",
-    "completed_at": null,
+    "completed_at": "2026-02-13T22:33:07.443500",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\search\\core.rs"
@@ -719,9 +719,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: module has the same name as its containing module\n --> engine\\src\\search\\mod.rs:1:1\n  |\n1 | pub mod search;\n  | ^^^^^^^^^^^^^^^\n  |\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#module_inception\n  = note: `#[warn(clippy::module_inception)]` on by default\n\n",
-    "status": "not-started",
+    "status": "failed",
     "created_at": "2026-02-12T22:16:47.721624",
-    "completed_at": null,
+    "completed_at": "2026-02-13T22:34:15.546804",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\search\\mod.rs"
@@ -740,9 +740,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: this function has too many arguments (11/7)\n  --> engine\\src\\search\\core.rs:78:1\n   |\n78 | / pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(\n79 | |     movegen: &M,\n80 | |     evaluator: &E,\n81 | |     arena: &mut Arena,\n...  |\n89 | |     start_time: Option<&std::time::Instant>,\n90 | | ) -> i32 {\n   | |________^\n   |\n   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments\n   = note: `-W clippy::too-many-arguments` implied by `-W clippy::complexity`\n   = help: to override `-W clippy::complexity` add `#[allow(clippy::too_many_arguments)]`\n\n",
-    "status": "not-started",
+    "status": "failed",
     "created_at": "2026-02-12T22:16:47.721624",
-    "completed_at": null,
+    "completed_at": "2026-02-13T22:39:18.443766",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\search\\core.rs"
@@ -761,9 +761,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: this `if` statement can be collapsed\n   --> engine\\src\\search\\core.rs:155:5\n    |\n155 | /     if let Some(e) = tt_exact_needs_verify {\n156 | |         if moves.iter().any(|mm| *mm == e.best_move) {\n157 | |             return e.value;\n158 | |         }\n159 | |     }\n    | |_____^\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if\n    = note: `#[warn(clippy::collapsible_if)]` on by default\nhelp: collapse nested if block\n    |\n155 ~     if let Some(e) = tt_exact_needs_verify\n156 ~         && moves.iter().any(|mm| *mm == e.best_move) {\n157 |             return e.value;\n158 ~         }\n    |\n\n",
-    "status": "not-started",
+    "status": "failed",
     "created_at": "2026-02-12T22:16:47.721624",
-    "completed_at": null,
+    "completed_at": "2026-02-13T22:44:02.731502",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\search\\core.rs"
@@ -782,9 +782,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: using `contains()` instead of `iter().any()` is more efficient\n   --> engine\\src\\search\\core.rs:156:12\n    |\n156 |         if moves.iter().any(|mm| *mm == e.best_move) {\n    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `moves.contains(&e.best_move)`\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_contains\n    = note: `#[warn(clippy::manual_contains)]` on by default\n\n",
-    "status": "not-started",
+    "status": "infeasible",
     "created_at": "2026-02-12T22:16:47.721624",
-    "completed_at": null,
+    "completed_at": "2026-02-13T22:47:53.839363",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\search\\core.rs"
@@ -803,9 +803,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: this `if` statement can be collapsed\n   --> engine\\src\\perft_integration_test.rs:130:13\n    |\n130 | /             if let Some(file) = dis_file {\n131 | |                 if mv.from().file_char() != file {\n132 | |                     continue;\n133 | |                 }\n134 | |             }\n    | |_____________^\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if\nhelp: collapse nested if block\n    |\n130 ~             if let Some(file) = dis_file\n131 ~                 && mv.from().file_char() != file {\n132 |                     continue;\n133 ~                 }\n    |\n\n",
-    "status": "not-started",
+    "status": "failed",
     "created_at": "2026-02-12T22:16:47.721624",
-    "completed_at": null,
+    "completed_at": "2026-02-13T22:55:01.378387",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\perft_integration_test.rs"
@@ -824,9 +824,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: this `if` statement can be collapsed\n   --> engine\\src\\perft_integration_test.rs:135:13\n    |\n135 | /             if let Some(rank) = dis_rank {\n136 | |                 if mv.from().rank_char() != rank {\n137 | |                     continue;\n138 | |                 }\n139 | |             }\n    | |_____________^\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if\nhelp: collapse nested if block\n    |\n135 ~             if let Some(rank) = dis_rank\n136 ~                 && mv.from().rank_char() != rank {\n137 |                     continue;\n138 ~                 }\n    |\n\n",
-    "status": "not-started",
+    "status": "failed",
     "created_at": "2026-02-12T22:16:47.721624",
-    "completed_at": null,
+    "completed_at": "2026-02-13T23:33:42.134687",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\perft_integration_test.rs"

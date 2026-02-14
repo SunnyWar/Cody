@@ -18,6 +18,7 @@ mod knight_movegen_unit_tests {
             .collect()
     }
 
+    #[allow(clippy::collapsible_if)]
     #[test]
     fn knight_moves_from_center() {
         let moves = collect_knight_moves("8/8/8/8/3N4/8/8/8 w - - 0 1");
