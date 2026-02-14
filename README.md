@@ -59,7 +59,14 @@ Configure the orchestrator in `cody-agent/config.json`:
 ```json
 {
    "branch_prefix": "ai-feature-",
-   "model": "gpt-5.3-codex",
+   "model": "gpt-5.1",
+   "models": {
+      "refactoring": "gpt-5.1",
+      "features": "gpt-5.1",
+      "logic_bugs": "o3",
+      "clippy": "gpt-5-mini",
+      "unit_tests_docs": "gpt-5-nano"
+   },
    "use_local": false,
    "skills": {
       "enabled": ["github_fix_ci", "github_address_comments"],

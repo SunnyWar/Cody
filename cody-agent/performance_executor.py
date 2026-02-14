@@ -72,7 +72,7 @@ def call_ai(prompt: str, config: dict, repo_root: Path) -> str:
 
     system_prompt = "You are a performance optimization expert implementing optimizations."
 
-    return run_agent(system_prompt, prompt, config, repo_root, "performance_executor")
+    return run_agent(system_prompt, prompt, config, repo_root, "performance_executor", "refactoring")
 
 
 def extract_file_content(response: str) -> tuple[str, str]:

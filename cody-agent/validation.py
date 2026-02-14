@@ -70,7 +70,7 @@ Please provide the COMPLETE fixed file(s) to resolve these errors.
 Remember: FULL file contents only, no placeholders or omissions."""
 
     try:
-        llm_response = run_agent(system_message, user_message, config, repo_root, "build_fix")
+        llm_response = run_agent(system_message, user_message, config, repo_root, "build_fix", "logic_bugs")
 
         code_blocks = extract_code_blocks(llm_response)
         file_blocks = parse_file_blocks(code_blocks)

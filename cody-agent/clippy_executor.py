@@ -50,7 +50,7 @@ def call_ai(prompt: str, config: dict, repo_root: Path) -> str:
         "Focus exclusively on the provided Clippy diagnostic and do not fix other warnings."
     )
 
-    return run_agent(system_prompt, prompt, config, repo_root, "clippy_executor")
+    return run_agent(system_prompt, prompt, config, repo_root, "clippy_executor", "clippy")
 
 
 def extract_file_content(response: str) -> tuple[str, str]:

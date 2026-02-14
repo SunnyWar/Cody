@@ -28,7 +28,7 @@ def _skill_inputs(repo_root: Path, config: dict) -> dict:
 
 
 def _run_skill_agent(label: str, system_prompt: str, user_prompt: str, config: dict, repo_root: Path) -> List[str]:
-    response = run_agent(system_prompt, user_prompt, config, repo_root, label)
+    response = run_agent(system_prompt, user_prompt, config, repo_root, label, "unit_tests_docs")
     blocks = extract_code_blocks(response)
     file_blocks = parse_file_blocks(blocks)
     return apply_file_blocks(repo_root, file_blocks)

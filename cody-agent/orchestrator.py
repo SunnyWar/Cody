@@ -201,6 +201,9 @@ class Orchestrator:
                     return True
 
             return False
+        except Exception as e:
+            self.log(f"⚠️ Could not check for code changes: {e}")
+            return False
 
     def _run_post_executor_skills(self, phase: str, item_id: str) -> bool:
         """Run skill agents after executor. Returns True if any files were updated."""
@@ -230,9 +233,6 @@ class Orchestrator:
         record_last_change(self.repo_root, phase, item_id, combined_files)
         self.log(f"🧠 Skills applied changes to {len(updated_files)} file(s)")
         return True
-        except Exception as e:
-            self.log(f"⚠️ Could not check for code changes: {e}")
-            return False
     
     def run_single_improvement(self) -> bool:
         """Execute a single improvement task and exit.

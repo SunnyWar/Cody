@@ -84,7 +84,7 @@ def call_ai(prompt: str, config: dict, repo_root: Path) -> str:
 
     system_prompt = "You are a chess engine expert implementing world-class features."
 
-    return run_agent(system_prompt, prompt, config, repo_root, "features_executor")
+    return run_agent(system_prompt, prompt, config, repo_root, "features_executor", "features")
 
 
 def extract_file_content(response: str) -> tuple[str, str]:

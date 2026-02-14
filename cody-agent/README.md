@@ -439,7 +439,14 @@ Edit `cody-agent/config.json`:
 
 ```json
 {
-   "model": "gpt-5.3-codex",
+   "model": "gpt-5.1",
+   "models": {
+      "refactoring": "gpt-5.1",
+      "features": "gpt-5.1",
+      "logic_bugs": "o3",
+      "clippy": "gpt-5-mini",
+      "unit_tests_docs": "gpt-5-nano"
+   },
    "use_local": false,
    "skills": {
       "enabled": ["github_fix_ci", "github_address_comments"],
@@ -458,6 +465,7 @@ Edit `cody-agent/config.json`:
 |--------|------|-------------|
 | `use_local` | bool | Reserved for future local provider support |
 | `model` | string | OpenAI model name for the Agents SDK |
+| `models` | object | Task-specific model overrides |
 | `skills.enabled` | list | Enabled skills (`github_fix_ci`, `github_address_comments`) |
 | `skills.run_timing` | string | When to run skills (`after`) |
 | `skills.ci_log_path` | string | CI failure log file path |
