@@ -1,6 +1,7 @@
 use crate::api::uciapi::CodyApi;
 use bitboard::Square;
 
+#[allow(clippy::collapsible_if)]
 #[test]
 fn test_uci_position_moves_c3d5_state_consistency() {
     let api = &mut CodyApi::new();

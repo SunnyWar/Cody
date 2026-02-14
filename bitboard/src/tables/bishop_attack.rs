@@ -71302,6 +71302,7 @@ pub const BISHOP_ATTACKS: [&[BitBoardMask]; 64] = [
 
 use crate::Square;
 
+#[allow(clippy::collapsible_if)]
 #[test]
 fn test_bishop_attacks_corner() {
     let empty_mask_index = 0; // no blockers
