@@ -8,12 +8,35 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+import os
+
 from agents import Agent, Runner
 
 
-def run_agent(system_prompt: str, user_prompt: str, config: dict, repo_root: Path, label: str) -> str:
+def _resolve_model(config: dict, task_type: str) -> str | None:
+    models = config.get("models", {})
+    if isinstance(models, dict):
+        model = models.get(task_type)
+        if model:
+            return model
+    return config.get("model")
+
+
+def run_agent(
+    system_prompt: str,
+    user_prompt: str,
+    config: dict,
+    repo_root: Path,
+    label: str,
+    task_type: str,
+) -> str:
     """Run an agent synchronously and return the final output."""
-    model = config.get("model")
+    if not os.environ.get("OPENAI_API_KEY"):
+        codex_key = os.environ.get("CODEX_API_KEY")
+        if codex_key:
+            os.environ["OPENAI_API_KEY"] = codex_key
+
+    model = _resolve_model(config, task_type)
     instructions = system_prompt or "You are a helpful assistant."
 
     agent = Agent(

@@ -125,7 +125,7 @@ def call_ai(prompt: str, config: dict, repo_root: Path) -> str:
         "only output the raw JSON object."
     )
 
-    return run_agent(system_prompt, prompt, config, repo_root, "features_analysis")
+    return run_agent(system_prompt, prompt, config, repo_root, "features_analysis", "features")
 
 
 def extract_json_from_response(response: str, repo_root: Path, phase: str) -> list:

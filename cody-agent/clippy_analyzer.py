@@ -180,7 +180,7 @@ def call_ai(prompt: str, config: dict, repo_root: Path) -> str:
         "Respond with the modified code directly, and include comments to explain the changes where necessary."
     )
 
-    return run_agent(system_prompt, prompt, config, repo_root, "clippy_analysis")
+    return run_agent(system_prompt, prompt, config, repo_root, "clippy_analysis", "clippy")
 
 
 def extract_json_from_response(response: str, repo_root: Path, phase: str) -> list:
