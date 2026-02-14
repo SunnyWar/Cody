@@ -47,9 +47,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: this `if` statement can be collapsed\n   --> engine\\src\\search\\core.rs:155:5\n    |\n155 | /     if let Some(e) = tt_exact_needs_verify {\n156 | |         if moves.iter().any(|mm| *mm == e.best_move) {\n157 | |             return e.value;\n158 | |         }\n159 | |     }\n    | |_____^\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if\n    = note: `#[warn(clippy::collapsible_if)]` on by default\nhelp: collapse nested if block\n    |\n155 ~     if let Some(e) = tt_exact_needs_verify\n156 ~         && moves.iter().any(|mm| *mm == e.best_move) {\n157 |             return e.value;\n158 ~         }\n    |\n\n",
-    "status": "not-started",
+    "status": "completed",
     "created_at": "2026-02-12T22:16:47.719130",
-    "completed_at": null,
+    "completed_at": "2026-02-13T18:21:18.503316",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\search\\core.rs"

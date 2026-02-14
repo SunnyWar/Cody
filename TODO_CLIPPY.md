@@ -1,6 +1,6 @@
 # TODO List: Clippy
-Generated: 2026-02-13 16:35:41
-**Stats**: 54 total | 52 not started | 1 in progress | 1 completed | 0 failed
+Generated: 2026-02-13 18:21:18
+**Stats**: 54 total | 51 not started | 1 in progress | 2 completed | 0 failed
 ---
 
 ## In Progress
@@ -29,34 +29,6 @@ warning: this function has too many arguments (11/7)
 
 
 ## Not Started
-
-### [ ] CLIP-003: clippy::collapsible_if: core.rs
-- **Priority**: medium
-- **Category**: clippy
-- **Complexity**: small
-- **Files**: engine\src\search\core.rs
-
-warning: this `if` statement can be collapsed
-   --> engine\src\search\core.rs:155:5
-    |
-155 | /     if let Some(e) = tt_exact_needs_verify {
-156 | |         if moves.iter().any(|mm| *mm == e.best_move) {
-157 | |             return e.value;
-158 | |         }
-159 | |     }
-    | |_____^
-    |
-    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
-    = note: `#[warn(clippy::collapsible_if)]` on by default
-help: collapse nested if block
-    |
-155 ~     if let Some(e) = tt_exact_needs_verify
-156 ~         && moves.iter().any(|mm| *mm == e.best_move) {
-157 |             return e.value;
-158 ~         }
-    |
-
-
 
 ### [ ] CLIP-004: clippy::manual_contains: core.rs
 - **Priority**: medium
@@ -1233,3 +1205,33 @@ warning: module has the same name as its containing module
 
 
 *Completed: 2026-02-12T22:26:28.582605*
+
+### [x] CLIP-003: clippy::collapsible_if: core.rs
+- **Priority**: medium
+- **Category**: clippy
+- **Complexity**: small
+- **Files**: engine\src\search\core.rs
+
+warning: this `if` statement can be collapsed
+   --> engine\src\search\core.rs:155:5
+    |
+155 | /     if let Some(e) = tt_exact_needs_verify {
+156 | |         if moves.iter().any(|mm| *mm == e.best_move) {
+157 | |             return e.value;
+158 | |         }
+159 | |     }
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
+    = note: `#[warn(clippy::collapsible_if)]` on by default
+help: collapse nested if block
+    |
+155 ~     if let Some(e) = tt_exact_needs_verify
+156 ~         && moves.iter().any(|mm| *mm == e.best_move) {
+157 |             return e.value;
+158 ~         }
+    |
+
+
+
+*Completed: 2026-02-13T18:21:18.503316*
