@@ -4,7 +4,7 @@
 The orchestrator runs automated code improvement cycles. Each run follows a "single-task" constraint to ensure stability and traceability:
 
 1. Identify: Find one improvement opportunity via deterministic tools or an Agents SDK analysis run.
-2. Implement: Call the OpenAI Agents SDK to generate the fix.
+2. Implement: Call the OpenAI Agents SDK to generate the fix, using OpenAI SDK skills to carry out the work.
 3. Apply: Overwrite the target file with the new content.
 4. Validate: Verify changes with `cargo build` and `cargo test`.
 5. Commit: Run the commit finalizer script to generate a message and stage only the executor-updated file.
