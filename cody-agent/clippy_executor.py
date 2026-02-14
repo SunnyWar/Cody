@@ -4,17 +4,16 @@ Clippy Executor Agent
 Executes a specific clippy warning fix from the TODO list using an LLM.
 """
 
-import os
 import sys
 import json
 import subprocess
 from pathlib import Path
-from openai import OpenAI
 from todo_manager import TodoList
 from executor_state import record_last_change
 from console_utils import safe_print
 from validation import ensure_builds_or_fix, rollback_changes
 from datetime import datetime
+from codex_terminal import run_codex, get_codex_model
 
 
 def load_config():
@@ -36,40 +35,14 @@ def load_config():
         sys.exit(1)
 
 
-def call_ai(prompt: str, config: dict) -> str:
-    """Call the AI with the prompt."""
-    if config.get("use_local"):
-        client = OpenAI(
-            api_key="ollama",
-            base_url=config.get("api_base", "http://localhost:11434/v1"),
-            timeout=3600.0
-        )
+def call_ai(prompt: str, config: dict, repo_root: Path) -> str:
+    """Call Codex with the prompt."""
+    model = get_codex_model(config)
+    if model:
+        safe_print(f"🤖 Fixing clippy warning with {model}...")
     else:
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            safe_print("\n❌ Error: OPENAI_API_KEY environment variable not set")
-            safe_print("\n   Set your API key:")
-            safe_print("   export OPENAI_API_KEY=sk-...")
-            safe_print("\n   Or configure 'use_local': true in config.json to use a local LLM.\n")
-            sys.exit(1)
-        client = OpenAI(api_key=api_key, timeout=3600.0)
-
-    model = config["model"]
-    safe_print(f"🤖 Fixing clippy warning with {model}...")
-
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {
-                "role": "system",
-                "content": "You are a senior Rust engineer. You MUST return the COMPLETE, FULL file with ALL code included. NEVER use placeholders like '...' or comments like '// rest of code unchanged'. Return only a single ```rust code block with the file path as the first comment. Focus exclusively on the provided Clippy diagnostic and do not fix other warnings."
-            },
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.2
-    )
-
-    return response.choices[0].message.content
+        safe_print("🤖 Fixing clippy warning with Codex...")
+    return run_codex(prompt, config, repo_root, "clippy_executor")
 
 
 def extract_file_content(response: str) -> tuple[str, str]:
@@ -319,7 +292,7 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
         f"Current file content:\n\n{file_content}\n"
     )
 
-    response = call_ai(prompt, config)
+    response = call_ai(prompt, config, repo_root)
     
     # Save response for debugging
     from datetime import datetime

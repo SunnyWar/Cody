@@ -4,14 +4,13 @@ Performance Analysis Agent
 Analyzes the Cody chess engine codebase for performance optimization opportunities.
 """
 
-import os
 import sys
 import json
 import re
 from datetime import datetime
 from pathlib import Path
-from openai import OpenAI
 from todo_manager import TodoList, generate_unique_id
+from codex_terminal import run_codex, get_codex_model
 
 
 def load_config():
@@ -80,39 +79,14 @@ def gather_code_context(repo_root: Path) -> str:
     return "\n".join(code_context)
 
 
-def call_ai(prompt: str, config: dict) -> str:
-    """Call the AI with the prompt."""
-    if config.get("use_local"):
-        client = OpenAI(
-            api_key="ollama", 
-            base_url=config.get("api_base", "http://localhost:11434/v1"),
-            timeout=3600.0
-        )
+def call_ai(prompt: str, config: dict, repo_root: Path) -> str:
+    """Call Codex with the prompt."""
+    model = get_codex_model(config)
+    if model:
+        print(f"🤖 Analyzing performance with {model}...")
     else:
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            print(f"\n❌ Error: OPENAI_API_KEY environment variable not set")
-            print(f"\n   Set your API key:")
-            print(f"   export OPENAI_API_KEY=sk-...")
-            print(f"\n   Or configure 'use_local': true in config.json to use a local LLM.\n")
-            sys.exit(1)
-        client = OpenAI(api_key=api_key, timeout=3600.0)
-
-    model = config["model"]
-    print(f"🤖 Analyzing performance with {model}...")
-
-    messages = [
-        {"role": "system", "content": "You are a performance optimization expert specializing in Rust and chess engines. You MUST respond with ONLY valid JSON. Wrap the output in a root key 'items', e.g., {\"items\": [...]}. Do not include any text, explanations, or markdown formatting - only output the raw JSON object."},
-        {"role": "user", "content": prompt}
-    ]
-
-    response = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        temperature=0.3
-    )
-
-    return response.choices[0].message.content
+        print("🤖 Analyzing performance with Codex...")
+    return run_codex(prompt, config, repo_root, "performance_analysis")
 
 
 def extract_json_from_response(response: str, repo_root: Path, phase: str) -> list:
@@ -207,7 +181,7 @@ def analyze(repo_root: Path, config: dict) -> int:
     
     # Call AI with error handling
     try:
-        response = call_ai(full_prompt, config)
+        response = call_ai(full_prompt, config, repo_root)
     except Exception as e:
         logs_dir = repo_root / ".orchestrator_logs"
         logs_dir.mkdir(parents=True, exist_ok=True)

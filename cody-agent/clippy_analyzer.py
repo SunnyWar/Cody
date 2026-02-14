@@ -4,16 +4,15 @@ Clippy Analysis Agent
 Runs cargo clippy and turns warnings into actionable TODO items.
 """
 
-import os
 import sys
 import json
 import re
 from datetime import datetime
 import subprocess
 from pathlib import Path
-from openai import OpenAI
 from todo_manager import TodoList
 from console_utils import safe_print
+from codex_terminal import run_codex, get_codex_model
 
 
 CLIPPY_LINT_ARGS = [
@@ -167,43 +166,14 @@ def run_clippy_with_priority_and_parser(repo_root: Path) -> dict:
     }
 
 
-def call_ai(prompt: str, config: dict) -> str:
-    """Call the AI with the prompt."""
-    if config.get("use_local"):
-        client = OpenAI(
-            api_key="ollama",
-            base_url=config.get("api_base", "http://localhost:11434/v1"),
-            timeout=3600.0
-        )
+def call_ai(prompt: str, config: dict, repo_root: Path) -> str:
+    """Call Codex with the prompt."""
+    model = get_codex_model(config)
+    if model:
+        safe_print(f"🤖 Analyzing clippy with {model}...")
     else:
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            safe_print(f"\n❌ Error: OPENAI_API_KEY environment variable not set")
-            safe_print(f"\n   Set your API key:")
-            safe_print(f"   export OPENAI_API_KEY=sk-...")
-            safe_print(f"\n   Or configure 'use_local': true in config.json to use a local LLM.\n")
-            sys.exit(1)
-        client = OpenAI(api_key=api_key, timeout=3600.0)
-
-    model = config["model"]
-    safe_print(f"🤖 Analyzing clippy with {model}...")
-
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {
-                "role": "system",
-                "content": "You are a senior Rust engineer analyzing clippy output. Your task is to provide actionable code modifications to fix the issues identified by Clippy. Respond with the modified code directly, and include comments to explain the changes where necessary."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        temperature=0.2
-    )
-
-    return response.choices[0].message.content  # Return the raw response, which may include code
+        safe_print("🤖 Analyzing clippy with Codex...")
+    return run_codex(prompt, config, repo_root, "clippy_analysis")
 
 
 def extract_json_from_response(response: str, repo_root: Path, phase: str) -> list:
