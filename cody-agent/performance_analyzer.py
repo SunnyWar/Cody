@@ -45,19 +45,6 @@ def get_prompt_template():
     return prompt_path.read_text(encoding='utf-8')
 
 
-def get_repo_root() -> Path:
-    """Dynamically resolve the repository root."""
-    current_file = Path(__file__).resolve()
-    repo_root = current_file.parent.parent
-
-    # Ensure the resolved path contains the expected structure
-    if not (repo_root / "Cargo.toml").exists():
-        print("❌ Error: Unable to locate repository root. Ensure the script is within the Cody repository.")
-        sys.exit(1)
-
-    return repo_root
-
-
 def gather_code_context(repo_root: Path) -> str:
     """Gather all Rust source code for analysis."""
     excluded_dirs = {"target", "flycheck"}

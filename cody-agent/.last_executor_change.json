@@ -1,0 +1,8 @@
+{
+  "phase": "clippy",
+  "item_id": "clippy-engine_src_search_core.rs-158-clippy_collapsible_if",
+  "files": [
+    "engine/src/search/core.rs"
+  ],
+  "timestamp": "2026-02-14T16:47:37.618567"
+}

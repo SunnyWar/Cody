@@ -258,15 +258,6 @@ class TodoList:
         """Get all item IDs."""
         return [item.id for item in self.items]
     
-    def validate_and_clean(self) -> int:
-        """Validate all items are still relevant, remove obsolete ones."""
-        # This would need code analysis to determine if items are still valid
-        # For now, just a placeholder
-        safe_print(f"🔍 Validating {len(self.items)} items...")
-        # TODO: Add validation logic based on current codebase state
-        return 0
-
-
 def generate_unique_id(category: str, existing_ids: List[str]) -> str:
     """Generate a unique ID for a new TODO item."""
     prefix_map = {

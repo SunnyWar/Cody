@@ -6,8 +6,6 @@ Executes a specific refactoring task from the TODO list.
 
 import sys
 import json
-import subprocess
-from datetime import datetime
 from pathlib import Path
 from todo_manager import TodoList
 from executor_state import record_last_change
@@ -133,35 +131,6 @@ def apply_code_changes(repo_root: Path, file_path: str, new_content: str) -> boo
     except Exception as e:
         print(f"❌ Error writing file: {e}")
         return False
-
-
-def validate_changes(repo_root: Path) -> bool:
-    """Run tests to validate the refactoring."""
-    print("\n🛡️ Validating refactoring...")
-    
-    steps = [
-        ("Format check", ["cargo", "fmt", "--", "--check"]),
-        ("Build", ["cargo", "build", "--release"]),
-        ("Test", ["cargo", "test"]),
-    ]
-    
-    for step_name, command in steps:
-        print(f"\n  Running: {step_name}...")
-        result = subprocess.run(
-            command,
-            cwd=repo_root,
-            capture_output=True,
-            text=True
-        )
-        
-        if result.returncode != 0:
-            print(f"  ❌ {step_name} failed:")
-            print(result.stderr)
-            return False
-        else:
-            print(f"  ✅ {step_name} passed")
-    
-    return True
 
 
 def execute_refactoring(item_id: str, repo_root: Path, config: dict) -> bool:
