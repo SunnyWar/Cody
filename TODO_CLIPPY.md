@@ -1,37 +1,7 @@
 # TODO List: Clippy
-Generated: 2026-02-14 16:24:28
-**Stats**: 3 total | 1 not started | 1 in progress | 0 completed | 1 failed
+Generated: 2026-02-14 16:47:37
+**Stats**: 3 total | 1 not started | 0 in progress | 1 completed | 1 failed
 ---
-
-## In Progress
-
-### [ ] clippy-engine_src_search_core.rs-158-clippy_collapsible_if: clippy::collapsible_if: core.rs
-- **Priority**: medium
-- **Category**: clippy
-- **Complexity**: small
-- **Files**: engine\src\search\core.rs
-
-warning: this `if` statement can be collapsed
-   --> engine\src\search\core.rs:158:5
-    |
-158 | /     if let Some(e) = tt_exact_needs_verify {
-159 | |         if !e.best_move.is_null() && moves_vec.contains(&e.best_move) {
-160 | |             return e.value;
-161 | |         }
-162 | |     }
-    | |_____^
-    |
-    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
-    = note: `#[warn(clippy::collapsible_if)]` on by default
-help: collapse nested if block
-    |
-158 ~     if let Some(e) = tt_exact_needs_verify
-159 ~         && !e.best_move.is_null() && moves_vec.contains(&e.best_move) {
-160 |             return e.value;
-161 ~         }
-    |
-
-
 
 ## Not Started
 
@@ -61,6 +31,38 @@ help: collapse nested if block
     |
 
 
+
+## Completed
+
+### [x] clippy-engine_src_search_core.rs-158-clippy_collapsible_if: clippy::collapsible_if: core.rs
+- **Priority**: medium
+- **Category**: clippy
+- **Complexity**: small
+- **Files**: engine\src\search\core.rs
+
+warning: this `if` statement can be collapsed
+   --> engine\src\search\core.rs:158:5
+    |
+158 | /     if let Some(e) = tt_exact_needs_verify {
+159 | |         if !e.best_move.is_null() && moves_vec.contains(&e.best_move) {
+160 | |             return e.value;
+161 | |         }
+162 | |     }
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
+    = note: `#[warn(clippy::collapsible_if)]` on by default
+help: collapse nested if block
+    |
+158 ~     if let Some(e) = tt_exact_needs_verify
+159 ~         && !e.best_move.is_null() && moves_vec.contains(&e.best_move) {
+160 |             return e.value;
+161 ~         }
+    |
+
+
+
+*Completed: 2026-02-14T16:47:37.616520*
 
 ## Failed
 

@@ -7,7 +7,6 @@ Executes a specific performance optimization from the TODO list.
 import sys
 import json
 import subprocess
-from datetime import datetime
 from pathlib import Path
 from todo_manager import TodoList
 from executor_state import record_last_change
@@ -153,36 +152,6 @@ def run_benchmarks(repo_root: Path) -> dict:
         "output": result.stdout,
         "stderr": result.stderr
     }
-
-
-def validate_changes(repo_root: Path) -> bool:
-    """Run tests and benchmarks to validate the optimization."""
-    print("\n🛡️ Validating optimization...")
-    
-    steps = [
-        ("Build (release)", ["cargo", "build", "--release"]),
-        ("Tests", ["cargo", "test"]),
-        ("Perft verification", ["cargo", "run", "--release", "-p", "engine", "--", "perft", "5"]),
-    ]
-    
-    for step_name, command in steps:
-        print(f"\n  Running: {step_name}...")
-        result = subprocess.run(
-            command,
-            cwd=repo_root,
-            capture_output=True,
-            text=True,
-            timeout=300
-        )
-        
-        if result.returncode != 0:
-            print(f"  ❌ {step_name} failed:")
-            print(result.stderr)
-            return False
-        else:
-            print(f"  ✅ {step_name} passed")
-    
-    return True
 
 
 def execute_optimization(item_id: str, repo_root: Path, config: dict) -> bool:

@@ -38,19 +38,6 @@ def load_config():
         sys.exit(1)
 
 
-def get_repo_root() -> Path:
-    """Dynamically resolve the repository root."""
-    current_file = Path(__file__).resolve()
-    repo_root = current_file.parent.parent
-
-    # Ensure the resolved path contains the expected structure
-    if not (repo_root / "Cargo.toml").exists():
-        print("❌ Error: Unable to locate repository root. Ensure the script is within the Cody repository.")
-        sys.exit(1)
-
-    return repo_root
-
-
 def get_prompt_template():
     """Load the features analysis prompt."""
     repo_root = Path(__file__).parent.parent

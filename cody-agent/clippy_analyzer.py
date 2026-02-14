@@ -7,12 +7,10 @@ Runs cargo clippy and turns warnings into actionable TODO items.
 import sys
 import json
 import re
-from datetime import datetime
 import subprocess
 from pathlib import Path
 from todo_manager import TodoList
 from console_utils import safe_print
-from agent_runner import run_agent
 
 
 CLIPPY_LINT_ARGS = [
@@ -52,50 +50,6 @@ def load_config():
     except Exception as e:
         safe_print(f"❌ Error reading config file: {e}")
         sys.exit(1)
-
-
-def get_prompt_template():
-    """Load the clippy analysis prompt."""
-    repo_root = Path(__file__).parent.parent
-    prompt_path = repo_root / ".github" / "ai" / "prompts" / "clippy_analysis.md"
-    return prompt_path.read_text(encoding='utf-8')
-
-
-def run_clippy_with_parser(repo_root: Path, extra_args: list = None) -> dict:
-    """Run clippy_parser.py to execute Clippy and collect warnings."""
-    parser_script = repo_root / "cody-agent" / "clippy_parser.py"
-    command = ["python", str(parser_script)]
-
-    if extra_args:
-        command.append("--")
-        command.extend(extra_args)
-
-    safe_print(f"\nRunning Clippy parser command: {' '.join(command)}")
-
-    result = subprocess.run(
-        command,
-        cwd=repo_root,
-        capture_output=True,
-        text=True
-    )
-
-    if result.returncode not in (0, 1):
-        safe_print(f"\n⚠️ Clippy parser exited with code {result.returncode}")
-
-    warnings = []
-    for line in result.stdout.strip().split('\n'):
-        if not line.strip():
-            continue
-        try:
-            warnings.append(json.loads(line))
-        except json.JSONDecodeError:
-            safe_print(f"⚠️ Failed to parse line as JSON: {line[:200]}...")
-
-    return {
-        "command": " ".join(command),
-        "returncode": result.returncode,
-        "warnings": warnings
-    }
 
 
 def run_clippy_with_priority_and_parser(repo_root: Path) -> dict:
@@ -164,104 +118,6 @@ def run_clippy_with_priority_and_parser(repo_root: Path) -> dict:
         "output": "No warnings found.",
         "warning_count": 0,
     }
-
-
-def call_ai(prompt: str, config: dict, repo_root: Path) -> str:
-    """Call the agent with the prompt."""
-    model = config.get("model")
-    if model:
-        safe_print(f"🤖 Analyzing clippy with {model}...")
-    else:
-        safe_print("🤖 Analyzing clippy...")
-
-    system_prompt = (
-        "You are a senior Rust engineer analyzing clippy output. "
-        "Your task is to provide actionable code modifications to fix the issues identified by Clippy. "
-        "Respond with the modified code directly, and include comments to explain the changes where necessary."
-    )
-
-    return run_agent(system_prompt, prompt, config, repo_root, "clippy_analysis", "clippy")
-
-
-def extract_json_from_response(response: str, repo_root: Path, phase: str) -> list:
-    """Extract JSON array from AI response using multiple strategies."""
-    json_str = None
-    
-    # Strategy 1: Try to find JSON in ```json code blocks
-    match = re.search(r"```json\s*([\s\S]*?)\s*```", response, re.DOTALL)
-    if match:
-        json_str = match.group(1).strip()
-    
-    # Strategy 2: Try generic code blocks (``` ... ```)
-    if not json_str:
-        match = re.search(r"```\s*([\s\S]*?)\s*```", response, re.DOTALL)
-        if match:
-            candidate = match.group(1).strip()
-            # Only use if it looks like JSON (starts with [ or {)
-            if candidate.startswith('[') or candidate.startswith('{'):
-                json_str = candidate
-    
-    # Strategy 3: Look for JSON array anywhere in response (handles embedded JSON)
-    if not json_str:
-        match = re.search(r'(\[\s*(?:{[\s\S]*?}\s*,?\s*)*\])', response, re.DOTALL)
-        if match:
-            json_str = match.group(1).strip()
-    
-    # Strategy 4: Try the whole response if it starts with [ or {
-    if not json_str:
-        trimmed = response.strip()
-        if trimmed.startswith('[') or trimmed.startswith('{'):
-            json_str = trimmed
-    
-    # If all strategies fail and response doesn't look like JSON, assume empty result
-    if not json_str:
-        safe_print(f"⚠️ AI did not return JSON format. Response preview: {response[:200]}...")
-        safe_print(f"   Returning empty list. This might mean no {phase} items were found.")
-        return []
-    
-    try:
-        result = json.loads(json_str)
-        # Ensure we return a list
-        return result if isinstance(result, list) else []
-    except json.JSONDecodeError as e:
-        logs_dir = repo_root / ".orchestrator_logs"
-        logs_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        dump_path = logs_dir / f"{phase}_parse_fail_{timestamp}.txt"
-        with dump_path.open("w", encoding="utf-8", errors="replace") as f:
-            f.write("JSON parse failure\n")
-            f.write(f"Error: {e}\n")
-            f.write("\n=== Attempted JSON String ===\n")
-            f.write(json_str)
-            f.write("\n\n=== Full Response ===\n")
-            f.write(response)
-        safe_print(f"❌ Failed to parse JSON: {e}")
-        safe_print(f"Response preview: {response[:500]}...")
-        safe_print(f"📄 Full response saved to: {dump_path}")
-        safe_print(f"⚠️ Returning empty list to continue workflow")
-        # Don't raise - return empty list to allow workflow to continue
-        return []
-
-
-def extract_code_from_response(response: str, repo_root: Path, phase: str) -> list:
-    """Extract code modifications from the LLM response."""
-    if not response.strip():
-        safe_print("⚠️ Empty response from LLM.")
-        return []
-
-    # Save the response to a temporary file for review
-    logs_dir = repo_root / ".orchestrator_logs"
-    logs_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    response_path = logs_dir / f"clippy_code_response_{timestamp}.txt"
-    with response_path.open("w", encoding="utf-8", errors="replace") as f:
-        f.write(response)
-
-    safe_print(f"📄 LLM response saved to: {response_path}")
-
-    # Return the raw response for now (future: parse and apply changes automatically)
-    return [response]
-
 
 def analyze(repo_root: Path, config: dict) -> int:
     """Run clippy analysis and update TODO list."""

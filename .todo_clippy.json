@@ -30,9 +30,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: this `if` statement can be collapsed\n   --> engine\\src\\search\\core.rs:158:5\n    |\n158 | /     if let Some(e) = tt_exact_needs_verify {\n159 | |         if !e.best_move.is_null() && moves_vec.contains(&e.best_move) {\n160 | |             return e.value;\n161 | |         }\n162 | |     }\n    | |_____^\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if\n    = note: `#[warn(clippy::collapsible_if)]` on by default\nhelp: collapse nested if block\n    |\n158 ~     if let Some(e) = tt_exact_needs_verify\n159 ~         && !e.best_move.is_null() && moves_vec.contains(&e.best_move) {\n160 |             return e.value;\n161 ~         }\n    |\n\n",
-    "status": "in-progress",
+    "status": "completed",
     "created_at": "2026-02-14T12:56:21.121508",
-    "completed_at": null,
+    "completed_at": "2026-02-14T16:47:37.616520",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\search\\core.rs"
