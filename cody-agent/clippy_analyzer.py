@@ -23,8 +23,7 @@ CLIPPY_LINT_ARGS = [
     "-W", "clippy::correctness",
 ]
 
-MAX_CLIPPY_WARNINGS = 50
-
+MAX_CLIPPY_WARNINGS = 20
 
 def sanitize_id_component(value: str) -> str:
     """Sanitize strings for deterministic IDs."""
