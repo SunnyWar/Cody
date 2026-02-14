@@ -40,6 +40,8 @@ import clippy_analyzer
 import clippy_executor
 import features_analyzer
 import features_executor
+from executor_state import record_last_change, read_last_change
+from skills_agents import run_github_fix_ci, run_github_address_comments
 
 
 class Orchestrator:
@@ -199,6 +201,35 @@ class Orchestrator:
                     return True
 
             return False
+
+    def _run_post_executor_skills(self, phase: str, item_id: str) -> bool:
+        """Run skill agents after executor. Returns True if any files were updated."""
+        skills_config = self.config.get("skills", {})
+        enabled = set(skills_config.get("enabled", []))
+        run_timing = skills_config.get("run_timing", "after")
+
+        if not enabled or run_timing != "after":
+            return False
+
+        updated_files = []
+
+        if "github_fix_ci" in enabled:
+            updated_files.extend(run_github_fix_ci(self.config, self.repo_root))
+
+        if "github_address_comments" in enabled:
+            updated_files.extend(run_github_address_comments(self.config, self.repo_root))
+
+        if not updated_files:
+            return False
+
+        previous_state = read_last_change(self.repo_root)
+        combined_files = list(dict.fromkeys(updated_files))
+        if previous_state and previous_state.get("files"):
+            combined_files = list(dict.fromkeys(previous_state["files"] + combined_files))
+
+        record_last_change(self.repo_root, phase, item_id, combined_files)
+        self.log(f"🧠 Skills applied changes to {len(updated_files)} file(s)")
+        return True
         except Exception as e:
             self.log(f"⚠️ Could not check for code changes: {e}")
             return False
@@ -272,7 +303,13 @@ class Orchestrator:
             self.repo_root,
             self.config
         )
-        
+        skills_applied = self._run_post_executor_skills("refactoring", next_item.id)
+        if not success and skills_applied:
+            todo_list.mark_completed(next_item.id)
+            todo_list.save()
+            self.log(f"✅ Skills completed: {next_item.id}")
+            success = True
+
         if success:
             # Check for actual code changes (exclude TODO files)
             if self._has_code_changes():
@@ -321,7 +358,13 @@ class Orchestrator:
             self.repo_root,
             self.config
         )
-        
+        skills_applied = self._run_post_executor_skills("performance", next_item.id)
+        if not success and skills_applied:
+            todo_list.mark_completed(next_item.id)
+            todo_list.save()
+            self.log(f"✅ Skills completed: {next_item.id}")
+            success = True
+
         if success:
             # Check for actual code changes (exclude TODO files)
             if self._has_code_changes():
@@ -378,6 +421,13 @@ class Orchestrator:
             self.repo_root,
             self.config
         )
+        skills_applied = self._run_post_executor_skills("features", next_item.id)
+        if not success and skills_applied:
+            todo_list.mark_completed(next_item.id)
+            todo_list.save()
+            self.log(f"✅ Skills completed: {next_item.id}")
+            success = True
+            diff_size = "small"
 
         if success:
             # Check for actual code changes (exclude TODO files)
@@ -455,6 +505,12 @@ class Orchestrator:
             self.repo_root,
             self.config
         )
+        skills_applied = self._run_post_executor_skills("clippy", next_item.id)
+        if not success and skills_applied:
+            todo_list.mark_completed(next_item.id)
+            todo_list.save()
+            self.log(f"✅ Skills completed: {next_item.id}")
+            success = True
 
         if success:
             # Check for actual code changes (exclude TODO files)

@@ -8,8 +8,9 @@ import sys
 from pathlib import Path
 from typing import Optional, Tuple
 import json
-import openai
 from console_utils import safe_print
+from agent_runner import run_agent
+from llm_utils import apply_file_blocks, extract_code_blocks, parse_file_blocks
 
 
 def run_validation(repo_root: Path) -> bool:
@@ -44,11 +45,6 @@ def fix_build_with_llm(repo_root: Path, config: dict, errors: str) -> bool:
     Ask LLM to fix build errors.
     Returns True if fix was applied and build succeeded.
     """
-    client = openai.OpenAI(
-        base_url=config["llm"]["base_url"],
-        api_key=config["llm"]["api_key"]
-    )
-    
     system_message = """You are an expert Rust programmer fixing compilation errors.
 You will receive cargo build errors and must provide COMPLETE, BUILDABLE file contents to fix them.
 
@@ -74,58 +70,24 @@ Please provide the COMPLETE fixed file(s) to resolve these errors.
 Remember: FULL file contents only, no placeholders or omissions."""
 
     try:
-        response = client.chat.completions.create(
-            model=config["llm"]["model"],
-            messages=[
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": user_message}
-            ],
-            temperature=0.1,
-            max_tokens=16000
-        )
-        
-        llm_response = response.choices[0].message.content
-        
-        # Extract and apply file changes
-        import re
-        code_blocks = re.findall(r'```rust\n(.*?)\n```', llm_response, re.DOTALL)
-        
-        if not code_blocks:
+        llm_response = run_agent(system_message, user_message, config, repo_root, "build_fix")
+
+        code_blocks = extract_code_blocks(llm_response)
+        file_blocks = parse_file_blocks(code_blocks)
+        if not file_blocks:
             safe_print("❌ LLM did not return any code blocks")
             return False
-        
-        for block in code_blocks:
-            # Extract file path from first line comment
-            lines = block.split('\n')
-            if not lines[0].strip().startswith('//'):
-                safe_print(f"❌ Code block missing file path comment: {lines[0][:50]}")
-                continue
-            
-            file_path_comment = lines[0].strip()
-            # Extract path from comment: "// engine/src/file.rs" -> "engine/src/file.rs"
-            file_path = file_path_comment[2:].strip().replace('/', '\\')
-            full_path = repo_root / file_path
-            
-            if not full_path.exists():
-                safe_print(f"❌ File does not exist: {full_path}")
-                continue
-            
-            # Get new content (skip the comment line)
-            new_content = '\n'.join(lines[1:])
-            
-            # Validate no placeholders
-            placeholder_markers = ['...', 'existing code', 'unchanged', 'rest of']
-            if any(marker in new_content.lower() for marker in placeholder_markers):
-                safe_print(f"❌ LLM response contains placeholders for {file_path}")
-                return False
-            
-            # Write the file
-            full_path.write_text(new_content, encoding='utf-8')
+
+        updated_files = apply_file_blocks(repo_root, file_blocks)
+        if not updated_files:
+            safe_print("❌ LLM response did not produce valid file updates")
+            return False
+
+        for file_path in updated_files:
             safe_print(f"✅ Applied fix to {file_path}")
-        
-        # Verify build now succeeds
+
         return run_validation(repo_root)
-        
+
     except Exception as e:
         safe_print(f"❌ LLM fix failed: {e}")
         return False

@@ -13,7 +13,7 @@ from executor_state import record_last_change
 from console_utils import safe_print
 from validation import ensure_builds_or_fix, rollback_changes
 from datetime import datetime
-from codex_terminal import run_codex, get_codex_model
+from agent_runner import run_agent
 
 
 def load_config():
@@ -36,13 +36,21 @@ def load_config():
 
 
 def call_ai(prompt: str, config: dict, repo_root: Path) -> str:
-    """Call Codex with the prompt."""
-    model = get_codex_model(config)
+    """Call the agent with the prompt."""
+    model = config.get("model")
     if model:
         safe_print(f"🤖 Fixing clippy warning with {model}...")
     else:
-        safe_print("🤖 Fixing clippy warning with Codex...")
-    return run_codex(prompt, config, repo_root, "clippy_executor")
+        safe_print("🤖 Fixing clippy warning...")
+
+    system_prompt = (
+        "You are a senior Rust engineer. You MUST return the COMPLETE, FULL file with ALL code included. "
+        "NEVER use placeholders like '...' or comments like '// rest of code unchanged'. "
+        "Return only a single ```rust code block with the file path as the first comment. "
+        "Focus exclusively on the provided Clippy diagnostic and do not fix other warnings."
+    )
+
+    return run_agent(system_prompt, prompt, config, repo_root, "clippy_executor")
 
 
 def extract_file_content(response: str) -> tuple[str, str]:

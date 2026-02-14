@@ -3,8 +3,8 @@
 ## Core Mission
 The orchestrator runs automated code improvement cycles. Each run follows a "single-task" constraint to ensure stability and traceability:
 
-1. Identify: Find one improvement opportunity via deterministic tools or a Codex analysis run.
-2. Implement: Call the Codex terminal (`codex exec`) to generate the fix.
+1. Identify: Find one improvement opportunity via deterministic tools or an Agents SDK analysis run.
+2. Implement: Call the OpenAI Agents SDK to generate the fix.
 3. Apply: Overwrite the target file with the new content.
 4. Validate: Verify changes with `cargo build` and `cargo test`.
 5. Commit: Run the commit finalizer script to generate a message and stage only the executor-updated file.
@@ -30,7 +30,7 @@ All executors (refactoring, performance, features, clippy) follow this pattern.
 1. Pre-execution validation: Run `validate_cargo.py` before the phase starts. If it fails, abort with the error message: "Aborting: Base code is broken. Fix existing errors before running automated improvements."
 2. Workspace sanity check: Verify `git status` is clean before proceeding.
 3. Analyzer phase: Run analysis tools, generate TODO items with structured metadata, save to `.todo_<category>.json`.
-4. Executor phase: Load the next TODO item, gather full file context, call the Codex terminal, overwrite files with full-file output, and validate with `cargo build` and `cargo test`.
+4. Executor phase: Load the next TODO item, gather full file context, call the Agents SDK, overwrite files with full-file output, and validate with `cargo build` and `cargo test`.
 5. Commit finalizer: Record the last changed file in `.last_executor_change.json` and run `commit_executor_change.py` to stage only that file and generate a commit message.
 6. Orchestrator integration: Execute a single task, commit on success, and exit so the next run can continue.
 

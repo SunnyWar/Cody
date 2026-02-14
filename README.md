@@ -34,20 +34,18 @@ Cody uses a recursive feedback loop when the agent attempts a code improvement:
 3. **Verify:** The local environment runs `cargo test`.
 4. **Refine:** If tests fail, Cody analyzes the compiler error and self-corrects.
 
-## 🧪 Orchestrator Setup (Codex CLI)
+## 🧪 Orchestrator Setup (OpenAI Agents SDK)
 
-Install Codex CLI (already listed in `package.json`):
+Install the Agents SDK:
 
 ```powershell
-npm install
+pip install openai-agents
 ```
 
-Authenticate Codex:
+Authenticate with OpenAI:
 
 ```powershell
-codex login
-# or use an API key
-$env:CODEX_API_KEY = "sk-..."
+$env:OPENAI_API_KEY = "sk-..."
 ```
 
 Set GitHub token if you use PR integration:
@@ -61,13 +59,16 @@ Configure the orchestrator in `cody-agent/config.json`:
 ```json
 {
    "branch_prefix": "ai-feature-",
-   "model": "o3-mini",
+   "model": "gpt-5.3-codex",
    "use_local": false,
-   "local_provider": "ollama"
+   "skills": {
+      "enabled": ["github_fix_ci", "github_address_comments"],
+      "run_timing": "after",
+      "ci_log_path": ".orchestrator_logs/ci_failure.txt",
+      "pr_comments_path": ".orchestrator_logs/pr_review_comments.json"
+   }
 }
 ```
-
-If `use_local` is true, Codex runs with `--oss` and the configured `local_provider` (default is `ollama`).
 
 ## ▶️ Run the Orchestrator
 

@@ -12,7 +12,7 @@ from pathlib import Path
 from todo_manager import TodoList
 from executor_state import record_last_change
 from validation import ensure_builds_or_fix, rollback_changes
-from codex_terminal import run_codex, get_codex_model
+from agent_runner import run_agent
 
 
 def load_config():
@@ -75,13 +75,16 @@ def gather_architecture_context(repo_root: Path) -> str:
 
 
 def call_ai(prompt: str, config: dict, repo_root: Path) -> str:
-    """Call Codex with the prompt."""
-    model = get_codex_model(config)
+    """Call the agent with the prompt."""
+    model = config.get("model")
     if model:
         print(f"🤖 Implementing feature with {model}...")
     else:
-        print("🤖 Implementing feature with Codex...")
-    return run_codex(prompt, config, repo_root, "features_executor")
+        print("🤖 Implementing feature...")
+
+    system_prompt = "You are a chess engine expert implementing world-class features."
+
+    return run_agent(system_prompt, prompt, config, repo_root, "features_executor")
 
 
 def extract_file_content(response: str) -> tuple[str, str]:
