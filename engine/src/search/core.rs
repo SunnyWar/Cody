@@ -152,28 +152,12 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         return 0;
     }
 
-    if let Some(e) = tt_exact_needs_verify && moves.contains(&e.best_move) {
-        return e.value;
-    }
-
     let mut best_score = i32::MIN;
     // Work with a local mutable vector so we can reorder based on TT best move
     let mut moves_vec = moves;
-    if let Some(e) = tt_entry_opt {
-        let bmove = e.best_move;
-        if !bmove.is_null() {
-            if let Some(pos) = moves_vec.iter().position(|mm| *mm == bmove) {
-                moves_vec.swap(0, pos);
-            } else {
-                #[cfg(debug_assertions)]
-                if VERBOSE.load(Ordering::Relaxed) {
-                    let key = arena.get(ply).position.zobrist_hash();
-                    eprintln!(
-                        "[debug] TT best move not found in node move list: move={} key={} ply={}",
-                        bmove, key, ply
-                    );
-                }
-            }
+    if let Some(e) = tt_exact_needs_verify {
+        if !e.best_move.is_null() && moves_vec.contains(&e.best_move) {
+            return e.value;
         }
     }
 

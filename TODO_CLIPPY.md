@@ -1,6 +1,6 @@
 # TODO List: Clippy
-Generated: 2026-02-13 21:01:03
-**Stats**: 54 total | 33 not started | 1 in progress | 4 completed | 10 failed
+Generated: 2026-02-13 21:19:40
+**Stats**: 54 total | 31 not started | 1 in progress | 5 completed | 11 failed
 ---
 
 ## In Progress
@@ -29,58 +29,6 @@ warning: this function has too many arguments (11/7)
 
 
 ## Not Started
-
-### [ ] CLIP-022: clippy::too_many_arguments: core.rs
-- **Priority**: medium
-- **Category**: clippy
-- **Complexity**: small
-- **Files**: engine\src\search\core.rs
-
-warning: this function has too many arguments (11/7)
-  --> engine\src\search\core.rs:78:1
-   |
-78 | / pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
-79 | |     movegen: &M,
-80 | |     evaluator: &E,
-81 | |     arena: &mut Arena,
-...  |
-89 | |     start_time: Option<&std::time::Instant>,
-90 | | ) -> i32 {
-   | |________^
-   |
-   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments
-   = note: `#[warn(clippy::too_many_arguments)]` on by default
-
-
-
-### [ ] CLIP-023: clippy::collapsible_if: core.rs
-- **Priority**: medium
-- **Category**: clippy
-- **Complexity**: small
-- **Files**: engine\src\search\core.rs
-
-warning: this `if` statement can be collapsed
-   --> engine\src\search\core.rs:155:5
-    |
-155 | /     if let Some(e) = tt_exact_needs_verify {
-156 | |         if moves.iter().any(|mm| *mm == e.best_move) {
-157 | |             return e.value;
-158 | |         }
-159 | |     }
-    | |_____^
-    |
-    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
-    = note: `-W clippy::collapsible-if` implied by `-W clippy::style`
-    = help: to override `-W clippy::style` add `#[allow(clippy::collapsible_if)]`
-help: collapse nested if block
-    |
-155 ~     if let Some(e) = tt_exact_needs_verify
-156 ~         && moves.iter().any(|mm| *mm == e.best_move) {
-157 |             return e.value;
-158 ~         }
-    |
-
-
 
 ### [ ] CLIP-024: clippy::manual_contains: core.rs
 - **Priority**: medium
@@ -875,6 +823,37 @@ warning: module has the same name as its containing module
 
 *Completed: 2026-02-13T21:01:03.962932*
 
+### [x] CLIP-023: clippy::collapsible_if: core.rs
+- **Priority**: medium
+- **Category**: clippy
+- **Complexity**: small
+- **Files**: engine\src\search\core.rs
+
+warning: this `if` statement can be collapsed
+   --> engine\src\search\core.rs:155:5
+    |
+155 | /     if let Some(e) = tt_exact_needs_verify {
+156 | |         if moves.iter().any(|mm| *mm == e.best_move) {
+157 | |             return e.value;
+158 | |         }
+159 | |     }
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
+    = note: `-W clippy::collapsible-if` implied by `-W clippy::style`
+    = help: to override `-W clippy::style` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+    |
+155 ~     if let Some(e) = tt_exact_needs_verify
+156 ~         && moves.iter().any(|mm| *mm == e.best_move) {
+157 |             return e.value;
+158 ~         }
+    |
+
+
+
+*Completed: 2026-02-13T21:19:40.808418*
+
 ## Failed
 
 ### [ ] CLIP-006: clippy::too_many_arguments: core.rs
@@ -1157,3 +1136,28 @@ help: collapse nested if block
 
 
 *Completed: 2026-02-13T20:58:31.354587*
+
+### [ ] CLIP-022: clippy::too_many_arguments: core.rs
+- **Priority**: medium
+- **Category**: clippy
+- **Complexity**: small
+- **Files**: engine\src\search\core.rs
+
+warning: this function has too many arguments (11/7)
+  --> engine\src\search\core.rs:78:1
+   |
+78 | / pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
+79 | |     movegen: &M,
+80 | |     evaluator: &E,
+81 | |     arena: &mut Arena,
+...  |
+89 | |     start_time: Option<&std::time::Instant>,
+90 | | ) -> i32 {
+   | |________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments
+   = note: `#[warn(clippy::too_many_arguments)]` on by default
+
+
+
+*Completed: 2026-02-13T21:08:30.800234*
