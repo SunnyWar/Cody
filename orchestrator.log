@@ -320,3 +320,24 @@
 [2026-02-14 01:06:08] CLIPPY WARNINGS PHASE
 [2026-02-14 01:06:08] 📝 Working on: CLIP-041 - clippy::module_inception: mod.rs
 [2026-02-14 05:39:21] ❌ Failed: CLIP-041
+[2026-02-14 13:58:50] ORCHESTRATOR RUN #7
+[2026-02-14 13:58:50] Phase: CLIPPY
+[2026-02-14 13:58:50] 🔧 Preparing workspace...
+[2026-02-14 13:58:50] CLIPPY WARNINGS PHASE
+[2026-02-14 13:58:50] 🔄 Reset 1 stuck in-progress item(s) from previous run
+[2026-02-14 13:58:50] 📝 Working on: clippy-engine_src_search_core.rs-78-clippy_too_many_arguments - clippy::too_many_arguments: core.rs
+[2026-02-14 14:03:57] ❌ Failed: clippy-engine_src_search_core.rs-78-clippy_too_many_arguments
+[2026-02-14 14:21:53] ORCHESTRATOR RUN #8
+[2026-02-14 14:21:53] Phase: CLIPPY
+[2026-02-14 14:21:53] 🔧 Preparing workspace...
+[2026-02-14 14:21:53] CLIPPY WARNINGS PHASE
+[2026-02-14 14:21:53] 📝 Working on: clippy-engine_src_search_core.rs-158-clippy_collapsible_if - clippy::collapsible_if: core.rs
+[2026-02-14 14:23:00] ❌ Run failed with error: Error code: 404 - {'error': {'message': "model 'qwen3-coder:30b' not found", 'type': 'api_error', 'param': None, 'code': None}}
+[2026-02-14 14:23:00] Traceback (most recent call last):   File "D:\Cody\cody-agent\orchestrator.py", line 228, in run_single_improvement     return self._run_clippy_task()            ^^^^^^^^^^^^^^^^^^^^^^^   File "D:\Cody\cody-agent\orchestrator.py", line 453, in _run_clippy_task     success = clippy_executor.execute_clippy_fix(               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   File "D:\Cody\cody-agent\clippy_executor.py", line 322, in execute_clippy_fix     response = call_ai(prompt, config)                ^^^^^^^^^^^^^^^^^^^^^^^   File "D:\Cody\cody-agent\clippy_executor.py", line 60, in call_ai     response = client.chat.completions.create(                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   File "C:\Users\David\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\site-packages\openai\_utils\_utils.py", line 286, in wrapper     return func(*args, **kwargs)            ^^^^^^^^^^^^^^^^^^^^^   File "C:\Users\David\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\site-packages\openai\resources\chat\completions\completions.py", line 1192, in create     return self._post(            ^^^^^^^^^^^   File "C:\Users\David\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\site-packages\openai\_base_client.py", line 1297, in post     return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   File "C:\Users\David\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\site-packages\openai\_base_client.py", line 1070, in request     raise self._make_status_error_from_response(err.response) from None openai.NotFoundError: Error code: 404 - {'error': {'message': "model 'qwen3-coder:30b' not found", 'type': 'api_error', 'param': None, 'code': None}}
+[2026-02-14 15:14:36] ORCHESTRATOR RUN #9
+[2026-02-14 15:14:36] Phase: CLIPPY
+[2026-02-14 15:14:36] 🔧 Preparing workspace...
+[2026-02-14 15:14:36] CLIPPY WARNINGS PHASE
+[2026-02-14 15:14:36] 🔄 Reset 1 stuck in-progress item(s) from previous run
+[2026-02-14 15:14:36] 📝 Working on: clippy-engine_src_search_core.rs-158-clippy_collapsible_if - clippy::collapsible_if: core.rs
+[2026-02-14 15:14:56] ⚠️ Run interrupted by user

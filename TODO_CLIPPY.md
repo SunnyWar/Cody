@@ -1,34 +1,9 @@
 # TODO List: Clippy
-Generated: 2026-02-14 13:15:44
-**Stats**: 3 total | 2 not started | 1 in progress | 0 completed | 0 failed
+Generated: 2026-02-14 15:14:36
+**Stats**: 3 total | 1 not started | 1 in progress | 0 completed | 1 failed
 ---
 
 ## In Progress
-
-### [ ] clippy-engine_src_search_core.rs-78-clippy_too_many_arguments: clippy::too_many_arguments: core.rs
-- **Priority**: medium
-- **Category**: clippy
-- **Complexity**: small
-- **Files**: engine\src\search\core.rs
-
-warning: this function has too many arguments (11/7)
-  --> engine\src\search\core.rs:78:1
-   |
-78 | / pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
-79 | |     movegen: &M,
-80 | |     evaluator: &E,
-81 | |     arena: &mut Arena,
-...  |
-89 | |     start_time: Option<&std::time::Instant>,
-90 | | ) -> i32 {
-   | |________^
-   |
-   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments
-   = note: `#[warn(clippy::too_many_arguments)]` on by default
-
-
-
-## Not Started
 
 ### [ ] clippy-engine_src_search_core.rs-158-clippy_collapsible_if: clippy::collapsible_if: core.rs
 - **Priority**: medium
@@ -58,6 +33,8 @@ help: collapse nested if block
 
 
 
+## Not Started
+
 ### [ ] clippy-engine_src_perft_integration_test.rs-130-clippy_collapsible_if: clippy::collapsible_if: perft_integration_test.rs
 - **Priority**: medium
 - **Category**: clippy
@@ -84,3 +61,30 @@ help: collapse nested if block
     |
 
 
+
+## Failed
+
+### [ ] clippy-engine_src_search_core.rs-78-clippy_too_many_arguments: clippy::too_many_arguments: core.rs
+- **Priority**: medium
+- **Category**: clippy
+- **Complexity**: small
+- **Files**: engine\src\search\core.rs
+
+warning: this function has too many arguments (11/7)
+  --> engine\src\search\core.rs:78:1
+   |
+78 | / pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
+79 | |     movegen: &M,
+80 | |     evaluator: &E,
+81 | |     arena: &mut Arena,
+...  |
+89 | |     start_time: Option<&std::time::Instant>,
+90 | | ) -> i32 {
+   | |________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments
+   = note: `#[warn(clippy::too_many_arguments)]` on by default
+
+
+
+*Completed: 2026-02-14T14:03:57.385635*

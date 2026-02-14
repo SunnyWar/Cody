@@ -4,16 +4,15 @@ Refactoring Executor Agent
 Executes a specific refactoring task from the TODO list.
 """
 
-import os
 import sys
 import json
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from openai import OpenAI
 from todo_manager import TodoList
 from executor_state import record_last_change
 from validation import ensure_builds_or_fix, rollback_changes
+from codex_terminal import run_codex, get_codex_model
 
 
 def load_config():
@@ -63,37 +62,14 @@ def gather_relevant_code(repo_root: Path, files: list) -> str:
     return "\n".join(code_context)
 
 
-def call_ai(prompt: str, config: dict) -> str:
-    """Call the AI with the prompt."""
-    if config.get("use_local"):
-        client = OpenAI(
-            api_key="ollama", 
-            base_url=config.get("api_base", "http://localhost:11434/v1"),
-            timeout=3600.0
-        )
+def call_ai(prompt: str, config: dict, repo_root: Path) -> str:
+    """Call Codex with the prompt."""
+    model = get_codex_model(config)
+    if model:
+        print(f"🤖 Implementing with {model}...")
     else:
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            print(f"\n❌ Error: OPENAI_API_KEY environment variable not set")
-            print(f"\n   Set your API key:")
-            print(f"   export OPENAI_API_KEY=sk-...")
-            print(f"\n   Or configure 'use_local': true in config.json to use a local LLM.\n")
-            sys.exit(1)
-        client = OpenAI(api_key=api_key, timeout=3600.0)
-    
-    model = config["model"]
-    print(f"🤖 Implementing with {model}...")
-    
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": "You are a senior Rust engineer implementing refactorings."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.2
-    )
-    
-    return response.choices[0].message.content
+        print("🤖 Implementing with Codex...")
+    return run_codex(prompt, config, repo_root, "refactoring_executor")
 
 
 def extract_file_content(response: str) -> tuple[str, str]:
@@ -250,7 +226,7 @@ Files Affected: {', '.join(item.files_affected)}
     
     # Call AI with error handling
     try:
-        response = call_ai(full_prompt, config)
+        response = call_ai(full_prompt, config, repo_root)
     except Exception as e:
         logs_dir = repo_root / ".orchestrator_logs"
         logs_dir.mkdir(parents=True, exist_ok=True)

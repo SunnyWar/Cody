@@ -81,9 +81,9 @@ Edit `cody-agent/config.json`:
 
 ```json
 {
-  "model": "deepseek-coder-v2:16b-lite-instruct-q4_K_M",
-  "api_base": "http://localhost:11434/v1",
-  "use_local": true,
+  "model": "o3-mini",
+  "use_local": false,
+  "local_provider": "ollama",
   "github_repo": "yourusername/cody-engine"
 }
 ```
@@ -91,11 +91,15 @@ Edit `cody-agent/config.json`:
 ## Environment Setup
 
 ```powershell
-# Install dependencies
-pip install openai requests
+# Install Codex CLI
+npm install
 
-# Set API keys (if needed)
-$env:OPENAI_API_KEY = "sk-..."
+# Authenticate Codex
+codex login
+# or use an API key
+$env:CODEX_API_KEY = "sk-..."
+
+# GitHub token (optional)
 $env:GITHUB_TOKEN = "ghp_..."
 ```
 

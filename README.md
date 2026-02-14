@@ -34,39 +34,40 @@ Cody uses a recursive feedback loop when the agent attempts a code improvement:
 3. **Verify:** The local environment runs `cargo test`.
 4. **Refine:** If tests fail, Cody analyzes the compiler error and self-corrects.
 
-## 🧪 Orchestrator Setup (Cloud)
+## 🧪 Orchestrator Setup (Codex CLI)
 
-Set environment variables:
+Install Codex CLI (already listed in `package.json`):
 
 ```powershell
-SET OPENAI_KEY="OPENAI_API_KEY"
-SET GITHUB_TOKEN="GITHUB_TOKEN"
+npm install
 ```
 
-## 🏠 Running Locally (Zero Cost and Private)
+Authenticate Codex:
 
-If you want to run Cody's improvement orchestrator without an OpenAI account, you can use **Ollama**.
+```powershell
+codex login
+# or use an API key
+$env:CODEX_API_KEY = "sk-..."
+```
 
-1. **Install Ollama:** Download from [ollama.com](https://ollama.com/).
-2. **Pull a model:**
-   ```bash
-   ollama pull deepseek-coder-v2:16b-lite-instruct-q4_K_M
-   ```
-3. **Local configuration:** In `cody-agent/config.json`, set `"use_local": true`.
-4. **No API key needed:** When `use_local` is true, the agent uses a placeholder key to bypass the OpenAI login requirement.
+Set GitHub token if you use PR integration:
 
-Start the server: ensure Ollama is running (it usually starts automatically in the system tray).
+```powershell
+$env:GITHUB_TOKEN = "ghp_..."
+```
 
 Configure the orchestrator in `cody-agent/config.json`:
 
 ```json
 {
-  "branch_prefix": "ai-feature-",
-  "model": "deepseek-coder-v2:16b-lite-instruct-q4_K_M",
-  "api_base": "http://localhost:11434/v1",
-  "use_local": true
+   "branch_prefix": "ai-feature-",
+   "model": "o3-mini",
+   "use_local": false,
+   "local_provider": "ollama"
 }
 ```
+
+If `use_local` is true, Codex runs with `--oss` and the configured `local_provider` (default is `ollama`).
 
 ## ▶️ Run the Orchestrator
 

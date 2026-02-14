@@ -1,6 +1,6 @@
 {
     "branch_prefix": "ai-feature-",
-    "model": "deepseek-coder-v2:16b-lite-instruct-q4_K_M",
+    "model": "qwen3-coder:30b",
     "api_base": "http://localhost:11434/v1",
     "use_local": true,
     "github_repo": "sunnywar/cody-engine"

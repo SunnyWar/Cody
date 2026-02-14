@@ -136,27 +136,29 @@ After each main phase, the system runs `cargo clippy` and:
 
 ### Setup Steps
 
-1. **Install Python dependencies:**
+1. **Install Codex CLI:**
    ```powershell
-   pip install openai requests
+   npm install
    ```
 
 2. **Configure AI model** (edit `cody-agent/config.json`):
    ```json
    {
-     "model": "deepseek-coder-v2:16b-lite-instruct-q4_K_M",
-     "api_base": "http://localhost:11434/v1",
-     "use_local": true
+     "model": "o3-mini",
+     "use_local": false,
+     "local_provider": "ollama"
    }
    ```
 
    **Options:**
-   - `use_local: true` → Use local Ollama
-   - `use_local: false` → Use OpenAI (requires `OPENAI_API_KEY`)
+   - `use_local: false` → Use Codex with OpenAI authentication
+   - `use_local: true` → Use Codex with local provider (default: `ollama`)
 
-3. **Set environment variables** (if using OpenAI):
+3. **Authenticate Codex and set tokens:**
    ```powershell
-   $env:OPENAI_API_KEY = "sk-..."
+   codex login
+   # or use an API key
+   $env:CODEX_API_KEY = "sk-..."
    $env:GITHUB_TOKEN = "ghp_..."
    ```
 
@@ -438,9 +440,9 @@ Edit `cody-agent/config.json`:
 
 ```json
 {
-  "model": "deepseek-coder-v2:16b-lite-instruct-q4_K_M",
-  "api_base": "http://localhost:11434/v1",
-  "use_local": true,
+   "model": "o3-mini",
+   "use_local": false,
+   "local_provider": "ollama",
   "branch_prefix": "ai-feature-",
   "github_repo": "yourusername/cody-engine"
 }
@@ -450,17 +452,22 @@ Edit `cody-agent/config.json`:
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `use_local` | bool | `true` = Ollama, `false` = OpenAI |
-| `model` | string | AI model name (depends on provider) |
-| `api_base` | string | API endpoint URL (for Ollama/local) |
+| `use_local` | bool | Use Codex `--oss` with a local provider |
+| `local_provider` | string | Local provider for Codex (`ollama` or `lmstudio`) |
+| `model` | string | Model name passed to `codex exec --model` |
 | `branch_prefix` | string | Git branch name prefix |
 | `github_repo` | string | GitHub repo (for future PR integration) |
+| `codex_profile` | string | Optional Codex config profile |
+| `codex_path` | string | Optional path to the `codex` executable |
+| `codex_config_overrides` | list | Extra `--config` overrides for Codex |
 
 ### Environment Variables
 
-**For OpenAI (if `use_local: false`):**
+**For Codex authentication:**
 ```powershell
-$env:OPENAI_API_KEY = "sk-..."
+codex login
+# or use an API key
+$env:CODEX_API_KEY = "sk-..."
 ```
 
 **For GitHub integration:**
@@ -470,15 +477,13 @@ $env:GITHUB_TOKEN = "ghp_..."
 
 ### AI Model Examples
 
-**Local Options (Ollama):**
-- `deepseek-coder-v2:16b-lite-instruct-q4_K_M` (recommended)
-- `qwen-coder:latest`
-- `mistral:latest`
+**Codex (OpenAI) Models:**
+- `o3-mini`
+- `o4-mini`
 
-**OpenAI Options:**
-- `gpt-4-turbo-preview`
-- `gpt-4`
-- `gpt-3.5-turbo`
+**Local Models (Codex `--oss`):**
+- `deepseek-coder-v2:16b-lite-instruct-q4_K_M`
+- `qwen-coder:latest`
 
 ## Quality Gates
 
