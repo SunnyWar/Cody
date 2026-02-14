@@ -71,5 +71,6 @@ You are an expert Rust Developer. Your task is to resolve a specific Clippy warn
 * **Verification**: After applying the fix, the orchestrator must run `cargo clippy` again to ensure the specific warning is gone and `cargo test` to ensure no regressions.
 * **Persistence rule**: If the warning persists after an LLM fix, mark the task as `FAILED` or `BLOCKED` to prevent looping on unfixable lints.
 * **No-Op Check**: If the LLM returns the exact same file content, mark the task as `INFEASIBLE` and exit to prevent loops.
+* **Commit Finalizer**: After a successful executor run, call `commit_executor_change.py` to stage only the updated file and generate the commit message.
 
 ---

@@ -7,7 +7,7 @@ The orchestrator runs automated code improvement cycles. Each run follows a "sin
 2. Implement: Call an execution LLM to generate the fix.
 3. Apply: Overwrite the target file with the new content.
 4. Validate: Verify changes with `cargo build` and `cargo test`.
-5. Commit: Record the success in Git.
+5. Commit: Run the commit finalizer script to generate a message and stage only the executor-updated file.
 6. Exit: Terminate the process so the next run starts fresh.
 
 ## Split-Prompt Architecture
@@ -31,7 +31,8 @@ All executors (refactoring, performance, features, clippy) follow this pattern.
 2. Workspace sanity check: Verify `git status` is clean before proceeding.
 3. Analyzer phase: Run analysis tools, generate TODO items with structured metadata, save to `.todo_<category>.json`.
 4. Executor phase: Load the next TODO item, gather full file context, call the LLM, overwrite files with full-file output, and validate with `cargo build` and `cargo test`.
-5. Orchestrator integration: Execute a single task, commit on success, and exit so the next run can continue.
+5. Commit finalizer: Record the last changed file in `.last_executor_change.json` and run `commit_executor_change.py` to stage only that file and generate a commit message.
+6. Orchestrator integration: Execute a single task, commit on success, and exit so the next run can continue.
 
 ## Phase Flow and Delegation
 The orchestrator moves through phases in a strict linear sequence. After any successful refactoring, performance, or feature task, the Clippy phase is re-triggered automatically to keep the codebase clean. For detailed prompt engineering and phase-specific rules, refer to the satellite files.

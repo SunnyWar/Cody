@@ -78,6 +78,7 @@ You are a Principal Software Engineer. You will implement the specific refactori
 
 * **Validation**: After every refactor, `cargo build` and `cargo test` must pass. If they fail, the executor must revert the file and mark the task as failed.
 * **No-Op Check**: If the refactored code is identical to the original, mark the task as `SKIPPED` in the JSON list to avoid infinite loops.
+* **Commit Finalizer**: After a successful executor run, call `commit_executor_change.py` to stage only the updated file and generate the commit message.
 * **Clippy Follow-up**: Once the refactoring TODO list is empty, the orchestrator must automatically move to the `PHASE_CLIPPY.md` to clean up any new warnings.
 
 ---

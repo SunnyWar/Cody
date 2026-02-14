@@ -77,6 +77,7 @@ You are a Principal Software Engineer. You will implement the specific performan
 * **One Change per Run**: Address only one performance bottleneck at a time to isolate its impact.
 * **Validation**: Every change must pass `cargo build` and `cargo test`. If benchmarks are automated, the executor should also verify that the performance did not regress.
 * **No-Op Check**: If the LLM returns identical code, mark the task as `INFEASIBLE`.
+* **Commit Finalizer**: After a successful executor run, call `commit_executor_change.py` to stage only the updated file and generate the commit message.
 * **Clean State**: Transition to `PHASE_CLIPPY.md` once the performance TODO list is cleared.
 
 ---

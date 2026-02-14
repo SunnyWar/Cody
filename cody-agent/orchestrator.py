@@ -492,18 +492,24 @@ class Orchestrator:
             return False
 
     def _create_checkpoint(self, name: str):
-        """Create a git checkpoint."""
+        """Create a git checkpoint using the commit finalizer script."""
         self.log(f"📌 Committing: {name}")
-        subprocess.run(
-            ["git", "add", "."],
+        result = subprocess.run(
+            [
+                sys.executable,
+                "cody-agent/commit_executor_change.py",
+                "--fallback-message",
+                name,
+            ],
             cwd=self.repo_root,
+            capture_output=True,
+            text=True,
             check=False
         )
-        subprocess.run(
-            ["git", "commit", "-m", f"{name}"],
-            cwd=self.repo_root,
-            check=False
-        )
+        if result.returncode != 0:
+            self.log("❌ Commit finalizer failed.")
+            self.log(result.stdout)
+            self.log(result.stderr)
 
 
 def main():
