@@ -1,6 +1,6 @@
 # TODO List: Clippy
-Generated: 2026-02-13 18:21:18
-**Stats**: 54 total | 51 not started | 1 in progress | 2 completed | 0 failed
+Generated: 2026-02-13 18:28:52
+**Stats**: 54 total | 50 not started | 1 in progress | 3 completed | 0 failed
 ---
 
 ## In Progress
@@ -29,23 +29,6 @@ warning: this function has too many arguments (11/7)
 
 
 ## Not Started
-
-### [ ] CLIP-004: clippy::manual_contains: core.rs
-- **Priority**: medium
-- **Category**: clippy
-- **Complexity**: small
-- **Files**: engine\src\search\core.rs
-
-warning: using `contains()` instead of `iter().any()` is more efficient
-   --> engine\src\search\core.rs:156:12
-    |
-156 |         if moves.iter().any(|mm| *mm == e.best_move) {
-    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `moves.contains(&e.best_move)`
-    |
-    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_contains
-    = note: `#[warn(clippy::manual_contains)]` on by default
-
-
 
 ### [ ] CLIP-005: clippy::module_inception: mod.rs
 - **Priority**: medium
@@ -1235,3 +1218,22 @@ help: collapse nested if block
 
 
 *Completed: 2026-02-13T18:21:18.503316*
+
+### [x] CLIP-004: clippy::manual_contains: core.rs
+- **Priority**: medium
+- **Category**: clippy
+- **Complexity**: small
+- **Files**: engine\src\search\core.rs
+
+warning: using `contains()` instead of `iter().any()` is more efficient
+   --> engine\src\search\core.rs:156:12
+    |
+156 |         if moves.iter().any(|mm| *mm == e.best_move) {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `moves.contains(&e.best_move)`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_contains
+    = note: `#[warn(clippy::manual_contains)]` on by default
+
+
+
+*Completed: 2026-02-13T18:28:52.031266*
