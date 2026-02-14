@@ -81,9 +81,14 @@ Edit `cody-agent/config.json`:
 
 ```json
 {
-  "model": "o3-mini",
+  "model": "gpt-5.3-codex",
   "use_local": false,
-  "local_provider": "ollama",
+  "skills": {
+    "enabled": ["github_fix_ci", "github_address_comments"],
+    "run_timing": "after",
+    "ci_log_path": ".orchestrator_logs/ci_failure.txt",
+    "pr_comments_path": ".orchestrator_logs/pr_review_comments.json"
+  },
   "github_repo": "yourusername/cody-engine"
 }
 ```
@@ -91,13 +96,11 @@ Edit `cody-agent/config.json`:
 ## Environment Setup
 
 ```powershell
-# Install Codex CLI
-npm install
+# Install Agents SDK
+pip install openai-agents
 
-# Authenticate Codex
-codex login
-# or use an API key
-$env:CODEX_API_KEY = "sk-..."
+# OpenAI API key
+$env:OPENAI_API_KEY = "sk-..."
 
 # GitHub token (optional)
 $env:GITHUB_TOKEN = "ghp_..."

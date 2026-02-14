@@ -10,7 +10,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 from todo_manager import TodoList, generate_unique_id
-from codex_terminal import run_codex, get_codex_model
+from agent_runner import run_agent
 
 
 def load_config():
@@ -80,13 +80,21 @@ def gather_code_context(repo_root: Path) -> str:
 
 
 def call_ai(prompt: str, config: dict, repo_root: Path) -> str:
-    """Call Codex with the prompt."""
-    model = get_codex_model(config)
+    """Call the agent with the prompt."""
+    model = config.get("model")
     if model:
         print(f"🤖 Analyzing performance with {model}...")
     else:
-        print("🤖 Analyzing performance with Codex...")
-    return run_codex(prompt, config, repo_root, "performance_analysis")
+        print("🤖 Analyzing performance...")
+
+    system_prompt = (
+        "You are a performance optimization expert specializing in Rust and chess engines. "
+        "You MUST respond with ONLY valid JSON. Wrap the output in a root key 'items', "
+        "e.g., {\"items\": [...]}. Do not include any text, explanations, or markdown formatting - "
+        "only output the raw JSON object."
+    )
+
+    return run_agent(system_prompt, prompt, config, repo_root, "performance_analysis")
 
 
 def extract_json_from_response(response: str, repo_root: Path, phase: str) -> list:

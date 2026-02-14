@@ -136,29 +136,28 @@ After each main phase, the system runs `cargo clippy` and:
 
 ### Setup Steps
 
-1. **Install Codex CLI:**
+1. **Install Agents SDK:**
    ```powershell
-   npm install
+   pip install openai-agents
    ```
 
 2. **Configure AI model** (edit `cody-agent/config.json`):
    ```json
    {
-     "model": "o3-mini",
+     "model": "gpt-5.3-codex",
      "use_local": false,
-     "local_provider": "ollama"
+     "skills": {
+       "enabled": ["github_fix_ci", "github_address_comments"],
+       "run_timing": "after",
+       "ci_log_path": ".orchestrator_logs/ci_failure.txt",
+       "pr_comments_path": ".orchestrator_logs/pr_review_comments.json"
+     }
    }
    ```
 
-   **Options:**
-   - `use_local: false` → Use Codex with OpenAI authentication
-   - `use_local: true` → Use Codex with local provider (default: `ollama`)
-
-3. **Authenticate Codex and set tokens:**
+3. **Set environment variables:**
    ```powershell
-   codex login
-   # or use an API key
-   $env:CODEX_API_KEY = "sk-..."
+   $env:OPENAI_API_KEY = "sk-..."
    $env:GITHUB_TOKEN = "ghp_..."
    ```
 
@@ -440,9 +439,14 @@ Edit `cody-agent/config.json`:
 
 ```json
 {
-   "model": "o3-mini",
+   "model": "gpt-5.3-codex",
    "use_local": false,
-   "local_provider": "ollama",
+   "skills": {
+      "enabled": ["github_fix_ci", "github_address_comments"],
+      "run_timing": "after",
+      "ci_log_path": ".orchestrator_logs/ci_failure.txt",
+      "pr_comments_path": ".orchestrator_logs/pr_review_comments.json"
+   },
   "branch_prefix": "ai-feature-",
   "github_repo": "yourusername/cody-engine"
 }
@@ -452,22 +456,20 @@ Edit `cody-agent/config.json`:
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `use_local` | bool | Use Codex `--oss` with a local provider |
-| `local_provider` | string | Local provider for Codex (`ollama` or `lmstudio`) |
-| `model` | string | Model name passed to `codex exec --model` |
+| `use_local` | bool | Reserved for future local provider support |
+| `model` | string | OpenAI model name for the Agents SDK |
+| `skills.enabled` | list | Enabled skills (`github_fix_ci`, `github_address_comments`) |
+| `skills.run_timing` | string | When to run skills (`after`) |
+| `skills.ci_log_path` | string | CI failure log file path |
+| `skills.pr_comments_path` | string | PR review comments path |
 | `branch_prefix` | string | Git branch name prefix |
 | `github_repo` | string | GitHub repo (for future PR integration) |
-| `codex_profile` | string | Optional Codex config profile |
-| `codex_path` | string | Optional path to the `codex` executable |
-| `codex_config_overrides` | list | Extra `--config` overrides for Codex |
 
 ### Environment Variables
 
-**For Codex authentication:**
+**For OpenAI authentication:**
 ```powershell
-codex login
-# or use an API key
-$env:CODEX_API_KEY = "sk-..."
+$env:OPENAI_API_KEY = "sk-..."
 ```
 
 **For GitHub integration:**
@@ -477,13 +479,9 @@ $env:GITHUB_TOKEN = "ghp_..."
 
 ### AI Model Examples
 
-**Codex (OpenAI) Models:**
-- `o3-mini`
+**OpenAI Models:**
+- `gpt-5.3-codex`
 - `o4-mini`
-
-**Local Models (Codex `--oss`):**
-- `deepseek-coder-v2:16b-lite-instruct-q4_K_M`
-- `qwen-coder:latest`
 
 ## Quality Gates
 

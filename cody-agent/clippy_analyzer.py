@@ -12,7 +12,7 @@ import subprocess
 from pathlib import Path
 from todo_manager import TodoList
 from console_utils import safe_print
-from codex_terminal import run_codex, get_codex_model
+from agent_runner import run_agent
 
 
 CLIPPY_LINT_ARGS = [
@@ -167,13 +167,20 @@ def run_clippy_with_priority_and_parser(repo_root: Path) -> dict:
 
 
 def call_ai(prompt: str, config: dict, repo_root: Path) -> str:
-    """Call Codex with the prompt."""
-    model = get_codex_model(config)
+    """Call the agent with the prompt."""
+    model = config.get("model")
     if model:
         safe_print(f"🤖 Analyzing clippy with {model}...")
     else:
-        safe_print("🤖 Analyzing clippy with Codex...")
-    return run_codex(prompt, config, repo_root, "clippy_analysis")
+        safe_print("🤖 Analyzing clippy...")
+
+    system_prompt = (
+        "You are a senior Rust engineer analyzing clippy output. "
+        "Your task is to provide actionable code modifications to fix the issues identified by Clippy. "
+        "Respond with the modified code directly, and include comments to explain the changes where necessary."
+    )
+
+    return run_agent(system_prompt, prompt, config, repo_root, "clippy_analysis")
 
 
 def extract_json_from_response(response: str, repo_root: Path, phase: str) -> list:
