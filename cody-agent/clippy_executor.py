@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 from openai import OpenAI
 from todo_manager import TodoList
+from executor_state import record_last_change
 from console_utils import safe_print
 from validation import ensure_builds_or_fix, rollback_changes
 from datetime import datetime
@@ -340,6 +341,7 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
             if apply_direct_fixes(repo_root, item):
                 todo_list.mark_completed(item_id)
                 todo_list.save()
+                record_last_change(repo_root, "clippy", item_id, [file_path])
                 safe_print(f"\n✅ Clippy fix {item_id} completed successfully")
                 return True
         # LLM failed to provide valid code - mark as failed and skip
@@ -395,6 +397,7 @@ def execute_clippy_fix(item_id: str, repo_root: Path, config: dict) -> bool:
     # Only mark complete if changes were applied AND build is successful
     todo_list.mark_completed(item_id)
     todo_list.save()
+    record_last_change(repo_root, "clippy", item_id, [file_path])
     safe_print(f"\n✅ Clippy fix {item_id} completed successfully")
     return True
 

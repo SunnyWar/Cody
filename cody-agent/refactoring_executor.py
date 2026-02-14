@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from openai import OpenAI
 from todo_manager import TodoList
+from executor_state import record_last_change
 from validation import ensure_builds_or_fix, rollback_changes
 
 
@@ -293,6 +294,7 @@ Files Affected: {', '.join(item.files_affected)}
     # Mark as completed
     todo_list.mark_completed(item_id)
     todo_list.save()
+    record_last_change(repo_root, "refactoring", item_id, [file_path])
     
     print(f"\n✅ Refactoring {item_id} completed successfully")
     return True

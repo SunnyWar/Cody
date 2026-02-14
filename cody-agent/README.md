@@ -236,6 +236,9 @@ python refactoring_executor.py REF-001     # Execute specific refactoring
 python performance_executor.py PERF-003    # Execute specific optimization
 python features_executor.py FEAT-005       # Execute specific feature
 python clippy_executor.py CLIPPY-001       # Execute specific clippy fix
+
+# Finalize the commit for the executor change
+python commit_executor_change.py
 ```
 
 **Execute next available item:**
@@ -245,6 +248,9 @@ python refactoring_executor.py next        # Next refactoring
 python performance_executor.py next        # Next optimization
 python features_executor.py next           # Next feature
 python clippy_executor.py next             # Next clippy fix
+
+# Finalize the commit for the executor change
+python commit_executor_change.py
 ```
 
 **View TODO statistics:**
