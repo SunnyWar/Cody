@@ -68,9 +68,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: using `contains()` instead of `iter().any()` is more efficient\n   --> engine\\src\\search\\core.rs:156:12\n    |\n156 |         if moves.iter().any(|mm| *mm == e.best_move) {\n    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `moves.contains(&e.best_move)`\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_contains\n    = note: `#[warn(clippy::manual_contains)]` on by default\n\n",
-    "status": "not-started",
+    "status": "completed",
     "created_at": "2026-02-12T22:16:47.719130",
-    "completed_at": null,
+    "completed_at": "2026-02-13T18:28:52.031266",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\search\\core.rs"
