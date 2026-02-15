@@ -41,6 +41,7 @@ import clippy_executor
 import features_analyzer
 import features_executor
 from executor_state import record_last_change, read_last_change
+from validation import rollback_changes
 from skills_agents import run_github_fix_ci, run_github_address_comments
 
 
@@ -103,6 +104,11 @@ class Orchestrator:
         self.state["last_run"] = datetime.now().isoformat()
         with open(self.state_file, 'w') as f:
             json.dump(self.state, f, indent=2)
+
+    def _set_run_status(self, status: str):
+        """Record the last run status and persist state."""
+        self.state["last_run_status"] = status
+        self._save_state()
     
     def _advance_main_phase(self, from_phase: str):
         """Move to the next main phase, inserting clippy cleanup in between."""
@@ -146,6 +152,28 @@ class Orchestrator:
         except Exception as e:
             self.log(f"\n⚠️ Validation failed due to an error: {e}")
             return False
+
+    def _rollback_after_validation_failure(self, phase: str, item_id: str, todo_list: Optional[TodoList]):
+        """Rollback file changes and mark the task failed after validation errors."""
+        file_paths = []
+        last_change = read_last_change(self.repo_root)
+        if last_change and last_change.get("phase") == phase and last_change.get("item_id") == item_id:
+            file_paths = last_change.get("files", [])
+
+        if not file_paths and todo_list is not None:
+            item = next((it for it in todo_list.items if it.id == item_id), None)
+            if item and item.files_affected:
+                file_paths = item.files_affected
+
+        normalized = [path.replace("\\", "/") for path in file_paths if path]
+        if normalized:
+            rollback_changes(self.repo_root, normalized)
+        else:
+            self.log("⚠️ No recorded files to roll back after validation failure")
+
+        if todo_list is not None:
+            todo_list.mark_failed(item_id)
+            todo_list.save()
 
     def _is_generated_file(self, file_path: str) -> bool:
         """Return True if the path matches known generated outputs."""
@@ -262,7 +290,7 @@ class Orchestrator:
             else:
                 self.log("✅ WORKFLOW COMPLETE!")
                 self.log(f"   All phases finished. Run count: {self.state['run_count']}")
-                self._save_state()
+                self._set_run_status("complete")
                 return False
                 
         except KeyboardInterrupt:
@@ -314,11 +342,12 @@ class Orchestrator:
             # Check for actual code changes (exclude TODO files)
             if self._has_code_changes():
                 if not self._validate_changes():
-                    self._save_state()
+                    self._rollback_after_validation_failure("refactoring", next_item.id, todo_list)
+                    self._set_run_status("failed")
                     return False
                 self.log(f"✅ Successfully completed: {next_item.id}")
                 self._create_checkpoint(f"Refactoring: {next_item.id}")
-                self._save_state()
+                self._set_run_status("success")
                 return True
             else:
                 self.log(f"ℹ️ Task completed but no code changes made (TODO-only): {next_item.id}")
@@ -326,7 +355,7 @@ class Orchestrator:
                 return self._run_refactoring_task()
         else:
             self.log(f"❌ Failed: {next_item.id}")
-            self._save_state()
+            self._set_run_status("failed")
             return False
     
     def _run_performance_task(self) -> bool:
@@ -369,11 +398,12 @@ class Orchestrator:
             # Check for actual code changes (exclude TODO files)
             if self._has_code_changes():
                 if not self._validate_changes():
-                    self._save_state()
+                    self._rollback_after_validation_failure("performance", next_item.id, todo_list)
+                    self._set_run_status("failed")
                     return False
                 self.log(f"✅ Successfully completed: {next_item.id}")
                 self._create_checkpoint(f"Performance: {next_item.id}")
-                self._save_state()
+                self._set_run_status("success")
                 return True
             else:
                 self.log(f"ℹ️ Task completed but no code changes made (TODO-only): {next_item.id}")
@@ -381,7 +411,7 @@ class Orchestrator:
                 return self._run_performance_task()
         else:
             self.log(f"❌ Failed: {next_item.id}")
-            self._save_state()
+            self._set_run_status("failed")
             return False
     
     def _run_features_task(self) -> bool:
@@ -433,7 +463,8 @@ class Orchestrator:
             # Check for actual code changes (exclude TODO files)
             if self._has_code_changes():
                 if not self._validate_changes():
-                    self._save_state()
+                    self._rollback_after_validation_failure("features", next_item.id, todo_list)
+                    self._set_run_status("failed")
                     return False
                 self.log(f"✅ Successfully completed: {next_item.id}")
                 self._create_checkpoint(f"Feature: {next_item.id}")
@@ -448,7 +479,7 @@ class Orchestrator:
                     self.state["phase_started"] = datetime.now().isoformat()
                     self.state["resume_phase"] = None
 
-                self._save_state()
+                self._set_run_status("success")
                 return True
             else:
                 self.log(f"ℹ️ Task completed but no code changes made (TODO-only): {next_item.id}")
@@ -456,7 +487,7 @@ class Orchestrator:
                 return self._run_features_task()
         else:
             self.log(f"❌ Failed: {next_item.id}")
-            self._save_state()
+            self._set_run_status("failed")
             return False
 
     def _run_clippy_task(self) -> bool:
@@ -516,11 +547,12 @@ class Orchestrator:
             # Check for actual code changes (exclude TODO files)
             if self._has_code_changes():
                 if not self._validate_changes():
-                    self._save_state()
+                    self._rollback_after_validation_failure("clippy", next_item.id, todo_list)
+                    self._set_run_status("failed")
                     return False
                 self.log(f"✅ Successfully completed: {next_item.id}")
                 self._create_checkpoint(f"Clippy: {next_item.id}")
-                self._save_state()
+                self._set_run_status("success")
                 return True
             else:
                 self.log(f"ℹ️ Task completed but no code changes made (TODO-only): {next_item.id}")
@@ -528,7 +560,7 @@ class Orchestrator:
                 return self._run_clippy_task()
         else:
             self.log(f"❌ Failed: {next_item.id}")
-            self._save_state()
+            self._set_run_status("failed")
             return False
 
     def _resume_phase_after_clippy(self):
@@ -545,6 +577,7 @@ class Orchestrator:
         else:
             self.log("✅ Clippy phase complete. No phase to resume.")
             self.log("   Workflow complete - all tasks finished.")
+            self._set_run_status("complete")
             return False
 
     def _create_checkpoint(self, name: str):
@@ -582,9 +615,14 @@ def main():
     
     # Run a single improvement task
     improvement_made = orchestrator.run_single_improvement()
+    run_status = orchestrator.state.get("last_run_status")
     
     if improvement_made:
         safe_print("✅ Run completed - one code change merged")
+    elif run_status == "failed":
+        safe_print("❌ Run failed - changes were rolled back")
+    elif run_status == "complete":
+        safe_print("✅ Workflow complete - all tasks finished")
     else:
         safe_print("✅ Workflow complete - all tasks finished")
 
