@@ -1,8 +1,8 @@
 {
-  "phase": "clippy",
-  "item_id": "clippy-engine_src_perft_integration_test.rs-130-clippy_collapsible_if",
+  "phase": "performance",
+  "item_id": "PERF-001",
   "files": [
-    "engine/src/perft_integration_test.rs"
+    "bitboard/src/position.rs"
   ],
-  "timestamp": "2026-02-14T17:03:20.274914"
+  "timestamp": "2026-02-14T18:26:00.235906"
 }
