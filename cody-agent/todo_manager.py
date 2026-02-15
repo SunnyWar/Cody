@@ -28,11 +28,12 @@ class TodoItem:
         self.estimated_complexity = data.get("estimated_complexity", "medium")
         self.files_affected = data.get("files_affected", [])
         self.dependencies = data.get("dependencies", [])
+        self.consecutive_failures = data.get("consecutive_failures", 0)
         self.metadata = {k: v for k, v in data.items() 
                         if k not in ["id", "title", "priority", "category", 
                                     "description", "status", "created_at", 
                                     "completed_at", "estimated_complexity",
-                                    "files_affected", "dependencies"]}
+                                    "files_affected", "dependencies", "consecutive_failures"]}
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -48,6 +49,7 @@ class TodoItem:
             "estimated_complexity": self.estimated_complexity,
             "files_affected": self.files_affected,
             "dependencies": self.dependencies,
+            "consecutive_failures": self.consecutive_failures,
             **self.metadata
         }
     
@@ -55,15 +57,21 @@ class TodoItem:
         """Mark item as completed."""
         self.status = "completed"
         self.completed_at = datetime.now().isoformat()
+        self.consecutive_failures = 0  # Reset on success
     
     def mark_in_progress(self):
         """Mark item as in progress."""
         self.status = "in-progress"
     
-    def mark_failed(self):
-        """Mark item as permanently failed (skip for now)."""
-        self.status = "failed"
-        self.completed_at = datetime.now().isoformat()
+    def mark_failed(self, skip_permanently: bool = False):
+        """Mark item as failed. After 2 consecutive failures, skip permanently."""
+        self.consecutive_failures += 1
+        if skip_permanently or self.consecutive_failures >= 2:
+            self.status = "failed"
+            self.completed_at = datetime.now().isoformat()
+        else:
+            # Reset to not-started to allow retry
+            self.status = "not-started"
     
     def is_duplicate(self, other: 'TodoItem') -> bool:
         """Check if this item is a duplicate of another."""
@@ -141,6 +149,8 @@ class TodoList:
                     lines.append(f"- **Priority**: {item.priority}\n")
                     lines.append(f"- **Category**: {item.category}\n")
                     lines.append(f"- **Complexity**: {item.estimated_complexity}\n")
+                    if item.consecutive_failures > 0:
+                        lines.append(f"- **Consecutive Failures**: {item.consecutive_failures}/2\n")
                     if item.files_affected:
                         lines.append(f"- **Files**: {', '.join(item.files_affected)}\n")
                     if item.dependencies:
@@ -188,6 +198,10 @@ class TodoList:
         # Check dependencies
         available = []
         for item in not_started:
+            # Skip items that have failed too many times
+            if item.consecutive_failures >= 2:
+                continue
+                
             if not item.dependencies:
                 available.append(item)
             else:
@@ -200,7 +214,7 @@ class TodoList:
                     available.append(item)
         
         if not available:
-            safe_print("⚠️ All remaining items have unmet dependencies")
+            safe_print("⚠️ All remaining items have unmet dependencies or too many failures")
             return None
         
         # Sort by priority
@@ -229,12 +243,15 @@ class TodoList:
         safe_print(f"❌ Item not found: {item_id}")
         return False
     
-    def mark_failed(self, item_id: str):
-        """Mark an item as permanently failed (skip for now)."""
+    def mark_failed(self, item_id: str, skip_permanently: bool = False):
+        """Mark an item as failed. After 2 consecutive failures, skip permanently."""
         for item in self.items:
             if item.id == item_id:
-                item.mark_failed()
-                safe_print(f"⛔ Marked failed (skipping): {item_id}")
+                item.mark_failed(skip_permanently)
+                if item.status == "failed":
+                    safe_print(f"⛔ Marked failed (skipping permanently): {item_id}")
+                else:
+                    safe_print(f"⚠️ Marked failed (attempt {item.consecutive_failures}/2, will retry): {item_id}")
                 return True
         safe_print(f"❌ Item not found: {item_id}")
         return False
