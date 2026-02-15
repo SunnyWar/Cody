@@ -49,7 +49,7 @@ class Orchestrator:
     """Master orchestrator for single-merge-per-run workflow."""
     
     STATE_FILE = "orchestrator_state.json"
-    MAIN_PHASES = ["refactoring", "performance", "features"]
+    MAIN_PHASES = ["refactoring", "features", "performance"]
     GENERATED_PREFIXES = ("target/",)
     
     def __init__(self, repo_root: Path, config: dict):
@@ -90,11 +90,11 @@ class Orchestrator:
         
         # Initialize new state
         return {
-            "current_phase": "refactoring",      # which phase we're in
+            "current_phase": "clippy",           # start with clippy, then resume refactoring
             "phase_started": datetime.now().isoformat(),  # when we started this phase
             "analysis_done": False,              # have we analyzed current phase?
             "features_completed": 0,             # count of features done (for 3-feature limit)
-            "resume_phase": None,                # where to resume after clippy
+            "resume_phase": "refactoring",       # where to resume after clippy
             "last_run": None,
             "run_count": 0
         }
@@ -109,6 +109,12 @@ class Orchestrator:
         """Record the last run status and persist state."""
         self.state["last_run_status"] = status
         self._save_state()
+
+    def _clear_clippy_todo_log(self, todo_list: TodoList):
+        """Clear clippy TODO log to allow a fresh analysis pass."""
+        todo_list.items = []
+        todo_list.save()
+        self.log("🧹 Cleared clippy TODO log for a fresh analysis pass")
     
     def _advance_main_phase(self, from_phase: str):
         """Move to the next main phase, inserting clippy cleanup in between."""
@@ -516,10 +522,20 @@ class Orchestrator:
         if not next_item:
             # Check if we have any not-started items at all
             not_started_count = todo_list.count_by_status("not-started")
+            failed_count = todo_list.count_by_status("failed")
             reanalyzed = self.state.get("clippy_reanalyzed", False)
             
+            if failed_count > 0:
+                # Failed items indicate unresolved warnings; clear and re-run analysis
+                self.log("⚠️ Failed clippy items remain. Clearing log and re-analyzing...")
+                self._clear_clippy_todo_log(todo_list)
+                self.state["analysis_done"] = False
+                self.state["clippy_reanalyzed"] = False
+                self._save_state()
+                return False
+
             if not_started_count == 0 and not reanalyzed:
-                # All items are completed/failed - mark for re-analysis on next run
+                # All items are completed - re-analyze once more to ensure no warnings remain
                 self.log("All items processed. Will re-analyze on next run for new clippy warnings...")
                 self.state["analysis_done"] = False
                 self.state["clippy_reanalyzed"] = True

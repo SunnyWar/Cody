@@ -1,11 +1,11 @@
 {
-  "current_phase": "clippy",
-  "phase_started": "2026-02-12T22:12:25.628687",
-  "analysis_done": true,
+  "current_phase": "performance",
+  "phase_started": "2026-02-14T17:10:28.919558",
+  "analysis_done": false,
   "features_completed": 0,
-  "resume_phase": "performance",
-  "last_run": "2026-02-14T17:03:58.644968",
-  "run_count": 14,
-  "clippy_reanalyzed": false,
+  "resume_phase": null,
+  "last_run": "2026-02-14T17:10:28.919558",
+  "run_count": 17,
+  "clippy_reanalyzed": true,
   "last_run_status": "failed"
 }
