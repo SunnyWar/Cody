@@ -143,7 +143,7 @@ def run_benchmarks(repo_root: Path) -> dict:
         cwd=repo_root,
         capture_output=True,
         text=True,
-        timeout=300
+        timeout=400
     )
     
     # Extract benchmark results (simplified)
