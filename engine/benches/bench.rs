@@ -20,15 +20,15 @@ fn bench_search(c: &mut Criterion) {
     let mut cases: Vec<&engine::TestCase> = TEST_CASES.iter().collect();
     cases.sort_by(|a, b| a.name.cmp(b.name));
 
-    for case in cases {
-        group.bench_with_input(BenchmarkId::new("Position", case.name), case, |b, tc| {
-            b.iter(|| {
-                NODE_COUNT.store(0, Ordering::Relaxed);
-                let _score = engine.search(black_box(&tc.position()), depth, None, None);
-                black_box(NODE_COUNT.load(Ordering::Relaxed))
-            });
+    group.bench_function(BenchmarkId::new("AllPositions", cases.len()), |b| {
+        b.iter(|| {
+            NODE_COUNT.store(0, Ordering::Relaxed);
+            for case in &cases {
+                let _score = engine.search(black_box(&case.position()), depth, None, None);
+            }
+            black_box(NODE_COUNT.load(Ordering::Relaxed))
         });
-    }
+    });
 
     group.finish();
 }
