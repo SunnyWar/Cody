@@ -1,8 +1,8 @@
 {
   "phase": "performance",
-  "item_id": "PERF-001",
+  "item_id": "PERF-012",
   "files": [
-    "bitboard/src/position.rs"
+    "engine/src/search/core.rs"
   ],
-  "timestamp": "2026-02-14T18:26:00.235906"
+  "timestamp": "2026-02-15T04:10:21.687147"
 }
