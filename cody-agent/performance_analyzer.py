@@ -45,21 +45,46 @@ def get_prompt_template():
     return prompt_path.read_text(encoding='utf-8')
 
 
+MAX_FILE_CHARS = 200_000
+
+
+def _log_large_file(log_path: Path, rel_path: Path, char_count: int, byte_count: int):
+    """Append large file details for later analysis."""
+    with log_path.open("a", encoding="utf-8", errors="replace") as f:
+        f.write(f"{rel_path} | chars={char_count} bytes={byte_count}\n")
+
+
 def gather_code_context(repo_root: Path) -> str:
     """Gather all Rust source code for analysis."""
     excluded_dirs = {"target", "flycheck"}
     code_context = []
+    logs_dir = repo_root / ".orchestrator_logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    large_file_log = logs_dir / f"performance_large_files_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+    logged_any = False
 
     for rs_file in repo_root.rglob("*.rs"):
         if any(excluded_dir in rs_file.parts for excluded_dir in excluded_dirs):
             continue
 
         rel_path = rs_file.relative_to(repo_root)
-        content = rs_file.read_text(encoding='utf-8')
+        content = rs_file.read_text(encoding="utf-8")
+        char_count = len(content)
+        byte_count = len(content.encode("utf-8"))
+
+        if char_count > MAX_FILE_CHARS:
+            _log_large_file(large_file_log, rel_path, char_count, byte_count)
+            logged_any = True
+            content = content[:MAX_FILE_CHARS]
+            content += "\n// NOTE: FILE TRUNCATED FOR ANALYSIS\n"
+
         code_context.append(f"\n// ========== FILE: {rel_path} ==========\n{content}")
 
+    if logged_any:
+        print(f"INFO: Large files logged to {large_file_log}")
+
     if not code_context:
-        print("❌ Error: No relevant Rust files found or code context is empty.")
+        print("ERROR: No relevant Rust files found or code context is empty.")
         print("   Ensure the repository contains the expected files and paths.")
         sys.exit(1)
 

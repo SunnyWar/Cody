@@ -35,7 +35,7 @@ All executors (refactoring, performance, features, clippy) follow this pattern.
 6. Orchestrator integration: Execute a single task, commit on success, and exit so the next run can continue.
 
 ## Phase Flow and Delegation
-The orchestrator moves through phases in a strict linear sequence. After any successful refactoring, performance, or feature task, the Clippy phase is re-triggered automatically to keep the codebase clean. For detailed prompt engineering and phase-specific rules, refer to the satellite files.
+The orchestrator and its analyzers/executors must run in this strict order: Clippy → Refactor → Feature → Performance. Clippy is special: ALL clippy warnings must be resolved before moving on to other agents. If clippy has no warnings but the log still contains skipped/failed items, the clippy log must be cleared and analysis retried until it is clean. After any successful refactoring, performance, or feature task, the Clippy phase is re-triggered automatically to keep the codebase clean. For detailed prompt engineering and phase-specific rules, refer to the satellite files.
 
 | Phase       | Analysis Method                 | Satellite Document |
 |-------------|---------------------------------|--------------------|
