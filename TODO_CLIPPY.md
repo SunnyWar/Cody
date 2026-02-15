@@ -1,36 +1,7 @@
 # TODO List: Clippy
-Generated: 2026-02-14 16:47:37
-**Stats**: 3 total | 1 not started | 0 in progress | 1 completed | 1 failed
+Generated: 2026-02-14 17:03:58
+**Stats**: 3 total | 0 not started | 0 in progress | 1 completed | 2 failed
 ---
-
-## Not Started
-
-### [ ] clippy-engine_src_perft_integration_test.rs-130-clippy_collapsible_if: clippy::collapsible_if: perft_integration_test.rs
-- **Priority**: medium
-- **Category**: clippy
-- **Complexity**: small
-- **Files**: engine\src\perft_integration_test.rs
-
-warning: this `if` statement can be collapsed
-   --> engine\src\perft_integration_test.rs:130:13
-    |
-130 | /             if let Some(file) = dis_file {
-131 | |                 if mv.from().file_char() != file {
-132 | |                     continue;
-133 | |                 }
-134 | |             }
-    | |_____________^
-    |
-    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
-help: collapse nested if block
-    |
-130 ~             if let Some(file) = dis_file
-131 ~                 && mv.from().file_char() != file {
-132 |                     continue;
-133 ~                 }
-    |
-
-
 
 ## Completed
 
@@ -90,3 +61,32 @@ warning: this function has too many arguments (11/7)
 
 
 *Completed: 2026-02-14T14:03:57.385635*
+
+### [ ] clippy-engine_src_perft_integration_test.rs-130-clippy_collapsible_if: clippy::collapsible_if: perft_integration_test.rs
+- **Priority**: medium
+- **Category**: clippy
+- **Complexity**: small
+- **Files**: engine\src\perft_integration_test.rs
+
+warning: this `if` statement can be collapsed
+   --> engine\src\perft_integration_test.rs:130:13
+    |
+130 | /             if let Some(file) = dis_file {
+131 | |                 if mv.from().file_char() != file {
+132 | |                     continue;
+133 | |                 }
+134 | |             }
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
+help: collapse nested if block
+    |
+130 ~             if let Some(file) = dis_file
+131 ~                 && mv.from().file_char() != file {
+132 |                     continue;
+133 ~                 }
+    |
+
+
+
+*Completed: 2026-02-14T17:03:58.643144*

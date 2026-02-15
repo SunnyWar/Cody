@@ -55,9 +55,9 @@
     "priority": "medium",
     "category": "clippy",
     "description": "warning: this `if` statement can be collapsed\n   --> engine\\src\\perft_integration_test.rs:130:13\n    |\n130 | /             if let Some(file) = dis_file {\n131 | |                 if mv.from().file_char() != file {\n132 | |                     continue;\n133 | |                 }\n134 | |             }\n    | |_____________^\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if\nhelp: collapse nested if block\n    |\n130 ~             if let Some(file) = dis_file\n131 ~                 && mv.from().file_char() != file {\n132 |                     continue;\n133 ~                 }\n    |\n\n",
-    "status": "not-started",
+    "status": "failed",
     "created_at": "2026-02-14T12:56:21.121508",
-    "completed_at": null,
+    "completed_at": "2026-02-14T17:03:58.643144",
     "estimated_complexity": "small",
     "files_affected": [
       "engine\\src\\perft_integration_test.rs"

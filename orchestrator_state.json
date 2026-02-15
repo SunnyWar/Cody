@@ -4,7 +4,8 @@
   "analysis_done": true,
   "features_completed": 0,
   "resume_phase": "performance",
-  "last_run": "2026-02-14T16:48:17.201379",
-  "run_count": 13,
-  "clippy_reanalyzed": false
+  "last_run": "2026-02-14T17:03:58.644968",
+  "run_count": 14,
+  "clippy_reanalyzed": false,
+  "last_run_status": "failed"
 }
