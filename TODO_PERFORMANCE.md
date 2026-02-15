@@ -1,9 +1,17 @@
 # TODO List: Performance
-Generated: 2026-02-14 17:59:42
-**Stats**: 16 total | 15 not started | 1 in progress | 0 completed | 0 failed
+Generated: 2026-02-14 18:27:41
+**Stats**: 16 total | 13 not started | 2 in progress | 0 completed | 1 failed
 ---
 
 ## In Progress
+
+### [ ] PERF-003: Remove O(64) Square::all_array scans in generate_pseudo_captures
+- **Priority**: high
+- **Category**: move_gen
+- **Complexity**: medium
+- **Files**: bitboard/src/movegen/captures.rs
+
+
 
 ### [ ] PERF-010: Reduce quiescence explosion via delta pruning and SEE-like filter
 - **Priority**: critical
@@ -15,27 +23,11 @@ Generated: 2026-02-14 17:59:42
 
 ## Not Started
 
-### [ ] PERF-001: Avoid repeated color piece ORs via cached occupancy bitboards
-- **Priority**: high
-- **Category**: memory
-- **Complexity**: medium
-- **Files**: bitboard/src/position.rs
-
-
-
 ### [ ] PERF-002: Inline and simplify BitBoardMask helpers to reduce overhead
 - **Priority**: medium
 - **Category**: rust_specific
 - **Complexity**: small
 - **Files**: bitboard/src/bitboardmask.rs
-
-
-
-### [ ] PERF-003: Remove O(64) Square::all_array scans in generate_pseudo_captures
-- **Priority**: high
-- **Category**: move_gen
-- **Complexity**: medium
-- **Files**: bitboard/src/movegen/captures.rs
 
 
 
@@ -134,3 +126,15 @@ Generated: 2026-02-14 17:59:42
 - **Files**: Cargo.toml, engine/benches/bench.rs
 
 
+
+## Failed
+
+### [ ] PERF-001: Avoid repeated color piece ORs via cached occupancy bitboards
+- **Priority**: high
+- **Category**: memory
+- **Complexity**: medium
+- **Files**: bitboard/src/position.rs
+
+
+
+*Completed: 2026-02-14T18:26:07.497242*

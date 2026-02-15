@@ -69,24 +69,48 @@ Format your response EXACTLY like this:
 Please provide the COMPLETE fixed file(s) to resolve these errors.
 Remember: FULL file contents only, no placeholders or omissions."""
 
+    max_parse_attempts = 2
+    parse_issue = ""
+
     try:
-        llm_response = run_agent(system_message, user_message, config, repo_root, "build_fix", "logic_bugs")
+        for attempt in range(1, max_parse_attempts + 1):
+            attempt_message = user_message
+            if attempt > 1:
+                attempt_message = (
+                    f"{user_message}\n\n"
+                    "Your previous response could not be parsed ("
+                    f"{parse_issue}). Follow the format EXACTLY."
+                )
 
-        code_blocks = extract_code_blocks(llm_response)
-        file_blocks = parse_file_blocks(code_blocks)
-        if not file_blocks:
-            safe_print("❌ LLM did not return any code blocks")
-            return False
+            llm_response = run_agent(
+                system_message,
+                attempt_message,
+                config,
+                repo_root,
+                "build_fix",
+                "logic_bugs",
+            )
 
-        updated_files = apply_file_blocks(repo_root, file_blocks)
-        if not updated_files:
-            safe_print("❌ LLM response did not produce valid file updates")
-            return False
+            code_blocks = extract_code_blocks(llm_response)
+            file_blocks = parse_file_blocks(code_blocks)
+            if not file_blocks:
+                parse_issue = "missing code blocks with file path comment"
+                continue
 
-        for file_path in updated_files:
-            safe_print(f"✅ Applied fix to {file_path}")
+            updated_files = apply_file_blocks(repo_root, file_blocks)
+            if not updated_files:
+                parse_issue = "no valid file updates (missing files or placeholders)"
+                continue
 
-        return run_validation(repo_root)
+            for file_path in updated_files:
+                safe_print(f"✅ Applied fix to {file_path}")
+
+            return run_validation(repo_root)
+
+        safe_print(
+            f"❌ LLM did not return valid file updates after {max_parse_attempts} attempt(s)"
+        )
+        return False
 
     except Exception as e:
         safe_print(f"❌ LLM fix failed: {e}")
