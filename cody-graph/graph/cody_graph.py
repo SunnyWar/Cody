@@ -2,7 +2,6 @@
 from langgraph.graph import StateGraph, START, END
 from state.cody_state import CodyState
 from agents.clippy_agent import clippy_agent
-from tools.read_repo import read_repo
 from tools.run_build import run_build
 from tools.run_clippy import run_clippy
 from tools.run_tests import run_tests
@@ -33,7 +32,6 @@ def after_tests(state: CodyState):
 builder = StateGraph(CodyState)
 
 # Add Nodes
-builder.add_node("read_repo", read_repo)
 builder.add_node("clippy_agent", clippy_agent)
 builder.add_node("apply_diff", apply_diff)
 builder.add_node("run_clippy", run_clippy)
@@ -42,10 +40,7 @@ builder.add_node("run_tests", run_tests)
 builder.add_node("rollback_changes", rollback_changes)
 
 # Define Flow
-builder.add_edge(START, "read_repo")
-
-# 1. Start -> Agent (Think of a fix)
-builder.add_edge("read_repo", "clippy_agent")
+builder.add_edge(START, "run_clippy")
 
 # 2. Agent -> Apply Diff (Write fix to disk)
 builder.add_conditional_edges(
