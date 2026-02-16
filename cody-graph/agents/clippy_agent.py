@@ -1,9 +1,42 @@
+import json
+import os
+from pathlib import Path
+
 from openai import OpenAI
+
 from state.cody_state import CodyState
 
-client = OpenAI()
+def _load_config(repo_path: str) -> dict:
+    config_override = os.environ.get("CODY_CONFIG_PATH")
+    if config_override:
+        config_path = Path(config_override)
+    else:
+        config_path = Path(repo_path) / "cody-agent" / "config.json"
+    if not config_path.exists():
+        return {}
+    try:
+        return json.loads(config_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+def _select_model(config: dict) -> str:
+    models = config.get("models", {}) if isinstance(config, dict) else {}
+    return models.get("clippy") or config.get("model") or "gpt-4o-mini"
 
 def clippy_agent(state: CodyState) -> CodyState:
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        return {
+            **state,
+            "last_command": "clippy_llm_think",
+            "last_output": "Missing OPENAI_API_KEY environment variable.",
+            "status": "error",
+        }
+
+    config = _load_config(state.get("repo_path", ""))
+    model = _select_model(config)
+    client = OpenAI(api_key=api_key)
+
     system_prompt = """
 You are Cody's ClippyAgent. 
 Goal: Reduce Clippy warnings in this Rust project.
@@ -33,7 +66,7 @@ STRICT RULES:
     ]
     
     resp = client.chat.completions.create(
-        model="gpt-4o-mini",  # Corrected model name
+        model=model,
         messages=messages,
     )
     reply = resp.choices[0].message.content

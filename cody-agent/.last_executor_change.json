@@ -1,8 +1,0 @@
-{
-  "phase": "performance",
-  "item_id": "PERF-012",
-  "files": [
-    "engine/src/search/core.rs"
-  ],
-  "timestamp": "2026-02-15T04:10:21.687147"
-}

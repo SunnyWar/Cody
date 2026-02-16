@@ -3,11 +3,12 @@ import textwrap
 
 from state.cody_state import CodyState
 
-def run_clippy(state: CodyState) -> CodyState:
+
+def run_build(state: CodyState) -> CodyState:
     repo = state["repo_path"]
     try:
         result = subprocess.run(
-            ["cargo", "clippy", "--all-targets", "--all-features"],
+            ["cargo", "build"],
             cwd=repo,
             capture_output=True,
             text=True,
@@ -23,12 +24,12 @@ def run_clippy(state: CodyState) -> CodyState:
         """)
         status = "ok" if result.returncode == 0 else "error"
     except Exception as e:
-        output = f"Exception while running clippy: {e}"
+        output = f"Exception while running cargo build: {e}"
         status = "error"
 
     return {
         **state,
         "last_output": output,
-        "last_command": "clippy",
+        "last_command": "cargo_build",
         "status": status,
     }
