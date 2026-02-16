@@ -8,7 +8,7 @@ def run_clippy(state: CodyState) -> CodyState:
     repo = state["repo_path"]
     try:
         result = subprocess.run(
-            ["cargo", "clippy", "--all-targets", "--all-features"],
+            ["cargo", "clippy", "--", "-D", "warnings"],
             cwd=repo,
             capture_output=True,
             text=True,
