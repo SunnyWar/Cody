@@ -6,15 +6,18 @@ from state.cody_state import CodyState
 
 
 def rollback_changes(state: CodyState) -> CodyState:
+    print("[cody-graph] rollback_changes: start", flush=True)
     repo = state["repo_path"]
     diff_content = state.get("last_diff")
     if not diff_content:
-        return {
+        result_state = {
             **state,
             "last_output": "No diff available to rollback.",
             "last_command": "rollback",
             "status": "error",
         }
+        print("[cody-graph] rollback_changes: end (error)", flush=True)
+        return result_state
 
     patch_path = os.path.join(repo, "rollback.patch")
     try:
@@ -44,18 +47,22 @@ def rollback_changes(state: CodyState) -> CodyState:
             }
 
         if result.returncode == 0:
-            return {
+            result_state = {
                 **state,
                 "last_output": "Rollback applied.",
                 "last_command": "rollback",
                 "status": "error",
             }
-        return {
+            print("[cody-graph] rollback_changes: end (error)", flush=True)
+            return result_state
+        result_state = {
             **state,
             "last_output": f"Rollback failed: {result.stderr}",
             "last_command": "rollback",
             "status": "error",
         }
+        print("[cody-graph] rollback_changes: end (error)", flush=True)
+        return result_state
     finally:
         if os.path.exists(patch_path):
             os.remove(patch_path)

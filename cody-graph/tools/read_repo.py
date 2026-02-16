@@ -5,9 +5,12 @@ def read_repo(state: dict) -> dict:
     Scans the repository path for Rust files and adds their content 
     to the state so the agent has context.
     """
+    print("[cody-graph] read_repo: start", flush=True)
     repo_path = state.get("repo_path")
     if not repo_path or not os.path.exists(repo_path):
-        return {**state, "status": "error", "last_output": "Invalid repo path."}
+        result = {**state, "status": "error", "last_output": "Invalid repo path."}
+        print("[cody-graph] read_repo: end (error)", flush=True)
+        return result
 
     context_parts = []
     
@@ -28,8 +31,10 @@ def read_repo(state: dict) -> dict:
 
     full_context = "\n".join(context_parts)
     
-    return {
+    result = {
         **state,
         "last_output": f"Read {len(context_parts)} Rust files.\n" + full_context,
         "status": "pending"
     }
+    print("[cody-graph] read_repo: end (ok)", flush=True)
+    return result

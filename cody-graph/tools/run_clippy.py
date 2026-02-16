@@ -4,6 +4,7 @@ import textwrap
 from state.cody_state import CodyState
 
 def run_clippy(state: CodyState) -> CodyState:
+    print("[cody-graph] run_clippy: start", flush=True)
     repo = state["repo_path"]
     try:
         result = subprocess.run(
@@ -26,9 +27,11 @@ def run_clippy(state: CodyState) -> CodyState:
         output = f"Exception while running clippy: {e}"
         status = "error"
 
-    return {
+    result_state = {
         **state,
         "last_output": output,
         "last_command": "clippy",
         "status": status,
     }
+    print(f"[cody-graph] run_clippy: end ({status})", flush=True)
+    return result_state

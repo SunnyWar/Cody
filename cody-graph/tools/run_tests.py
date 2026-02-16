@@ -5,6 +5,7 @@ from state.cody_state import CodyState
 
 
 def run_tests(state: CodyState) -> CodyState:
+    print("[cody-graph] run_tests: start", flush=True)
     repo = state["repo_path"]
     try:
         result = subprocess.run(
@@ -27,9 +28,11 @@ def run_tests(state: CodyState) -> CodyState:
         output = f"Exception while running cargo test: {e}"
         status = "error"
 
-    return {
+    result_state = {
         **state,
         "last_output": output,
         "last_command": "cargo_test",
         "status": status,
     }
+    print(f"[cody-graph] run_tests: end ({status})", flush=True)
+    return result_state
