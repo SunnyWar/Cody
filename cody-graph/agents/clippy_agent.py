@@ -69,11 +69,22 @@ STRICT RULES:
         current_context,
     ]
     
-    resp = client.chat.completions.create(
-        model=model,
-        messages=messages,
-    )
-    reply = resp.choices[0].message.content
+    try:
+        resp = client.chat.completions.create(
+            model=model,
+            messages=messages,
+        )
+        reply = resp.choices[0].message.content
+    except Exception as e:
+        result_state = {
+            **state,
+            "last_command": "clippy_llm_think",
+            "last_output": f"Clippy agent API error: {e}",
+            "status": "error",
+        }
+        print(f"[cody-graph] clippy_agent: error: {result_state['last_output']}", flush=True)
+        print("[cody-graph] clippy_agent: end (error)", flush=True)
+        return result_state
 
     # Append the assistant's thought process to the history
     new_messages = state["messages"] + [{"role": "assistant", "content": reply}]

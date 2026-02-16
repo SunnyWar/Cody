@@ -14,6 +14,11 @@ def after_clippy(state: CodyState):
         return "run_build"
     return "clippy_agent"
 
+def after_clippy_agent(state: CodyState):
+    if state["status"] == "error":
+        return END
+    return "apply_diff"
+
 def after_build(state: CodyState):
     if state["status"] == "ok":
         return "run_tests"
@@ -43,7 +48,10 @@ builder.add_edge(START, "read_repo")
 builder.add_edge("read_repo", "clippy_agent")
 
 # 2. Agent -> Apply Diff (Write fix to disk)
-builder.add_edge("clippy_agent", "apply_diff")
+builder.add_conditional_edges(
+    "clippy_agent",
+    after_clippy_agent,
+)
 
 # 3. Apply Diff -> Run Clippy (Verify fix)
 builder.add_edge("apply_diff", "run_clippy")
