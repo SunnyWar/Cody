@@ -7,9 +7,12 @@ def apply_diff(state: dict) -> dict:
     """
     Parses the last assistant message for a unified diff and applies it.
     """
+    print("[cody-graph] apply_diff: start", flush=True)
     messages = state.get("messages", [])
     if not messages:
-        return {**state, "status": "error", "last_output": "No messages found."}
+        result = {**state, "status": "error", "last_output": "No messages found."}
+        print("[cody-graph] apply_diff: end (error)", flush=True)
+        return result
 
     last_reply = messages[-1]["content"]
     repo_path = state["repo_path"]
@@ -23,7 +26,9 @@ def apply_diff(state: dict) -> dict:
         if "---" in last_reply and "+++" in last_reply:
             diff_content = last_reply
         else:
-            return {**state, "status": "pending", "last_output": "No diff found to apply."}
+            result = {**state, "status": "pending", "last_output": "No diff found to apply."}
+            print("[cody-graph] apply_diff: end (no diff)", flush=True)
+            return result
 
     try:
         # Write the diff to a temporary file
@@ -47,24 +52,32 @@ def apply_diff(state: dict) -> dict:
             )
         else:
             os.remove(patch_path)
-            return {
+            result_state = {
                 **state,
                 "status": "error",
                 "last_output": "No patching tool found (git or patch).",
             }
+            print("[cody-graph] apply_diff: end (error)", flush=True)
+            return result_state
 
         os.remove(patch_path) # Clean up
 
         if result.returncode == 0:
-            return {
+            result_state = {
                 **state,
                 "status": "pending",
                 "last_output": "Patch applied successfully.",
                 "last_diff": diff_content,
                 "last_command": "apply_diff",
             }
+            print("[cody-graph] apply_diff: end (ok)", flush=True)
+            return result_state
         else:
-            return {**state, "status": "error", "last_output": f"Patch failed: {result.stderr}"}
+            result_state = {**state, "status": "error", "last_output": f"Patch failed: {result.stderr}"}
+            print("[cody-graph] apply_diff: end (error)", flush=True)
+            return result_state
 
     except Exception as e:
-        return {**state, "status": "error", "last_output": f"Error applying patch: {e}"}
+        result_state = {**state, "status": "error", "last_output": f"Error applying patch: {e}"}
+        print("[cody-graph] apply_diff: end (error)", flush=True)
+        return result_state

@@ -24,14 +24,17 @@ def _select_model(config: dict) -> str:
     return models.get("clippy") or config.get("model") or "gpt-4o-mini"
 
 def clippy_agent(state: CodyState) -> CodyState:
+    print("[cody-graph] clippy_agent: start", flush=True)
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
-        return {
+        result_state = {
             **state,
             "last_command": "clippy_llm_think",
             "last_output": "Missing OPENAI_API_KEY environment variable.",
             "status": "error",
         }
+        print("[cody-graph] clippy_agent: end (error)", flush=True)
+        return result_state
 
     config = _load_config(state.get("repo_path", ""))
     model = _select_model(config)
@@ -74,9 +77,11 @@ STRICT RULES:
     # Append the assistant's thought process to the history
     new_messages = state["messages"] + [{"role": "assistant", "content": reply}]
     
-    return {
+    result_state = {
         **state,
         "messages": new_messages,
         "last_command": "clippy_llm_think",
         "status": "pending",
     }
+    print("[cody-graph] clippy_agent: end (ok)", flush=True)
+    return result_state
