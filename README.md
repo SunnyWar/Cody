@@ -13,9 +13,6 @@ Unlike traditional engines (like Stockfish) or NNUE-based engines tuned by human
 - **Goal:** Achieve a competitive ELO rating with a codebase birthed from prompt engineering.
 
 ## 🛠 Features (Current Status)
-*** CURRENTLY NOT WORKING ***
-The engine can be used to play chess. That functionss. The problem is the orchestration to get the LLM to try to improve the engine is not working. I've had tried many dozens of iterations of Copilot to try to get it to make an LLM orchestration that will make it work. Unfortunately it often forgets what it's trying to do, generates response after response after response of syntactically wrong code and often claims that it's done when it did nothing.
-At this point I have little confident that LLM's can even make a rudimentary set of scripts to interate on the code to improve it.
 
 - **Bitboard representation:** High-performance board state management.
 - **UCI protocol support:** Works with standard chess GUIs like Arena, Cute Chess, or Scid vs. PC.
@@ -27,31 +24,26 @@ At this point I have little confident that LLM's can even make a rudimentary set
 
 ## 🧠 How Cody Learns
 
-Cody uses a recursive feedback loop when the agent attempts a code improvement:
+Cody uses a simple loop when the agent attempts a code improvement:
 
-1. **Hypothesize:** The LLM suggests a chess logic improvement (e.g., "Implement Null Move Pruning").
-2. **Execute:** The orchestrator applies the patch.
-3. **Verify:** The local environment runs `cargo test`.
-4. **Refine:** If tests fail, Cody analyzes the compiler error and self-corrects.
+1. **Read:** Load Rust files to provide context.
+2. **Propose:** The LLM suggests a fix and returns a unified diff.
+3. **Apply:** The diff is applied to disk.
+4. **Verify:** Run `cargo clippy`, then `cargo build`, then `cargo test`.
+5. **Rollback:** If build or tests fail, the last diff is reverted.
 
-## 🧪 Orchestrator Setup (OpenAI Agents SDK)
+## 🧪 Orchestrator Setup (LangGraph)
 
-Install the Agents SDK:
+Install LangGraph (and the OpenAI client):
 
 ```powershell
-pip install openai-agents
+pip install -U langgraph openai
 ```
 
 Authenticate with OpenAI:
 
 ```powershell
 $env:OPENAI_API_KEY = "sk-..."
-```
-
-Set GitHub token if you use PR integration:
-
-```powershell
-$env:GITHUB_TOKEN = "ghp_..."
 ```
 
 Configure the orchestrator in `cody-agent/config.json`:
@@ -77,51 +69,20 @@ Configure the orchestrator in `cody-agent/config.json`:
 }
 ```
 
-## ▶️ Run the Orchestrator
+## ▶️ Run the Graph Agent
 
-From the repo root, choose one of the following:
-
-```powershell
-./run_orchestrator.ps1
-```
+From the repo root:
 
 ```powershell
-python .\cody-agent\orchestrator.py
+python .\cody-graph\main.py
 ```
 
-## Human TODO Items
-0. **Essential baseline functionality - human directs AI to add these features.**
-   - 'cargo fmt' after any code changes
-   - UCI Command: debug [on | off] 
-   - UCI Command: setoption name Hash value <x>
-   - UCI Command: setoption name Clear Hash
-   - UCI Command: go ponder Starts searching in "hint" mode on the opponent's time.
-   - UCI Command: go nodes <x>
-   - UCI Command: go mate <x>
-   - UCI Command: go searchmoves <move1> ... <moveN> 
-   - UCI Command: ponderhit
-   - UCI Command: info seldepth <x> (Output command)
-   - UCI Command: info nps <x> (Output command)
-   - UCI Command: info hashfull <x> (Output command)
-1. **PGO optimization**
-   - Add a PGO build profile.
-   - Add a PGO workflow.
-   - Add a PGO training harness.
-   - Add a PGO FEN suite.
-   - Add a PGO merge rule ("only merge if PGO improves speed").
-2. **Parameter tuning**
-   - A parameter registry.
-   - A tuning harness.
-   - A tuning dataset.
-   - A tuning workflow.
-3. **SPRT testing**
-   - Pick a harness.
-   - Configure it.
-   - Register machines.
-4. **Strong AI evaluation (premium models)**
-   - Secure funding.
-5. **Tune orchestration**
-   - Log summary of things tried, only allow retry after signifant code changes
+Optional environment overrides:
+
+```powershell
+$env:CODY_REPO_PATH = "D:\Cody"
+$env:CODY_CONFIG_PATH = "D:\Cody\cody-agent\config.json"
+```
 
 ## 🛠 License
 
