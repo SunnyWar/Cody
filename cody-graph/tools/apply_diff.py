@@ -11,6 +11,7 @@ def apply_diff(state: dict) -> dict:
     messages = state.get("messages", [])
     if not messages:
         result = {**state, "status": "error", "last_output": "No messages found."}
+        print(f"[cody-graph] apply_diff: error: {result['last_output']}", flush=True)
         print("[cody-graph] apply_diff: end (error)", flush=True)
         return result
 
@@ -57,6 +58,7 @@ def apply_diff(state: dict) -> dict:
                 "status": "error",
                 "last_output": "No patching tool found (git or patch).",
             }
+            print(f"[cody-graph] apply_diff: error: {result_state['last_output']}", flush=True)
             print("[cody-graph] apply_diff: end (error)", flush=True)
             return result_state
 
@@ -74,10 +76,12 @@ def apply_diff(state: dict) -> dict:
             return result_state
         else:
             result_state = {**state, "status": "error", "last_output": f"Patch failed: {result.stderr}"}
+            print(f"[cody-graph] apply_diff: error: {result_state['last_output']}", flush=True)
             print("[cody-graph] apply_diff: end (error)", flush=True)
             return result_state
 
     except Exception as e:
         result_state = {**state, "status": "error", "last_output": f"Error applying patch: {e}"}
+        print(f"[cody-graph] apply_diff: error: {result_state['last_output']}", flush=True)
         print("[cody-graph] apply_diff: end (error)", flush=True)
         return result_state

@@ -33,5 +33,7 @@ def run_clippy(state: CodyState) -> CodyState:
         "last_command": "clippy",
         "status": status,
     }
+    if status != "ok":
+        print(f"[cody-graph] run_clippy: error:\n{output}", flush=True)
     print(f"[cody-graph] run_clippy: end ({status})", flush=True)
     return result_state

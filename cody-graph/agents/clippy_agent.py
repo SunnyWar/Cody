@@ -33,6 +33,7 @@ def clippy_agent(state: CodyState) -> CodyState:
             "last_output": "Missing OPENAI_API_KEY environment variable.",
             "status": "error",
         }
+        print(f"[cody-graph] clippy_agent: error: {result_state['last_output']}", flush=True)
         print("[cody-graph] clippy_agent: end (error)", flush=True)
         return result_state
 

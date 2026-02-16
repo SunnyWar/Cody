@@ -9,6 +9,7 @@ def read_repo(state: dict) -> dict:
     repo_path = state.get("repo_path")
     if not repo_path or not os.path.exists(repo_path):
         result = {**state, "status": "error", "last_output": "Invalid repo path."}
+        print(f"[cody-graph] read_repo: error: {result['last_output']}", flush=True)
         print("[cody-graph] read_repo: end (error)", flush=True)
         return result
 

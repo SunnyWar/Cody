@@ -34,5 +34,7 @@ def run_build(state: CodyState) -> CodyState:
         "last_command": "cargo_build",
         "status": status,
     }
+    if status != "ok":
+        print(f"[cody-graph] run_build: error:\n{output}", flush=True)
     print(f"[cody-graph] run_build: end ({status})", flush=True)
     return result_state
