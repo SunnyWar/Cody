@@ -36,5 +36,11 @@ gauntlet.pgn
 config.json
 cody-agent/__pycache__/
 cody-graph/agents/__pycache__/
+cody-graph/graph/__pycache__/
+cody-graph/state/__pycache__/
+cody-graph/tools/__pycache__/
 .orchestrator_logs/
 TODO_CLIPPY.md
+
+
+
