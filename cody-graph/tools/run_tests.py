@@ -34,5 +34,7 @@ def run_tests(state: CodyState) -> CodyState:
         "last_command": "cargo_test",
         "status": status,
     }
+    if status != "ok":
+        print(f"[cody-graph] run_tests: error:\n{output}", flush=True)
     print(f"[cody-graph] run_tests: end ({status})", flush=True)
     return result_state

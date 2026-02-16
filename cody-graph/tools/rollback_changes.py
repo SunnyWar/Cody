@@ -16,6 +16,7 @@ def rollback_changes(state: CodyState) -> CodyState:
             "last_command": "rollback",
             "status": "error",
         }
+        print(f"[cody-graph] rollback_changes: error: {result_state['last_output']}", flush=True)
         print("[cody-graph] rollback_changes: end (error)", flush=True)
         return result_state
 
@@ -53,6 +54,7 @@ def rollback_changes(state: CodyState) -> CodyState:
                 "last_command": "rollback",
                 "status": "error",
             }
+            print(f"[cody-graph] rollback_changes: error: {result_state['last_output']}", flush=True)
             print("[cody-graph] rollback_changes: end (error)", flush=True)
             return result_state
         result_state = {
@@ -61,6 +63,7 @@ def rollback_changes(state: CodyState) -> CodyState:
             "last_command": "rollback",
             "status": "error",
         }
+        print(f"[cody-graph] rollback_changes: error: {result_state['last_output']}", flush=True)
         print("[cody-graph] rollback_changes: end (error)", flush=True)
         return result_state
     finally:
