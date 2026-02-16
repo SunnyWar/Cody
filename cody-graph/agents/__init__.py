@@ -1,3 +1,3 @@
-from .clippy_agent import ClippyAgent
+from .clippy_agent import clippy_agent
 
-__all__ = ["ClippyAgent"]
+__all__ = ["clippy_agent"]

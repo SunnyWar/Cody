@@ -1,3 +1,3 @@
-from .cody_graph import CodyGraph
+from .cody_graph import app
 
-__all__ = ["CodyGraph"]
+__all__ = ["app"]

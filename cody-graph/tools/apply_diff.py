@@ -1,6 +1,7 @@
-import subprocess
 import os
 import re
+import shutil
+import subprocess
 
 def apply_diff(state: dict) -> dict:
     """
@@ -22,7 +23,7 @@ def apply_diff(state: dict) -> dict:
         if "---" in last_reply and "+++" in last_reply:
             diff_content = last_reply
         else:
-            return {**state, "status": "ok", "last_output": "No diff found to apply."}
+            return {**state, "status": "pending", "last_output": "No diff found to apply."}
 
     try:
         # Write the diff to a temporary file
@@ -30,18 +31,38 @@ def apply_diff(state: dict) -> dict:
         with open(patch_path, "w") as f:
             f.write(diff_content)
 
-        # Apply the patch using the 'patch' utility
-        result = subprocess.run(
-            ["patch", "-p1", "-i", "changes.patch"],
-            cwd=repo_path,
-            capture_output=True,
-            text=True
-        )
+        if shutil.which("git"):
+            result = subprocess.run(
+                ["git", "apply", "--whitespace=nowarn", "changes.patch"],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+            )
+        elif shutil.which("patch"):
+            result = subprocess.run(
+                ["patch", "-p1", "-i", "changes.patch"],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+            )
+        else:
+            os.remove(patch_path)
+            return {
+                **state,
+                "status": "error",
+                "last_output": "No patching tool found (git or patch).",
+            }
 
         os.remove(patch_path) # Clean up
 
         if result.returncode == 0:
-            return {**state, "status": "pending", "last_output": "Patch applied successfully."}
+            return {
+                **state,
+                "status": "pending",
+                "last_output": "Patch applied successfully.",
+                "last_diff": diff_content,
+                "last_command": "apply_diff",
+            }
         else:
             return {**state, "status": "error", "last_output": f"Patch failed: {result.stderr}"}
 

@@ -2,17 +2,27 @@
 from langgraph.graph import StateGraph, START, END
 from state.cody_state import CodyState
 from agents.clippy_agent import clippy_agent
+from tools.read_repo import read_repo
+from tools.run_build import run_build
 from tools.run_clippy import run_clippy
+from tools.run_tests import run_tests
 from tools.apply_diff import apply_diff
+from tools.rollback_changes import rollback_changes
 
-def should_continue(state: CodyState):
-    """
-    Determines if we should loop back to the agent or finish.
-    We finish if status is 'ok' (no warnings) or if we hit an unrecoverable error.
-    """
+def after_clippy(state: CodyState):
+    if state["status"] == "ok":
+        return "run_build"
+    return "clippy_agent"
+
+def after_build(state: CodyState):
+    if state["status"] == "ok":
+        return "run_tests"
+    return "rollback_changes"
+
+def after_tests(state: CodyState):
     if state["status"] == "ok":
         return END
-    return "clippy_agent"
+    return "rollback_changes"
 
 # Initialize the Graph
 builder = StateGraph(CodyState)
@@ -22,6 +32,9 @@ builder.add_node("read_repo", read_repo)
 builder.add_node("clippy_agent", clippy_agent)
 builder.add_node("apply_diff", apply_diff)
 builder.add_node("run_clippy", run_clippy)
+builder.add_node("run_build", run_build)
+builder.add_node("run_tests", run_tests)
+builder.add_node("rollback_changes", rollback_changes)
 
 # Define Flow
 builder.add_edge(START, "read_repo")
@@ -35,11 +48,26 @@ builder.add_edge("clippy_agent", "apply_diff")
 # 3. Apply Diff -> Run Clippy (Verify fix)
 builder.add_edge("apply_diff", "run_clippy")
 
-# 4. Run Clippy -> Check Status (Loop or End)
+# 4. Run Clippy -> Build or Loop
 builder.add_conditional_edges(
     "run_clippy",
-    should_continue,
+    after_clippy,
 )
+
+# 5. Build -> Tests or Rollback
+builder.add_conditional_edges(
+    "run_build",
+    after_build,
+)
+
+# 6. Tests -> End or Rollback
+builder.add_conditional_edges(
+    "run_tests",
+    after_tests,
+)
+
+# 7. Rollback -> End
+builder.add_edge("rollback_changes", END)
 
 # Compile the graph into a runnable executable
 app = builder.compile()
