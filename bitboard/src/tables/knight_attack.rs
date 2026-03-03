@@ -70,6 +70,7 @@ pub const KNIGHT_ATTACKS: [BitBoardMask; 64] = [
     BitBoardMask(0x0020_4000_0000_0000),
 ];
 
+#[allow(clippy::collapsible_if)]
 #[test]
 fn test_knight_attacks_corner() {
     let attacks = KNIGHT_ATTACKS[Square::A1.index()];
