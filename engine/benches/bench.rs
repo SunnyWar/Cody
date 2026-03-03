@@ -17,6 +17,11 @@ fn bench_search(c: &mut Criterion) {
     let mut engine = Engine::new(65536, SimpleMoveGen, MaterialEvaluator);
     let mut group = c.benchmark_group("SearchBench");
 
+    // Configure for faster benchmarking: fewer iterations but still meaningful
+    group.sample_size(10); // Default is 100
+    group.warm_up_time(std::time::Duration::from_secs(1)); // Default is 3s
+    group.measurement_time(std::time::Duration::from_secs(3)); // Default is 5s
+
     let mut cases: Vec<&engine::TestCase> = TEST_CASES.iter().collect();
     cases.sort_by(|a, b| a.name.cmp(b.name));
 
@@ -35,6 +40,11 @@ fn bench_search(c: &mut Criterion) {
 
 fn bench_occupancy_to_index(c: &mut Criterion) {
     let mut group = c.benchmark_group("OccupancyIndex");
+
+    // Configure for faster benchmarking
+    group.sample_size(10);
+    group.warm_up_time(std::time::Duration::from_secs(1));
+    group.measurement_time(std::time::Duration::from_secs(2));
 
     let mask = BitBoardMask(0b10110);
     let occupancy = BitBoardMask(0b10010);
