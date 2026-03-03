@@ -85,25 +85,10 @@ def _read_context_snippet(repo_path: str, file_path: Optional[str], line_no: Opt
 
     return "File: " + rel_path + "\n" + "\n".join(snippet_lines)
 
-def clippy_agent(state: CodyState) -> CodyState:
-    print("[cody-graph] clippy_agent: start", flush=True)
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        result_state = {
-            **state,
-            "last_command": "clippy_llm_think",
-            "last_output": "Missing OPENAI_API_KEY environment variable.",
-            "status": "error",
-        }
-        print(f"[cody-graph] clippy_agent: error: {result_state['last_output']}", flush=True)
-        print("[cody-graph] clippy_agent: end (error)", flush=True)
-        return result_state
-
-    config = _load_config(state.get("repo_path", ""))
-    model = _select_model(config)
-    client = OpenAI(api_key=api_key)
-
-    system_prompt = """
+def _get_system_prompt_for_phase(phase: str) -> str:
+    """Get the system prompt appropriate for the current phase."""
+    phase_prompts = {
+        "clippy": """
 You are Cody's ClippyAgent. 
 Goal: Reduce Clippy warnings in this Rust project.
 
@@ -117,7 +102,74 @@ STRICT RULES:
 - Provide the fix in a UNIFIED DIFF format inside a ```diff code block.
 - Do not suggest external dependencies.
 - Fix only the single Clippy warning provided.
-"""
+""",
+        "refactoring": """
+You are Cody's RefactoringAgent.
+Goal: Improve code quality and maintainability through refactoring.
+
+CONTEXT PROVIDED:
+1. Source Code: You will see the content of .rs files.
+2. Analysis: You will see refactoring opportunities identified.
+
+STRICT RULES:
+- Only refactor without changing behavior.
+- Respond with a short explanation of the refactoring.
+- Provide changes in a UNIFIED DIFF format inside a ```diff code block.
+- Maintain architecture constraints (allocation-free hot path, fixed-block arena).
+""",
+        "performance": """
+You are Cody's PerformanceAgent.
+Goal: Optimize for speed and efficiency while maintaining correctness.
+
+CONTEXT PROVIDED:
+1. Source Code: Relevant Rust implementation.
+2. Benchmarks: Current performance metrics.
+
+STRICT RULES:
+- Only optimize, do not refactor unnecessarily.
+- Provide changes in a UNIFIED DIFF format inside a ```diff code block.
+- Target ≥5% performance improvement.
+- Test for correctness with perft and benchmarks.
+""",
+        "features": """
+You are Cody's FeatureAgent.
+Goal: Implement new chess engine capabilities and features.
+
+CONTEXT PROVIDED:
+1. Architecture: Design patterns and constraints.
+2. Requirements: Feature specification.
+
+STRICT RULES:
+- Follow the fixed-block arena allocation model.
+- Provide changes in a UNIFIED DIFF format inside a ```diff code block.
+- Each feature should pass all tests.
+""",
+    }
+    return phase_prompts.get(phase, phase_prompts["clippy"])
+
+def clippy_agent(state: CodyState) -> CodyState:
+    from datetime import datetime
+    
+    phase = state.get("current_phase", "clippy")
+    print(f"[cody-graph] clippy_agent: START (phase: {phase})", flush=True)
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        result_state = {
+            **state,
+            "last_command": "clippy_llm_think",
+            "last_output": "Missing OPENAI_API_KEY environment variable.",
+            "status": "error",
+        }
+        print(f"[cody-graph] clippy_agent: ERROR - {result_state['last_output']}", flush=True)
+        print("[cody-graph] clippy_agent: END (error)", flush=True)
+        return result_state
+
+    config = _load_config(state.get("repo_path", ""))
+    model = _select_model(config)
+    print(f"[cody-graph] [DIAG] Using model: {model} for phase '{phase}'", flush=True)
+    client = OpenAI(api_key=api_key)
+
+    system_prompt = _get_system_prompt_for_phase(phase)
     
     # We inject the last tool output (either code or clippy errors) 
     # as a "user" message so the LLM reacts to the current state.
@@ -136,27 +188,50 @@ STRICT RULES:
         "content": "\n\n".join(context_parts) if context_parts else "CLIPPY_OUTPUT:\n" + last_output,
     }
     
+    print(f"[cody-graph] [DIAG] Context size: {len(current_context['content'])} chars", flush=True)
+    print(f"[cody-graph] [DIAG] File with warning: {file_path}, line: {line_no}", flush=True)
+    
     messages = [
         {"role": "system", "content": system_prompt},
         *state["messages"],
         current_context,
     ]
     
+    print(f"[cody-graph] [DIAG] Total messages in context: {len(messages)}", flush=True)
+    
     try:
+        print("[cody-graph] [DIAG] Calling OpenAI API...", flush=True)
         resp = client.chat.completions.create(
             model=model,
             messages=messages,
         )
         reply = resp.choices[0].message.content
+        print(f"[cody-graph] [DIAG] Received response: {len(reply)} chars", flush=True)
+        
+        # Save LLM response for debugging
+        logs_dir = state.get("logs_dir") or os.path.join(state.get("repo_path", ""), ".cody_logs")
+        os.makedirs(logs_dir, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        response_file = os.path.join(logs_dir, f"{timestamp}_llm_response.txt")
+        with open(response_file, "w") as f:
+            f.write("=== SYSTEM PROMPT ===\n")
+            f.write(system_prompt + "\n\n")
+            f.write("=== INPUT CONTEXT ===\n")
+            f.write(current_context["content"] + "\n\n")
+            f.write("=== LLM RESPONSE ===\n")
+            f.write(reply)
+        print(f"[cody-graph] [DIAG] Saved LLM response: {response_file}", flush=True)
+        
     except Exception as e:
+        error_msg = f"Clippy agent API error: {e}"
         result_state = {
             **state,
             "last_command": "clippy_llm_think",
-            "last_output": f"Clippy agent API error: {e}",
+            "last_output": error_msg,
             "status": "error",
         }
-        print(f"[cody-graph] clippy_agent: error: {result_state['last_output']}", flush=True)
-        print("[cody-graph] clippy_agent: end (error)", flush=True)
+        print(f"[cody-graph] clippy_agent: ERROR - {error_msg}", flush=True)
+        print("[cody-graph] clippy_agent: END (error)", flush=True)
         return result_state
 
     # Append the assistant's thought process to the history
@@ -166,7 +241,9 @@ STRICT RULES:
         **state,
         "messages": new_messages,
         "last_command": "clippy_llm_think",
+        "llm_response": reply,
         "status": "pending",
     }
-    print("[cody-graph] clippy_agent: end (ok)", flush=True)
+    print("[cody-graph] [DIAG] LLM response contains '```diff': ", "```diff" in reply, flush=True)
+    print("[cody-graph] clippy_agent: END (ok)", flush=True)
     return result_state
