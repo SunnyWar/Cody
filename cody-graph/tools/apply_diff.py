@@ -5,11 +5,30 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
-def _ensure_logs_dir(repo_path: str) -> str:
-    """Create and return the .logs directory path."""
-    logs_dir = os.path.join(repo_path, ".cody_logs")
-    os.makedirs(logs_dir, exist_ok=True)
-    return logs_dir
+def _sanitize_diff(diff_content: str) -> str:
+    """Clean up diff format if LLM generated non-standard formatting.
+    
+    Handles:
+    - *** Begin/End Patch markers
+    - Missing --- +++ headers
+    - Improper @@ markers
+    """
+    lines = diff_content.strip().split('\n')
+    
+    # Remove *** Begin Patch and *** End Patch markers
+    lines = [l for l in lines if not l.startswith('*** Begin') and not l.startswith('*** End')]
+    
+    cleaned = []
+    for line in lines:
+        # Convert *** markers to --- +++ format
+        if line.startswith('*** Update File:'):
+            filename = line.replace('*** Update File:', '').strip()
+            cleaned.append(f'--- a/{filename}')
+            cleaned.append(f'+++ b/{filename}')
+        else:
+            cleaned.append(line)
+    
+    return '\n'.join(cleaned)
 
 def _save_diagnostic(logs_dir: str, name: str, content: str) -> None:
     """Save a diagnostic file with timestamp."""
@@ -62,8 +81,13 @@ def apply_diff(state: dict) -> dict:
             return result
 
     print(f"[cody-graph] [DIAG] Extracted diff content: {len(diff_content)} chars", flush=True)
+    
+    # Sanitize diff format (handle LLM-generated non-standard formats)
+    print("[cody-graph] [DIAG] Sanitizing diff format...", flush=True)
+    diff_content = _sanitize_diff(diff_content)
+    print(f"[cody-graph] [DIAG] After sanitization: {len(diff_content)} chars", flush=True)
+    
     _save_diagnostic(logs_dir, "diff_extracted", diff_content)
-    state["diff_extracted"] = diff_content
 
     try:
         # Write the diff to a temporary file

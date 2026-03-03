@@ -1,79 +1,96 @@
-# Cody AI Orchestration - Quick Reference
+# Cody AI Automation - Quick Reference
 
 ## File Locations
 
 ```
-Prompts:     .github/ai/prompts/*.md
-Scripts:     cody-agent/*.py
-Config:      cody-agent/config.json
-Launcher:    run_orchestrator.ps1
-TODO Lists:  TODO_*.md (generated)
-Logs:        orchestrator.log (generated)
+Main entry:      cody-graph/main.py
+Graph logic:     cody-graph/graph/cody_graph.py
+Agents:          cody-graph/agents/clippy_agent.py
+Tools:           cody-graph/tools/*.py
+Config:          cody-agent/config.json
+State tracking:  orchestrator_state.json (generated)
+Diagnostics:     .cody_logs/ (generated)
 ```
 
 ## Quick Commands
 
-### Run Everything (Automatic)
+### Run the Automated Improvement Agent
+
 ```powershell
-.\run_orchestrator.ps1    # Interactive menu
-# OR
-cd cody-agent
-python orchestrator.py    # Direct execution
+# From repo root
+python .\cody-graph\main.py
 ```
 
-### Analysis Only (Generate TODO Lists)
+This will:
+1. Load configured phases from `cody-agent/config.json`
+2. Execute improvements sequentially (currently: clippy fixes)
+3. Generate diagnostic logs in `.cody_logs/`
+4. Save progress to `orchestrator_state.json`
+
+### Build and Test
+
 ```powershell
-cd cody-agent
-python refactoring_analyzer.py    # → TODO_REFACTORING.md
-python performance_analyzer.py    # → TODO_PERFORMANCE.md
-python features_analyzer.py       # → TODO_FEATURES.md
+# Build
+cargo build --release
+
+# Run tests
+cargo test
+cargo test -p bitboard
+cargo test -p engine
+
+# Run benchmarks
+cargo bench -p engine
+
+# Validate move generation
+cargo run --release -p engine -- perft 5
+
+# Play interactively (UCI protocol)
+cargo run -p engine
 ```
 
-### Execute Tasks
+### Check Diagnostics
 
-**Execute specific item:**
 ```powershell
-cd cody-agent
-python refactoring_executor.py REF-001
-python performance_executor.py PERF-003
-python features_executor.py FEAT-005
+# List generated logs
+ls .cody_logs/ | tail -10
+
+# View recent LLM response
+cat .cody_logs/*_llm_response.txt | tail -100
+
+# View recent clippy output
+cat .cody_logs/*_clippy_output.txt | tail -50
 ```
 
-**Execute next available:**
-```powershell
-cd cody-agent
-python refactoring_executor.py next
-python performance_executor.py next
-python features_executor.py next
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────┐
+│  cody-graph (LangGraph Orchestration)   │
+├─────────────────────────────────────────┤
+│ ✓ run_clippy    (cargo clippy)          │
+│ ✓ clippy_agent  (LLM fixes warnings)    │
+│ ✓ apply_diff    (patch tool)            │
+│ ✓ run_build     (cargo build)           │
+│ ✓ run_tests     (cargo test)            │
+│ ✓ rollback      (undo on failure)       │
+│ ✓ phase_complete (next phase routing)   │
+└─────────────────────────────────────────┘
+           ↓ (phases ready to implement)
+       refactoring, performance, features
 ```
 
-### View Status
+## Environment Setup
+
 ```powershell
-cd cody-agent
-python todo_manager.py refactoring    # Show stats
-python todo_manager.py performance
-python todo_manager.py features
+# Install dependencies
+pip install -U langgraph openai
+
+# Set OpenAI API key
+$env:OPENAI_API_KEY = "sk-..."
+
+# Optional: Override repo path
+$env:CODY_REPO_PATH = "D:\Cody"
 ```
-
-### Check Results
-```powershell
-# View TODO lists
-cat TODO_REFACTORING.md
-cat TODO_PERFORMANCE.md
-cat TODO_FEATURES.md
-
-# View execution log
-cat orchestrator.log
-
-# Check git history
-git log --oneline
-```
-
-## Workflow Phases
-
-**1. Refactoring** → Code quality, separation of concerns, architecture
-**2. Performance** → Speed optimizations, memory efficiency, algorithmic improvements
-**3. Features** → Missing capabilities for world-class engine (max 3 at once)
 
 ## Configuration
 
@@ -83,176 +100,156 @@ Edit `cody-agent/config.json`:
 {
   "model": "gpt-5.1",
   "models": {
-    "refactoring": "gpt-5.1",
-    "features": "gpt-5.1",
-    "logic_bugs": "o3",
     "clippy": "gpt-5-mini",
-    "unit_tests_docs": "gpt-5-nano"
+    "refactoring": "gpt-5.1",
+    "performance": "gpt-5.1", 
+    "features": "gpt-5.1"
   },
-  "use_local": false,
-  "skills": {
-    "enabled": ["github_fix_ci", "github_address_comments"],
-    "run_timing": "after",
-    "ci_log_path": ".orchestrator_logs/ci_failure.txt",
-    "pr_comments_path": ".orchestrator_logs/pr_review_comments.json"
-  },
-  "github_repo": "yourusername/cody-engine"
+  "use_local": false
 }
 ```
 
-## Environment Setup
+The system loads all configured models and executes them as phases sequentially.
 
-```powershell
-# Install Agents SDK
-pip install openai-agents
+## Current Workflow
 
-# OpenAI API key
-$env:OPENAI_API_KEY = "sk-..."
-
-# GitHub token (optional)
-$env:GITHUB_TOKEN = "ghp_..."
 ```
+START
+  ↓
+run_clippy (detect warnings)
+  ↓
+[Warning found?]
+  ├─→ clippy_agent (LLM proposes fix)
+  │     ↓
+  │   apply_diff (patch code)
+  │     ↓
+  │   run_clippy (verify fix)
+  │     ↓
+  │   [Loop back if more warnings]
+  │
+  └─→ run_build (compile)
+        ↓
+      run_tests (validate)
+        ↓
+      phase_complete (more phases?)
+        ├─→ run_clippy (next phase)
+        │     ↓ ...
+        │
+        └─→ END
+```
+
+## Phase System (Multi-Phase Ready)
+
+### Current Phases
+- **clippy** - Automatically enabled, fixes compiler warnings
+
+### Planned Phases
+When ready to implement, add to `cody-agent/config.json` models:
+- **refactoring** - Code quality improvements
+- **performance** - Speed optimizations  
+- **features** - New capabilities
+
+See [cody-graph/PHASES.md](cody-graph/PHASES.md) for phase implementation guide.
 
 ## Quality Gates
 
 Every change must pass:
-- ✅ `cargo fmt` - Format
-- ✅ `cargo build --release` - Build
-- ✅ `cargo test` - Tests
-- ✅ `cargo run --release -p engine -- perft 5` - Move gen validation
+- ✅ clippy (no warnings as errors)
+- ✅ `cargo build --release` (compiles)
+- ✅ `cargo test` (all tests pass)
+- ✅ `cargo run --release -- perft 5` (move gen valid)
 
-## TODO Item Structure
+## Git Workflow
+
+After successful agent run:
+```powershell
+# Changes are automatically validated but NOT committed
+# Review changes
+git diff
+
+# If satisfied, commit manually
+git add .
+git commit -m "Automated improvement: <phase> phase"
+git log --oneline
+```
+
+## Diagnostics
+
+The system generates detailed logs for debugging:
+
+**Location:** `.cody_logs/` (with timestamps)
+
+**Key files:**
+- `*_clippy_output.txt` - Clippy warnings/errors
+- `*_llm_response.txt` - LLM system prompt + context + response
+- `*_diff_extracted.log` - Extracted unified diff
+- `*_build_output.txt` - Build results
+- `*_test_output.txt` - Test execution results
+- `*_patch_stderr.log` - Patch tool errors (if any)
+
+**Review recent run:**
+```powershell
+ls .cody_logs/ | tail -20
+cat .cody_logs/*_llm_response.txt
+```
+
+See [cody-graph/DIAGNOSTICS.md](cody-graph/DIAGNOSTICS.md) for troubleshooting.
+
+## State Tracking
+
+Current phase and progress saved to `orchestrator_state.json`:
 
 ```json
 {
-  "id": "REF-001",              // Unique ID (REF/PERF/FEAT-###)
-  "title": "Brief description",
-  "priority": "high",           // critical|high|medium|low
-  "category": "...",            // Category-specific
-  "status": "not-started",      // not-started|in-progress|completed
-  "estimated_complexity": "medium",  // small|medium|large
-  "files_affected": [...],
-  "dependencies": [...],
-  "description": "...",
-  ...
+  "current_phase": "clippy",
+  "phases_completed": ["clippy"],
+  "phases_todo": ["refactoring", "performance"],
+  "phase_iteration": 5,
+  "status": "ok",
+  "last_update": "2026-03-03T12:34:56.789012"
 }
-```
-
-## Status Flow
-
-```
-not-started → in-progress → completed
-```
-
-## Git Checkpoints
-
-After each successful change:
-```
-Checkpoint: Refactoring: REF-001
-Checkpoint: Performance: PERF-003
-Checkpoint: Feature: FEAT-005
 ```
 
 ## Troubleshooting
 
-**Invalid patches:**
-- Check model temperature in config
-- Verify sufficient context in prompts
+| Problem | Solution |
+|---------|----------|
+| "No API key" | Set `$env:OPENAI_API_KEY = "sk-..."` |
+| Patches not applying | Check `.cody_logs/*_diff_extracted.log` for format |
+| Build fails repeatedly | Check `.cody_logs/*_build_output.txt` for errors |
+| Tests fail after patch | Check `.cody_logs/*_test_output.txt` |
+| Wrong model being used | Verify `cody-agent/config.json` has correct model names |
 
-**Tests fail:**
-- Auto-rollback occurs
-- Check temp_*.patch for manual review
+## Architecture Constraints (MUST RESPECT)
 
-**Duplicates:**
-- Improve duplicate detection
-- Manually prune TODO lists
+- **Fixed-block arena**: Search nodes preallocated, no dynamic allocation in hot path
+- **Allocation-free moves**: No Vec/String per-node in search
+- **bitboard/engine split**: bitboard has no external deps, pure logic
+- **Type safety**: Use newtypes (Ply, Depth, Square) not raw integers
 
-**Long runtime:**
-- Reduce max features (default: 3)
-- Run individual phases
-- Skip phases by commenting out
-
-## Architecture Constraints
-
-**MUST RESPECT:**
-- Fixed-block arena (preallocated nodes)
-- Allocation-free hot paths
-- bitboard/engine crate separation
-- Type safety with newtypes
-
-## Logs & Output
-
-```
-orchestrator.log      # Full execution log
-TODO_*.md            # Human-readable TODO lists
-.todo_*.json         # Machine-readable TODO lists
-temp_*.patch         # Failed patches (for review)
-```
-
-## Common Workflows
-
-**Daily improvement run:**
-```powershell
-.\run_orchestrator.ps1
-# Select 1
-```
-
-**Selective execution:**
-```powershell
-.\run_orchestrator.ps1
-# Select 2 (analyze)
-# Review TODO_*.md
-# Select 3 (execute next from each)
-```
-
-**Status check:**
-```powershell
-.\run_orchestrator.ps1
-# Select 4
-```
-
-## File Purposes
-
-| File | Purpose |
-|------|---------|
-| `orchestrator.py` | Master coordinator |
-| `*_analyzer.py` | Generate TODO lists |
-| `*_executor.py` | Execute specific tasks |
-| `todo_manager.py` | TODO list utilities |
-| `config.json` | AI configuration |
-| `run_orchestrator.ps1` | Interactive launcher |
-
-## Dependencies
-
-**Agent system:**
-- Must resolve before executing task
-- Specified in `dependencies` field
-- Format: `["REF-002", "PERF-001"]`
-
-**Execution order:**
-- Priority: critical > high > medium > low
-- Dependencies: only execute when met
-- Status: not-started items only
+See [architecture.md](architecture.md) for details.
 
 ## Success Indicators
 
-**After orchestrator run:**
-- ✅ All TODO lists populated
-- ✅ Changes committed to git
-- ✅ All validations passed
-- ✅ orchestrator.log shows no errors
-- ✅ Repo in clean buildable state
+After `python .\cody-graph\main.py` completes:
+- ✅ Repo still builds: `cargo build --release` succeeds
+- ✅ All tests pass: `cargo test` passes
+- ✅ No clippy warnings: `cargo clippy --` shows none
+- ✅ Move generation valid: `cargo run --release -- perft 5` matches expected
+- ✅ Diagnostics logged: `.cody_logs/` has timestamped files
+- ✅ State saved: `orchestrator_state.json` shows progress
 
-## Need Help?
+## Resources
 
-1. Check `cody-agent/README.md` for full docs
-2. Review prompt files in `.github/ai/prompts/`
-3. Check `orchestrator.log` for errors
-4. Review git history: `git log`
+- **Chess Programming Wiki**: https://www.chessprogramming.org/
+- **UCI Protocol**: https://www.wbec-ridderkerk.nl/html/UCIProtocol.html
+- **Stockfish**: https://github.com/official-stockfish/Stockfish
+- **Leela Chess Zero**: https://github.com/LeelaChessZero/lc0
+- **LangGraph Docs**: https://langchain-ai.github.io/langgraph/
 
-## Key URLs
+## Next Steps
 
-- Chess Programming Wiki: https://www.chessprogramming.org/
-- UCI Protocol: https://www.wbec-ridderkerk.nl/html/UCIProtocol.html
-- Stockfish: https://github.com/official-stockfish/Stockfish
-- Leela: https://github.com/LeelaChessZero/lc0
+1. **To improve code quality:** Implement refactoring phase (see [cody-graph/PHASES.md](cody-graph/PHASES.md))
+2. **To optimize performance:** Implement performance phase with benchmark tracking
+3. **To add features:** Implement features phase with TODO management
+4. **To debug issues:** Check diagnostics in `cody-graph/DIAGNOSTICS.md`
