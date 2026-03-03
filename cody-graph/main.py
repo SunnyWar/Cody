@@ -10,8 +10,13 @@ from tools.phase_manager import save_phase_state
 repo_root = Path(os.environ.get("CODY_REPO_PATH", Path(__file__).resolve().parents[1]))
 
 def _load_phases_config(repo_root: Path) -> list:
-    """Load phases configuration from cody-agent/config.json or use defaults."""
+    """Load and order phases configuration from cody-agent/config.json.
+    
+    IMPORTANT: Clippy MUST be first to fix compilation errors before other phases.
+    """
     config_path = repo_root / "cody-agent" / "config.json"
+    phases = []
+    
     if config_path.exists():
         try:
             config = json.loads(config_path.read_text())
@@ -19,14 +24,16 @@ def _load_phases_config(repo_root: Path) -> list:
             models = config.get("models", {})
             phases = list(models.keys())
             print(f"[cody-graph] [DIAG] Loaded phases from config: {phases}", flush=True)
-            return phases
         except Exception as e:
             print(f"[cody-graph] [DIAG] Failed to load phases config: {e}", flush=True)
     
-    # Default phases: just clippy for now (user will add more when ready)
-    default_phases = ["clippy"]
-    print(f"[cody-graph] [DIAG] Using default phases: {default_phases}", flush=True)
-    return default_phases
+    # Ensure clippy is ALWAYS first (to fix compilation errors before refactoring)
+    if "clippy" in phases:
+        phases.remove("clippy")
+    phases.insert(0, "clippy")
+    
+    print(f"[cody-graph] [DIAG] Final phase order (clippy first): {phases}", flush=True)
+    return phases
 
 phases_list = _load_phases_config(repo_root)
 first_phase = phases_list[0] if phases_list else "clippy"

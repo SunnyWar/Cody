@@ -14,76 +14,160 @@ Unlike traditional engines (like Stockfish) or NNUE-based engines tuned by human
 
 ## 🛠 Features (Current Status)
 
-- **Bitboard representation:** High-performance board state management.
+- **Bitboard representation:** High-performance board state management with `PieceBitboards` and occupancy maps.
 - **UCI protocol support:** Works with standard chess GUIs like Arena, Cute Chess, or Scid vs. PC.
 - **Search algorithms:**
   - Negamax with alpha-beta pruning.
-  - Iterative deepening.
+  - Iterative deepening with time management.
   - Quiescence search to avoid the horizon effect.
+  - Transposition table for move ordering and cutoff reduction.
 - **Evaluation:** AI-crafted heuristics, including piece-square tables (PST) and material imbalance weights.
+- **Move generation:** Pseudo-legal move generation with legality verification via attack checking.
 
-## 🧠 How Cody Learns
+## 🧠 How Cody Improves
 
-Cody uses a simple loop when the agent attempts a code improvement:
+Cody uses an automated multi-phase improvement loop powered by **LangGraph** orchestration:
 
-1. **Read:** Load Rust files to provide context.
-2. **Propose:** The LLM suggests a fix and returns a unified diff.
-3. **Apply:** The diff is applied to disk.
-4. **Verify:** Run `cargo clippy`, then `cargo build`, then `cargo test`.
-5. **Rollback:** If build or tests fail, the last diff is reverted.
+### Single-Phase (Current - Clippy Fixes)
+```
+1. Run clippy → Detect warnings
+2. LLM proposes fix (unified diff)
+3. Apply patch to disk
+4. Verify (clippy + build + tests)
+5. Commit on success or rollback on failure
+```
 
-## 🧪 Orchestrator Setup (LangGraph)
+### Multi-Phase (Ready to Deploy)
+Additional phases can be enabled in `cody-agent/config.json`:
+- **Clippy phase:** Eliminate compiler warnings
+- **Refactoring phase:** Improve code quality and architecture (when ready)
+- **Performance phase:** Optimize for speed (when ready)
+- **Features phase:** Add new capabilities (when ready)
 
-Install LangGraph (and the OpenAI client):
+## 🏗️ Architecture
 
+The codebase is organized as a **Cargo workspace** with two crates:
+
+- **`bitboard/`** — Pure bitboard logic, move generation, position manipulation (no external deps)
+- **`engine/`** — Search, evaluation, UCI API, benchmarks (uses `criterion`, `rayon`)
+
+Key constraints:
+- **Fixed-block allocator**: Search nodes are preallocated in an arena, no heap allocations in hot path
+- **Type safety**: Semantic newtypes like `Ply`, `Depth`, `NodeId` to prevent type confusion
+- **Separation of concerns**: Bitboard crate focuses on board rules; engine crate handles search/UCI
+
+See [architecture.md](architecture.md) for detailed design.
+
+## 🧪 Automated Improvement System (LangGraph)
+
+### Setup
+
+Install dependencies:
 ```powershell
 pip install -U langgraph openai
 ```
 
 Authenticate with OpenAI:
-
 ```powershell
 $env:OPENAI_API_KEY = "sk-..."
 ```
 
-Configure the orchestrator in `cody-agent/config.json`:
-
+Configure in `cody-agent/config.json`:
 ```json
 {
-   "branch_prefix": "ai-feature-",
    "model": "gpt-5.1",
    "models": {
-      "refactoring": "gpt-5.1",
-      "features": "gpt-5.1",
-      "logic_bugs": "o3",
       "clippy": "gpt-5-mini",
-      "unit_tests_docs": "gpt-5-nano"
+      "refactoring": "gpt-5.1",
+      "performance": "gpt-5.1",
+      "features": "gpt-5.1"
    },
-   "use_local": false,
-   "skills": {
-      "enabled": ["github_fix_ci", "github_address_comments"],
-      "run_timing": "after",
-      "ci_log_path": ".orchestrator_logs/ci_failure.txt",
-      "pr_comments_path": ".orchestrator_logs/pr_review_comments.json"
-   }
+   "use_local": false
 }
 ```
 
-## ▶️ Run the Graph Agent
+### Run the Orchestrator
 
 From the repo root:
-
 ```powershell
 python .\cody-graph\main.py
 ```
 
-Optional environment overrides:
+This will:
+1. Load configured phases (default: clippy only)
+2. Execute each phase sequentially
+3. Generate diagnostics in `.cody_logs/`
+4. Save progress to `orchestrator_state.json`
 
+Optional environment variables:
 ```powershell
 $env:CODY_REPO_PATH = "D:\Cody"
-$env:CODY_CONFIG_PATH = "D:\Cody\cody-agent\config.json"
+$env:OPENAI_API_KEY = "sk-..."
 ```
 
-## 🛠 License
+### Documentation
+
+- [cody-graph/DIAGNOSTICS.md](cody-graph/DIAGNOSTICS.md) — Diagnostic output and troubleshooting
+- [cody-graph/PHASES.md](cody-graph/PHASES.md) — Multi-phase orchestration details
+
+## 🔨 Building and Testing
+
+**Build:**
+```powershell
+cargo build --release
+```
+
+**Run tests:**
+```powershell
+cargo test
+cargo test -p bitboard
+cargo test -p engine
+```
+
+**Run benchmarks:**
+```powershell
+cargo bench -p engine
+```
+
+**Run UCI engine:**
+```powershell
+cargo run -p engine
+```
+
+**Validate move generation:**
+```powershell
+cargo run --release -p engine -- perft 5
+```
+
+## 📊 Current Capabilities
+
+- **Full legal move generation** with proper castling and en passant handling
+- **Quiescence search** to evaluate quiet positions accurately
+- **Transposition table** for move ordering and cutoff reduction
+- **Time management** with absolute and remaining time budgets
+- **UCI protocol** for integration with chess GUIs
+
+## 🚀 Development Status
+
+**Completed:**
+- ✅ Complete bitboard infrastructure
+- ✅ Legal move generation (pseudo-legal + legality check)
+- ✅ UCI protocol handler
+- ✅ Negamax search with alpha-beta pruning
+- ✅ Quiescence search
+- ✅ Transposition table
+- ✅ Time management
+- ✅ Automated clippy warning fixes
+
+**In Progress:**
+- 🔄 Improving move ordering heuristics
+- 🔄 Optimizing search performance
+
+**Planned:**
+- [ ] Refactoring phase (code quality)
+- [ ] Performance optimization phase
+- [ ] Additional feature implementations
+
+## 📝 License
 
 MIT License. See [LICENSE](LICENSE) for details.
