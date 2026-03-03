@@ -353,7 +353,7 @@ impl BitBoardMask {
         }
 
         let file = origin_pos % 8;
-        let file_mask = 0x0101010101010101u64 << file;
+        let file_mask = 0x0101_0101_0101_0101u64 << file;
         let occupied_in_file = self.0 & file_mask;
         let origin_bit = 1u64 << origin_pos;
 
@@ -379,7 +379,7 @@ impl BitBoardMask {
         }
 
         let file = origin_pos % 8;
-        let file_mask = 0x0101010101010101u64 << file;
+        let file_mask = 0x0101_0101_0101_0101u64 << file;
         let occupied_in_file = self.0 & file_mask;
         let origin_bit = 1u64 << origin_pos;
 
@@ -404,14 +404,14 @@ impl BitBoardMask {
         let mut ray = BitBoardMask::empty();
         let mut probe = BitBoardMask(origin.0 << 9);
         // Unroll first few iterations for better performance
-        if probe.0 != 0 && (probe.0 & 0xFEFEFEFEFEFEFEFE) != 0 {
+        if probe.0 != 0 && (probe.0 & 0xFEFE_FEFE_FEFE_FEFE) != 0 {
             // Not on left edge
             ray = BitBoardMask(ray.0 | probe.0);
             if BitBoardMask(self.0 & probe.0).is_nonempty() {
                 return ray;
             }
             probe = BitBoardMask(probe.0 << 9);
-            if probe.0 != 0 && (probe.0 & 0xFEFEFEFEFEFEFEFE) != 0 {
+            if probe.0 != 0 && (probe.0 & 0xFEFE_FEFE_FEFE_FEFE) != 0 {
                 ray = BitBoardMask(ray.0 | probe.0);
                 if BitBoardMask(self.0 & probe.0).is_nonempty() {
                     return ray;
@@ -420,7 +420,7 @@ impl BitBoardMask {
             }
         }
         // Continue with loop for remaining squares
-        while probe.0 != 0 && (probe.0 & 0xFEFEFEFEFEFEFEFE) != 0 {
+        while probe.0 != 0 && (probe.0 & 0xFEFE_FEFE_FEFE_FEFE) != 0 {
             ray = BitBoardMask(ray.0 | probe.0);
             if BitBoardMask(self.0 & probe.0).is_nonempty() {
                 break;
@@ -434,7 +434,7 @@ impl BitBoardMask {
         let mut ray = BitBoardMask::empty();
         let mut probe = BitBoardMask(origin.0 >> 9);
         // Unroll and add edge detection
-        while probe.0 != 0 && (probe.0 & 0x7F7F7F7F7F7F7F7F) != 0 {
+        while probe.0 != 0 && (probe.0 & 0x7F7F_7F7F_7F7F_7F7F) != 0 {
             // Not on right edge
             ray = BitBoardMask(ray.0 | probe.0);
             if BitBoardMask(self.0 & probe.0).is_nonempty() {
@@ -448,7 +448,7 @@ impl BitBoardMask {
     pub const fn subray_up_left(self, origin: BitBoardMask) -> BitBoardMask {
         let mut ray = BitBoardMask::empty();
         let mut probe = BitBoardMask(origin.0 << 7);
-        while probe.0 != 0 && (probe.0 & 0x7F7F7F7F7F7F7F7F) != 0 {
+        while probe.0 != 0 && (probe.0 & 0x7F7F_7F7F_7F7F_7F7F) != 0 {
             // Not on right edge
             ray = BitBoardMask(ray.0 | probe.0);
             if BitBoardMask(self.0 & probe.0).is_nonempty() {
@@ -462,7 +462,7 @@ impl BitBoardMask {
     pub const fn subray_down_right(self, origin: BitBoardMask) -> BitBoardMask {
         let mut ray = BitBoardMask::empty();
         let mut probe = BitBoardMask(origin.0 >> 7);
-        while probe.0 != 0 && (probe.0 & 0xFEFEFEFEFEFEFEFE) != 0 {
+        while probe.0 != 0 && (probe.0 & 0xFEFE_FEFE_FEFE_FEFE) != 0 {
             // Not on left edge
             ray = BitBoardMask(ray.0 | probe.0);
             if BitBoardMask(self.0 & probe.0).is_nonempty() {
@@ -506,3 +506,4 @@ impl BitBoardMask {
         }
     }
 }
+

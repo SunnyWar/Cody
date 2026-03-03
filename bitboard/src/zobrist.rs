@@ -12,7 +12,7 @@ pub const ZOBRIST_PIECE_KEYS: [[u64; 64]; 12] = {
     const fn make() -> [[u64; 64]; 12] {
         let mut tbl = [[0u64; 64]; 12];
         let mut i = 0;
-        let mut seed: u64 = 0x9e3779b97f4a7c15u64;
+        let mut seed: u64 = 0x9e37_79b9_7f4a_7c15u64;
         while i < 12 {
             let mut j = 0;
             while j < 64 {
@@ -29,12 +29,12 @@ pub const ZOBRIST_PIECE_KEYS: [[u64; 64]; 12] = {
     make()
 };
 
-pub const ZOBRIST_SIDE: u64 = 0xF0E1D2C3B4A59687u64;
+pub const ZOBRIST_SIDE: u64 = 0xF0E1_D2C3_B4A5_9687u64;
 pub const ZOBRIST_CASTLE_KEYS: [u64; 4] = [
-    0x0123456789ABCDEFu64,
-    0xFEDCBA9876543210u64,
-    0x0F1E2D3C4B5A6978u64,
-    0x89ABCDEF01234567u64,
+    0x0123_4567_89AB_CDEFu64,
+    0xFEDC_BA98_7654_3210u64,
+    0x0F1E_2D3C_4B5A_6978u64,
+    0x89AB_CDEF_0123_4567u64,
 ];
 
 pub fn piece_index(p: Piece) -> usize {
@@ -93,3 +93,4 @@ pub fn compute_zobrist(pos: &Position) -> u64 {
 
     h
 }
+
