@@ -30,8 +30,53 @@ def after_build(state: CodyState):
 
 def after_tests(state: CodyState):
     if state["status"] == "ok":
-        return END
+        return "phase_complete"
     return "rollback_changes"
+
+def phase_complete(state: CodyState) -> CodyState:
+    """Transition to the next phase or end orchestration."""
+    print("[cody-graph] phase_complete: START", flush=True)
+    
+    current = state["current_phase"]
+    completed = state["phases_completed"] + [current]
+    todo = state["phases_todo"]
+    
+    print(f"[cody-graph] [DIAG] Phase '{current}' completed", flush=True)
+    print(f"[cody-graph] [DIAG] Completed phases: {completed}", flush=True)
+    print(f"[cody-graph] [DIAG] Remaining phases: {todo}", flush=True)
+    
+    if todo:
+        next_phase = todo[0]
+        result = {
+            **state,
+            "current_phase": next_phase,
+            "phases_todo": todo[1:],
+            "phases_completed": completed,
+            "phase_iteration": 0,
+            "last_output": f"Phase '{current}' complete. Starting phase '{next_phase}'.",
+            "status": "pending",
+        }
+        print(f"[cody-graph] [DIAG] Transitioning to phase: {next_phase}", flush=True)
+        print("[cody-graph] phase_complete: END (next phase)", flush=True)
+        return result
+    else:
+        result = {
+            **state,
+            "phases_completed": completed,
+            "last_output": f"All phases complete: {completed}",
+            "status": "ok",
+        }
+        print(f"[cody-graph] [DIAG] All phases completed!", flush=True)
+        print("[cody-graph] phase_complete: END (all done)", flush=True)
+        return result
+
+def after_phase_complete(state: CodyState):
+    """Route after phase completion: either to next phase or to END."""
+    if state["phases_todo"]:
+        # More phases to do - run the analysis/clippy for next phase
+        # For now, we restart at run_clippy; could add phase-specific agents later
+        return "run_clippy"
+    return END
 
 # Initialize the Graph
 builder = StateGraph(CodyState)
@@ -43,6 +88,7 @@ builder.add_node("run_clippy", run_clippy)
 builder.add_node("run_build", run_build)
 builder.add_node("run_tests", run_tests)
 builder.add_node("rollback_changes", rollback_changes)
+builder.add_node("phase_complete", phase_complete)
 
 # Define Flow
 builder.add_edge(START, "run_clippy")
@@ -71,13 +117,19 @@ builder.add_conditional_edges(
     after_build,
 )
 
-# 6. Tests -> End or Rollback
+# 6. Tests -> Phase Complete or Rollback
 builder.add_conditional_edges(
     "run_tests",
     after_tests,
 )
 
-# 7. Rollback -> End
+# 7. Phase Complete -> Next Phase or End
+builder.add_conditional_edges(
+    "phase_complete",
+    after_phase_complete,
+)
+
+# 8. Rollback -> End
 builder.add_edge("rollback_changes", END)
 
 # Compile the graph into a runnable executable
