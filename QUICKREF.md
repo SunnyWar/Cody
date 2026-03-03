@@ -81,9 +81,21 @@ Edit `cody-agent/config.json`:
 
 ```json
 {
-  "model": "deepseek-coder-v2:16b-lite-instruct-q4_K_M",
-  "api_base": "http://localhost:11434/v1",
-  "use_local": true,
+  "model": "gpt-5.1",
+  "models": {
+    "refactoring": "gpt-5.1",
+    "features": "gpt-5.1",
+    "logic_bugs": "o3",
+    "clippy": "gpt-5-mini",
+    "unit_tests_docs": "gpt-5-nano"
+  },
+  "use_local": false,
+  "skills": {
+    "enabled": ["github_fix_ci", "github_address_comments"],
+    "run_timing": "after",
+    "ci_log_path": ".orchestrator_logs/ci_failure.txt",
+    "pr_comments_path": ".orchestrator_logs/pr_review_comments.json"
+  },
   "github_repo": "yourusername/cody-engine"
 }
 ```
@@ -91,11 +103,13 @@ Edit `cody-agent/config.json`:
 ## Environment Setup
 
 ```powershell
-# Install dependencies
-pip install openai requests
+# Install Agents SDK
+pip install openai-agents
 
-# Set API keys (if needed)
+# OpenAI API key
 $env:OPENAI_API_KEY = "sk-..."
+
+# GitHub token (optional)
 $env:GITHUB_TOKEN = "ghp_..."
 ```
 

@@ -24,92 +24,65 @@ Unlike traditional engines (like Stockfish) or NNUE-based engines tuned by human
 
 ## 🧠 How Cody Learns
 
-Cody uses a recursive feedback loop when the agent attempts a code improvement:
+Cody uses a simple loop when the agent attempts a code improvement:
 
-1. **Hypothesize:** The LLM suggests a chess logic improvement (e.g., "Implement Null Move Pruning").
-2. **Execute:** The orchestrator applies the patch.
-3. **Verify:** The local environment runs `cargo test`.
-4. **Refine:** If tests fail, Cody analyzes the compiler error and self-corrects.
+1. **Read:** Load Rust files to provide context.
+2. **Propose:** The LLM suggests a fix and returns a unified diff.
+3. **Apply:** The diff is applied to disk.
+4. **Verify:** Run `cargo clippy`, then `cargo build`, then `cargo test`.
+5. **Rollback:** If build or tests fail, the last diff is reverted.
 
-## 🧪 Orchestrator Setup (Cloud)
+## 🧪 Orchestrator Setup (LangGraph)
 
-Set environment variables:
+Install LangGraph (and the OpenAI client):
 
 ```powershell
-SET OPENAI_KEY="OPENAI_API_KEY"
-SET GITHUB_TOKEN="GITHUB_TOKEN"
+pip install -U langgraph openai
 ```
 
-## 🏠 Running Locally (Zero Cost and Private)
+Authenticate with OpenAI:
 
-If you want to run Cody's improvement orchestrator without an OpenAI account, you can use **Ollama**.
-
-1. **Install Ollama:** Download from [ollama.com](https://ollama.com/).
-2. **Pull a model:**
-   ```bash
-   ollama pull deepseek-coder-v2:16b-lite-instruct-q4_K_M
-   ```
-3. **Local configuration:** In `cody-agent/config.json`, set `"use_local": true`.
-4. **No API key needed:** When `use_local` is true, the agent uses a placeholder key to bypass the OpenAI login requirement.
-
-Start the server: ensure Ollama is running (it usually starts automatically in the system tray).
+```powershell
+$env:OPENAI_API_KEY = "sk-..."
+```
 
 Configure the orchestrator in `cody-agent/config.json`:
 
 ```json
 {
-  "branch_prefix": "ai-feature-",
-  "model": "deepseek-coder-v2:16b-lite-instruct-q4_K_M",
-  "api_base": "http://localhost:11434/v1",
-  "use_local": true
+   "branch_prefix": "ai-feature-",
+   "model": "gpt-5.1",
+   "models": {
+      "refactoring": "gpt-5.1",
+      "features": "gpt-5.1",
+      "logic_bugs": "o3",
+      "clippy": "gpt-5-mini",
+      "unit_tests_docs": "gpt-5-nano"
+   },
+   "use_local": false,
+   "skills": {
+      "enabled": ["github_fix_ci", "github_address_comments"],
+      "run_timing": "after",
+      "ci_log_path": ".orchestrator_logs/ci_failure.txt",
+      "pr_comments_path": ".orchestrator_logs/pr_review_comments.json"
+   }
 }
 ```
 
-## ▶️ Run the Orchestrator
+## ▶️ Run the Graph Agent
 
-From the repo root, choose one of the following:
-
-```powershell
-./run_orchestrator.ps1
-```
+From the repo root:
 
 ```powershell
-python .\cody-agent\orchestrator.py
+python .\cody-graph\main.py
 ```
 
-## Human TODO Items
-0. **Essential baseline functionality - human directs AI to add these features.**
-   - 'cargo fmt' after any code changes
-   - UCI Command: debug [on | off] 
-   - UCI Command: setoption name Hash value <x>
-   - UCI Command: setoption name Clear Hash
-   - UCI Command: go ponder Starts searching in "hint" mode on the opponent's time.
-   - UCI Command: go nodes <x>
-   - UCI Command: go mate <x>
-   - UCI Command: go searchmoves <move1> ... <moveN> 
-   - UCI Command: ponderhit
-   - UCI Command: info seldepth <x> (Output command)
-   - UCI Command: info nps <x> (Output command)
-   - UCI Command: info hashfull <x> (Output command)
-1. **PGO optimization**
-   - Add a PGO build profile.
-   - Add a PGO workflow.
-   - Add a PGO training harness.
-   - Add a PGO FEN suite.
-   - Add a PGO merge rule ("only merge if PGO improves speed").
-2. **Parameter tuning**
-   - A parameter registry.
-   - A tuning harness.
-   - A tuning dataset.
-   - A tuning workflow.
-3. **SPRT testing**
-   - Pick a harness.
-   - Configure it.
-   - Register machines.
-4. **Strong AI evaluation (premium models)**
-   - Secure funding.
-5. **Tune orchestration**
-   - Log summary of things tried, only allow retry after signifant code changes
+Optional environment overrides:
+
+```powershell
+$env:CODY_REPO_PATH = "D:\Cody"
+$env:CODY_CONFIG_PATH = "D:\Cody\cody-agent\config.json"
+```
 
 ## 🛠 License
 

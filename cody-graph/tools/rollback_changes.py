@@ -1,0 +1,71 @@
+import os
+import shutil
+import subprocess
+
+from state.cody_state import CodyState
+
+
+def rollback_changes(state: CodyState) -> CodyState:
+    print("[cody-graph] rollback_changes: start", flush=True)
+    repo = state["repo_path"]
+    diff_content = state.get("last_diff")
+    if not diff_content:
+        result_state = {
+            **state,
+            "last_output": "No diff available to rollback.",
+            "last_command": "rollback",
+            "status": "error",
+        }
+        print(f"[cody-graph] rollback_changes: error: {result_state['last_output']}", flush=True)
+        print("[cody-graph] rollback_changes: end (error)", flush=True)
+        return result_state
+
+    patch_path = os.path.join(repo, "rollback.patch")
+    try:
+        with open(patch_path, "w") as f:
+            f.write(diff_content)
+
+        if shutil.which("git"):
+            result = subprocess.run(
+                ["git", "apply", "-R", "--whitespace=nowarn", "rollback.patch"],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+            )
+        elif shutil.which("patch"):
+            result = subprocess.run(
+                ["patch", "-R", "-p1", "-i", "rollback.patch"],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+            )
+        else:
+            return {
+                **state,
+                "last_output": "No patching tool found (git or patch).",
+                "last_command": "rollback",
+                "status": "error",
+            }
+
+        if result.returncode == 0:
+            result_state = {
+                **state,
+                "last_output": "Rollback applied.",
+                "last_command": "rollback",
+                "status": "error",
+            }
+            print(f"[cody-graph] rollback_changes: error: {result_state['last_output']}", flush=True)
+            print("[cody-graph] rollback_changes: end (error)", flush=True)
+            return result_state
+        result_state = {
+            **state,
+            "last_output": f"Rollback failed: {result.stderr}",
+            "last_command": "rollback",
+            "status": "error",
+        }
+        print(f"[cody-graph] rollback_changes: error: {result_state['last_output']}", flush=True)
+        print("[cody-graph] rollback_changes: end (error)", flush=True)
+        return result_state
+    finally:
+        if os.path.exists(patch_path):
+            os.remove(patch_path)
