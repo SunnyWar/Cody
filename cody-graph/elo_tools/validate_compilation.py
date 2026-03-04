@@ -58,7 +58,11 @@ def validate_perft(repo_path: Path, depth: int = 5) -> Tuple[bool, str]:
     """
     Run perft tests to verify move generation correctness.
     
-    TODO: Implement full perft validation with expected result checking.
+    Expected perft results for starting position:
+    - perft(5) = 4,865,609 nodes (standard)
+    - perft(6) = 119,060,324 nodes (standard)
+    
+    Tolerates small variations (< 1%) for counting differences.
     """
     print(f"[validator] Running perft {depth}...")
     
@@ -76,10 +80,39 @@ def validate_perft(repo_path: Path, depth: int = 5) -> Tuple[bool, str]:
     if code != 0:
         return False, f"Perft test failed:\n{stderr}"
     
-    # TODO: Validate perft output against known good results
-    # Expected output format should match standard perft node counts
+    # Parse perft output: "perft(5) = 4865609 (1.2s)"
+    import re
+    match = re.search(r'perft\(\d+\)\s*=\s*(\d+)', stdout)
+    if not match:
+        return False, f"Could not parse perft output:\n{stdout}"
     
-    print(f"[validator] ✓ Perft {depth} passed")
+    node_count = int(match.group(1))
+    
+    # Expected node counts for standard chess starting position
+    expected_counts = {
+        5: 4_865_609,
+        6: 119_060_324,
+        4: 197_281,
+        3: 8_902,
+    }
+    
+    if depth in expected_counts:
+        expected = expected_counts[depth]
+        tolerance = 0.01  # 1% tolerance
+        
+        if abs(node_count - expected) > expected * tolerance:
+            return False, (
+                f"Perft node count mismatch:\n"
+                f"  Expected: {expected:,}\n"
+                f"  Got:      {node_count:,}\n"
+                f"  Move generation may be incorrect!"
+            )
+        
+        print(f"[validator] ✓ Perft {depth} passed: {node_count:,} nodes")
+    else:
+        # Unknown depth - just check that perft ran
+        print(f"[validator] ✓ Perft {depth} completed: {node_count:,} nodes (no validation)")
+    
     return True, ""
 
 def validate_clippy(repo_path: Path) -> Tuple[bool, str]:

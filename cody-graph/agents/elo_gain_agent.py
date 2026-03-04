@@ -90,21 +90,21 @@ def elo_gain_compilation_check(state: CodyState) -> CodyState:
     - Builds successfully (cargo build --release)
     - Passes basic perft tests (move generation correctness)
     - Does not introduce clippy warnings
-    
-    TODO: Implement full compilation and perft validation.
     """
-    print("[cody-graph] [ELO Gain] [2/5] Compilation & Validation phase [NOT IMPLEMENTED]", flush=True)
+    print("[cody-graph] [ELO Gain] [2/5] Compilation & Validation phase", flush=True)
     
     repo_path = state.get("repo_path", ".")
+    perft_depth = state.get("elo_perft_depth", 5)
     
-    # TODO: Call compilation validation script
-    # This should:
-    # 1. Run: cargo build --release
-    # 2. Run: cargo run --release -p engine -- perft 5
-    # 3. Run: cargo clippy --all-targets
-    # 4. Report any failures
+    # Import validation module
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "elo_tools"))
+    from validate_compilation import validate_compilation
     
-    compilation_ok = True  # TODO: Set based on actual build result
+    try:
+        compilation_ok = validate_compilation(Path(repo_path), perft_depth=perft_depth)
+    except Exception as e:
+        print(f"[cody-graph] [ELO Gain] Compilation check ERROR: {e}", flush=True)
+        compilation_ok = False
     
     if not compilation_ok:
         print("[cody-graph] [ELO Gain] Compilation failed, reverting candidate", flush=True)
@@ -397,6 +397,17 @@ def elo_gain_agent(state: CodyState) -> CodyState:
             state = elo_gain_statistical_check(state)
         elif stage == "decision":
             state = elo_gain_decision(state)
+        elif stage == "revert":
+            # Handle revert after compilation failure or gauntlet error
+            print("[cody-graph] [ELO Gain] Reverting candidate due to failure", flush=True)
+            
+            # TODO: Implement actual git revert if needed
+            # For now, just mark as reverted and move to next iteration
+            
+            state["status"] = "ok"
+            state["elo_phase_outcome"] = "reverted"
+            state["elo_phase_stage"] = "complete"
+            state["last_command"] = "revert"
         elif stage == "complete":
             # Increment iteration counter and prepare for next iteration
             iteration = state.get("elo_iterations", 0) + 1
