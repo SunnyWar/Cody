@@ -187,6 +187,94 @@ Review `.cody_logs/*_llm_response.txt` to verify the system prompt is appropriat
 ### Phase completes but tools still report errors
 Check that phase-specific tool validation (e.g., benchmarks for performance phase) is being performed.
 
+## ELO Gain Phase: Chess Engine Improvement Loop
+
+The **ELOGain** phase is a specialized sub-orchestration designed to automatically improve the engine's playing strength. Unlike simpler phases (clippy, refactoring), it implements a tight feedback loop:
+
+```
+Candidate Generation → Compilation → Gauntlet Match → Statistical Analysis → Decision (Commit/Revert)
+```
+
+Each iteration attempts one improvement. If ELO gain > 0, the change is committed. If ≤ 0, the candidate is reverted and failure analysis is fed back to the LLM for the next iteration.
+
+### Sub-Phases
+
+1. **Candidate Generation** (`elo_gain_candidate_generation()`)
+   - LLM proposes a chess-specific improvement (e.g., Null Move Pruning, better evaluation)
+   - Output: Unified diff ready to apply
+
+2. **Compilation Validation** (`elo_tools/validate_compilation.py`)
+   - Build: `cargo build --release`
+   - Perft: `cargo run --release -- perft 5` (verify move generation)
+   - Clippy: Non-fatal warning scan
+
+3. **Gauntlet Match** (`elo_tools/gauntlet_runner.py`)
+   - Run 50–100 games at fast time control (10s + 0.1s increment)
+   - Candidate vs. Stable baseline
+   - Output: PGN file with all games
+
+4. **Statistical Analysis** (`elo_tools/analyze_statistics.py`)
+   - Parse PGN for match results
+   - Calculate ELO difference using Bayesian framework
+   - Compute 95% credible interval (error bar)
+   - Determine statistical significance
+
+5. **Decision & Commit/Revert** (`elo_tools/commit_or_revert.py`)
+   - If ΔElo > 0: Commit with git, update stable baseline
+   - If ΔElo ≤ 0: Revert, analyze loss patterns, store for LLM learning
+
+### Integration into Config
+
+In `cody-agent/config.json`, enable the ELO Gain phase:
+
+```json
+{
+  "phases": ["clippy", "ELOGain"],
+  "models": {
+    "ELOGain": "o3"  // Use powerful model for chess improvements
+  }
+}
+```
+
+### Configuration
+
+Optional environment variables:
+```bash
+CODY_ELO_TIME_CONTROL="10+0.1"        # Time control for gauntlet games
+CODY_ELO_GAUNTLET_GAMES="50"          # Number of games (default 50)
+CODY_ELO_MAX_ITERATIONS="10"          # Max improvement attempts
+CODY_ELO_THRESH_ELO="0.0"             # Threshold to commit (default 0.0)
+```
+
+### Current Status
+
+- ✅ **Scaffolding Complete**: Main agent (`elo_gain_agent.py`) and placeholder sub-scripts created
+- ⏳ **Implementation Phases**:
+  - `validate_compilation.py` — Ready for implementation
+  - `gauntlet_runner.py` — High priority (cutechess-cli integration)
+  - `analyze_statistics.py` — Medium priority (Bayesian ELO calculator)
+  - `commit_or_revert.py` — Medium priority (Git + loss analysis)
+
+### How to Run
+
+Once implementations are complete:
+
+```bash
+# Run orchestrator with ELO Gain phase enabled
+python cody-graph/main.py
+```
+
+Monitor progress in console and check `.cody_logs/elo_phase_*.log` for details.
+
+### For Detailed Architecture
+
+See [ELO_GAIN_PHASE.md](ELO_GAIN_PHASE.md) for comprehensive documentation including:
+- Detailed workflow diagrams
+- Algorithm descriptions
+- Implementation roadmap
+- Perft validation node counts
+- References and tools
+
 ## Future Enhancements
 
 - [ ] Per-phase iteration limits
@@ -194,3 +282,5 @@ Check that phase-specific tool validation (e.g., benchmarks for performance phas
 - [ ] Phase-specific rollback strategies
 - [ ] Parallel phase execution (with conflict detection)
 - [ ] Phase result aggregation and reporting
+- [ ] ELO Gain phase: LLM feedback loop for failure analysis
+- [ ] ELO Gain phase: Adaptive game count (more games if close call)

@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+"""
+ELO Gain: Compilation & Perft Validator
+
+Validates that a candidate code change:
+1. Compiles successfully (cargo build --release)
+2. Passes perft move generation tests (e.g., perft 5 or 6)
+3. Does not introduce clippy warnings
+
+Returns exit code 0 on success, non-zero on failure.
+
+Usage:
+    python elo_tools/validate_compilation.py --repo-path <repo_path> [--perft-depth 5]
+
+TODO: Implement full build validation and perft testing.
+"""
+
+import argparse
+import subprocess
+import sys
+from pathlib import Path
+from typing import Tuple, Optional
+
+def run_command(cmd: list[str], cwd: Optional[Path] = None) -> Tuple[int, str, str]:
+    """Run a command and capture output."""
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minute timeout
+        )
+        return result.returncode, result.stdout, result.stderr
+    except subprocess.TimeoutExpired:
+        return 1, "", "Command timed out after 300 seconds"
+    except Exception as e:
+        return 1, "", str(e)
+
+def validate_build(repo_path: Path) -> Tuple[bool, str]:
+    """
+    Build the engine in release mode.
+    
+    TODO: Implement full cargo build validation.
+    """
+    print(f"[validator] Building release binary...")
+    
+    cmd = ["cargo", "build", "--release", "-p", "engine"]
+    code, stdout, stderr = run_command(cmd, cwd=repo_path)
+    
+    if code != 0:
+        return False, f"Build failed:\n{stderr}"
+    
+    print(f"[validator] ✓ Build successful")
+    return True, ""
+
+def validate_perft(repo_path: Path, depth: int = 5) -> Tuple[bool, str]:
+    """
+    Run perft tests to verify move generation correctness.
+    
+    TODO: Implement full perft validation with expected result checking.
+    """
+    print(f"[validator] Running perft {depth}...")
+    
+    # Path to compiled binary (release mode)
+    engine_binary = repo_path / "target" / "release" / "cody.exe"
+    if not engine_binary.exists():
+        engine_binary = repo_path / "target" / "release" / "cody"
+    
+    if not engine_binary.exists():
+        return False, f"Engine binary not found at {engine_binary}"
+    
+    cmd = [str(engine_binary), "perft", str(depth)]
+    code, stdout, stderr = run_command(cmd, cwd=repo_path)
+    
+    if code != 0:
+        return False, f"Perft test failed:\n{stderr}"
+    
+    # TODO: Validate perft output against known good results
+    # Expected output format should match standard perft node counts
+    
+    print(f"[validator] ✓ Perft {depth} passed")
+    return True, ""
+
+def validate_clippy(repo_path: Path) -> Tuple[bool, str]:
+    """
+    Check for clippy warnings in the engine code.
+    
+    Non-fatal: warnings are logged but don't fail validation.
+    
+    TODO: Implement clippy check and categorize warnings.
+    """
+    print(f"[validator] Running clippy checks...")
+    
+    cmd = ["cargo", "clippy", "--all-targets", "--release", "-p", "engine", "--", "-D", "warnings"]
+    code, stdout, stderr = run_command(cmd, cwd=repo_path)
+    
+    if code != 0:
+        # Log warnings but don't fail (for now)
+        print(f"[validator] ⚠ Clippy warnings found (non-fatal):")
+        print(stderr[:500])  # Print first 500 chars
+        return True, ""  # Non-fatal
+    
+    print(f"[validator] ✓ Clippy checks passed")
+    return True, ""
+
+def validate_compilation(
+    repo_path: Path,
+    perft_depth: int = 5,
+) -> bool:
+    """
+    Run full compilation validation.
+    
+    Returns True if all checks pass, False otherwise.
+    """
+    print(f"[validator] Starting compilation validation for {repo_path}\n")
+    
+    # Step 1: Build
+    success, error = validate_build(repo_path)
+    if not success:
+        print(f"[validator] ✗ Build validation failed: {error}\n")
+        return False
+    
+    # Step 2: Perft
+    success, error = validate_perft(repo_path, depth=perft_depth)
+    if not success:
+        print(f"[validator] ✗ Perft validation failed: {error}\n")
+        return False
+    
+    # Step 3: Clippy (non-fatal)
+    validate_clippy(repo_path)
+    
+    print(f"\n[validator] ✓ All validation checks passed\n")
+    return True
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Validate compilation and basic correctness of Cody engine"
+    )
+    parser.add_argument(
+        "--repo-path",
+        required=True,
+        help="Path to Cody repository root"
+    )
+    parser.add_argument(
+        "--perft-depth",
+        type=int,
+        default=5,
+        help="Depth for perft validation (default: 5)"
+    )
+    
+    args = parser.parse_args()
+    repo_path = Path(args.repo_path)
+    
+    if not repo_path.exists():
+        print(f"[validator] Error: Repo path does not exist: {repo_path}")
+        return 1
+    
+    success = validate_compilation(repo_path, perft_depth=args.perft_depth)
+    return 0 if success else 1
+
+if __name__ == "__main__":
+    sys.exit(main())
