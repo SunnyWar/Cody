@@ -22,9 +22,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-# Add elo_tools to path for version_manager
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "elo_tools"))
-from version_manager import increment_patch, increment_minor, get_version_string
+# Import version management utilities from elo_tools
+from ..elo_tools.version_manager import increment_patch, increment_minor, get_version_string
 
 
 def has_rust_changes(repo_path: str, files_to_add: Optional[list[str]] = None) -> bool:
