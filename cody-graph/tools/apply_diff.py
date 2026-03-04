@@ -7,6 +7,34 @@ from pathlib import Path
 
 HUNK_HEADER_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
+def _extract_warning_signature(clippy_output: str) -> str:
+    """Extract a unique signature from clippy output to track attempted warnings.
+    
+    Returns a string like 'file.rs:78:error:too_many_arguments' or empty string if none found.
+    """
+    if not clippy_output:
+        return ""
+    
+    lines = clippy_output.splitlines()
+    for i, line in enumerate(lines):
+        # Look for error/warning lines
+        if line.strip().startswith("error:") or line.strip().startswith("warning:"):
+            # Next line often has --> file:line:col
+            if i + 1 < len(lines) and "-->" in lines[i + 1]:
+                arrow_line = lines[i + 1].split("-->", 1)[1].strip()
+                # Extract file and line number
+                parts = arrow_line.rsplit(":", 2)
+                if len(parts) >= 2:
+                    file_path = parts[0].strip()
+                    line_no = parts[1].strip()
+                    
+                    # Extract error type from first line
+                    error_text = line.strip()
+                    # Signature: file:line:error_type
+                    return f"{file_path}:{line_no}:{error_text[:50]}"
+    
+    return ""
+
 def _sanitize_diff(diff_content: str) -> str:
     """Clean up diff format if LLM generated non-standard formatting.
     
@@ -431,14 +459,27 @@ def apply_diff(state: dict) -> dict:
     _save_diagnostic(logs_dir, "diff_policy", f"{policy_msg}\nsummary={diff_summary}")
 
     if not is_safe:
+        # Use the warning signature stored by clippy_agent
+        warning_signature = state.get("current_warning_signature")
+        attempted = state.get("attempted_warnings", []) or []
+        
+        if warning_signature and warning_signature not in attempted:
+            attempted = attempted + [warning_signature]
+            print(f"[cody-graph] [DIAG] Marking warning as attempted: {warning_signature[:80]}", flush=True)
+        elif not warning_signature:
+            print(f"[cody-graph] [DIAG] No warning signature available to mark as attempted", flush=True)
+        
+        # Instead of failing, continue to try next warning
         result_state = {
             **state,
-            "status": "error",
-            "last_output": policy_msg,
-            "last_command": "apply_diff",
+            "status": "pending",
+            "last_output": f"{policy_msg}\nSkipping this warning and trying next one.",
+            "last_command": "apply_diff_rejected",
+            "attempted_warnings": attempted,
+            "current_warning_signature": None,  # Clear for next attempt
         }
-        print(f"[cody-graph] apply_diff: ERROR - {policy_msg}", flush=True)
-        print("[cody-graph] apply_diff: END (error)", flush=True)
+        print(f"[cody-graph] apply_diff: REJECTED - {policy_msg}", flush=True)
+        print("[cody-graph] apply_diff: END (rejected, continuing to next warning)", flush=True)
         return result_state
 
     try:
@@ -472,6 +513,7 @@ def apply_diff(state: dict) -> dict:
                     "last_output": message,
                     "last_diff": diff_content,
                     "last_command": "apply_diff",
+                    "current_warning_signature": None,  # Clear after successful apply
                 }
                 print("[cody-graph] apply_diff: END (ok)", flush=True)
                 return result_state
@@ -505,6 +547,7 @@ def apply_diff(state: dict) -> dict:
                 "last_output": success_msg,
                 "last_diff": diff_content,
                 "last_command": "apply_diff",
+                "current_warning_signature": None,  # Clear after successful apply
             }
             print("[cody-graph] apply_diff: END (ok)", flush=True)
             return result_state
@@ -520,6 +563,7 @@ def apply_diff(state: dict) -> dict:
                     "last_output": success_msg,
                     "last_diff": diff_content,
                     "last_command": "apply_diff",
+                    "current_warning_signature": None,  # Clear after successful apply
                 }
                 print("[cody-graph] apply_diff: END (ok)", flush=True)
                 return result_state
@@ -529,18 +573,44 @@ def apply_diff(state: dict) -> dict:
                 f"Python fallback also failed: {fallback_msg}"
             )
             print(f"[cody-graph] apply_diff: ERROR - {error_details[:200]}", flush=True)
+            
+            # Mark warning as attempted and continue to next one
+            warning_signature = state.get("current_warning_signature")
+            attempted = state.get("attempted_warnings", []) or []
+            if warning_signature and warning_signature not in attempted:
+                attempted = attempted + [warning_signature]
+                print(f"[cody-graph] [DIAG] Marking failed patch warning as attempted: {warning_signature[:80]}", flush=True)
+            
             result_state = {
                 **state,
-                "status": "error",
-                "last_output": error_details,
+                "status": "pending",
+                "last_output": f"{error_details}\nSkipping this warning and trying next one.",
+                "last_command": "apply_diff_rejected",
+                "attempted_warnings": attempted,
+                "current_warning_signature": None,
             }
-            print("[cody-graph] apply_diff: END (error)", flush=True)
+            print("[cody-graph] apply_diff: END (patch failed, continuing to next warning)", flush=True)
             return result_state
 
     except Exception as e:
         error_msg = f"Error applying patch: {e}"
         print(f"[cody-graph] apply_diff: ERROR - {error_msg}", flush=True)
         _save_diagnostic(logs_dir, "patch_exception", str(e))
-        result_state = {**state, "status": "error", "last_output": error_msg}
-        print("[cody-graph] apply_diff: END (error)", flush=True)
+        
+        # Mark warning as attempted and continue to next one
+        warning_signature = state.get("current_warning_signature")
+        attempted = state.get("attempted_warnings", []) or []
+        if warning_signature and warning_signature not in attempted:
+            attempted = attempted + [warning_signature]
+            print(f"[cody-graph] [DIAG] Marking exception warning as attempted: {warning_signature[:80]}", flush=True)
+        
+        result_state = {
+            **state,
+            "status": "pending",
+            "last_output": f"{error_msg}\nSkipping this warning and trying next one.",
+            "last_command": "apply_diff_rejected",
+            "attempted_warnings": attempted,
+            "current_warning_signature": None,
+        }
+        print("[cody-graph] apply_diff: END (exception, continuing to next warning)", flush=True)
         return result_state

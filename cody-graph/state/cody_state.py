@@ -20,3 +20,5 @@ class CodyState(TypedDict):
     phases_todo: List[str]        # remaining phases to execute
     phases_completed: List[str]   # completed phases
     phase_iteration: int          # iteration count within current phase
+    attempted_warnings: List[str] # warnings already attempted (to avoid retry loops)
+    current_warning_signature: Optional[str]  # signature of warning being fixed
