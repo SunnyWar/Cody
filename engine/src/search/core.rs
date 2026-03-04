@@ -126,7 +126,8 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     {
         let key = arena.get(ply).position.zobrist_hash();
         if let Some(e) = tt.probe(key, remaining as i8, alpha, beta)
-            && e.flag == crate::core::tt::TTFlag::Exact as u8 {
+            && e.flag == crate::core::tt::TTFlag::Exact as u8
+        {
             if e.best_move.is_null() {
                 return e.value;
             }
@@ -151,10 +152,11 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     let mut best_score = i32::MIN;
     // Work with a local mutable vector so we can reorder based on TT best move
     let moves_vec = moves;
-    if let Some(e) = tt_exact_needs_verify {
-        if !e.best_move.is_null() && moves_vec.contains(&e.best_move) {
-            return e.value;
-        }
+    if let Some(e) = tt_exact_needs_verify
+        && !e.best_move.is_null()
+        && moves_vec.contains(&e.best_move)
+    {
+        return e.value;
     }
 
     for m in moves_vec.iter().cloned() {
