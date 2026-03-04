@@ -71330,4 +71330,3 @@ fn test_bishop_attacks_opposite_corner() {
     let attacks = BISHOP_ATTACKS[Square::H8.index()][empty_mask_index];
     assert_eq!(attacks.0.count_ones(), 7);
 }
-

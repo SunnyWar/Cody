@@ -94,4 +94,3 @@ fn test_knight_attacks_opposite_corner() {
     let attacks = KNIGHT_ATTACKS[Square::H8.index()];
     assert_eq!(attacks.0.count_ones(), 2);
 }
-

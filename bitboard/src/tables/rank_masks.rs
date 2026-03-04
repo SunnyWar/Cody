@@ -14,4 +14,3 @@ pub const RANK_8: BitBoardMask = BitBoardMask(0xFF00_0000_0000_0000);
 pub const RANK_MASKS: [BitBoardMask; BOARD_SIZE] = [
     RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8,
 ];
-

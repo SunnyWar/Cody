@@ -87,4 +87,3 @@ fn test_king_attacks_center() {
     let attacks = KING_ATTACKS[Square::D4.index()];
     assert_eq!(attacks.0.count_ones(), 8);
 }
-
