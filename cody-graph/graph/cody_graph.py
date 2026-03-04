@@ -41,11 +41,18 @@ def after_clippy(state: CodyState):
 def after_clippy_agent(state: CodyState):
     if state["status"] == "error":
         return END
+    if state["status"] == "ok":
+        # All warnings attempted, proceed to build
+        return "run_build"
     return "apply_diff"
 
 def after_apply_diff(state: CodyState):
     if state["status"] == "error":
         return END
+    # If diff was rejected (too many lines, etc.), loop back to clippy to try next warning
+    if state.get("last_command") == "apply_diff_rejected":
+        print("[cody-graph] [DIAG] Diff rejected, running clippy again for next warning", flush=True)
+        return "run_clippy"
     return "run_clippy"
 
 def after_build(state: CodyState):
@@ -81,6 +88,7 @@ def phase_complete(state: CodyState) -> CodyState:
             "clippy_error_count": None,
             "best_clippy_error_count": None,
             "clippy_has_syntax_error": None,
+            "attempted_warnings": [],  # Reset for new phase
             "last_output": f"Phase '{current}' complete. Starting phase '{next_phase}'.",
             "status": "pending",
         }
