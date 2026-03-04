@@ -2,12 +2,33 @@
 from langgraph.graph import StateGraph, START, END
 from state.cody_state import CodyState
 from agents.clippy_agent import clippy_agent
+from agents.elo_gain_agent import elo_gain_agent
 from tools.run_build import run_build
 from tools.run_clippy import run_clippy
 from tools.run_tests import run_tests
 from tools.run_fmt import run_fmt
 from tools.apply_diff import apply_diff
 from tools.rollback_changes import rollback_changes
+
+def route_phase(state: CodyState) -> str:
+    """
+    Route to the appropriate phase agent based on current_phase.
+    
+    Different phases have fundamentally different workflows:
+    - Clippy, Refactoring, Features, Performance, Tests: Use clippy_agent (iterative LLM fixes)
+    - ELOGain: Use elo_gain_agent (complex multi-step chess improvement loop)
+    """
+    phase = state.get("current_phase", "clippy")
+    
+    if phase == "ELOGain":
+        return "elo_gain_agent"
+    else:
+        return "run_clippy"
+
+def after_elo_gain(state: CodyState) -> str:
+    """Route after ELO Gain phase completes."""
+    # ELO Gain agent manages its own state machine; when done, move to next phase
+    return "phase_complete"
 
 def after_clippy(state: CodyState):
     if state["status"] == "ok":
@@ -151,16 +172,17 @@ def phase_complete(state: CodyState) -> CodyState:
 def after_phase_complete(state: CodyState):
     """Route after phase completion: either to next phase or to END."""
     if state["phases_todo"]:
-        # More phases to do - run the analysis/clippy for next phase
-        # For now, we restart at run_clippy; could add phase-specific agents later
-        return "run_clippy"
+        # More phases to do - route through phase router for next phase
+        return "route_phase"
     return END
 
 # Initialize the Graph
 builder = StateGraph(CodyState)
 
 # Add Nodes
+builder.add_node("route_phase", lambda state: {"current_phase": state.get("current_phase", "clippy")})  # Routing node (no-op, just decides direction)
 builder.add_node("clippy_agent", clippy_agent)
+builder.add_node("elo_gain_agent", elo_gain_agent)
 builder.add_node("apply_diff", apply_diff)
 builder.add_node("run_clippy", run_clippy)
 builder.add_node("run_build", run_build)
@@ -170,7 +192,16 @@ builder.add_node("rollback_changes", rollback_changes)
 builder.add_node("phase_complete", phase_complete)
 
 # Define Flow
-builder.add_edge(START, "run_clippy")
+builder.add_edge(START, "route_phase")
+
+# Route to appropriate phase agent
+builder.add_conditional_edges(
+    "route_phase",
+    route_phase,
+)
+
+# ELO Gain Agent -> Phase Complete (when internal state machine finishes)
+builder.add_edge("elo_gain_agent", "phase_complete")
 
 # 2. Agent -> Apply Diff (Write fix to disk)
 builder.add_conditional_edges(
