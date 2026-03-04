@@ -55,6 +55,7 @@ initial_state: CodyState = {
     "logs_dir": None,
     "clippy_error_count": None,
     "best_clippy_error_count": None,
+    "clippy_has_syntax_error": None,
     "current_phase": first_phase,
     "phases_todo": remaining_phases,
     "phases_completed": [],

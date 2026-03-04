@@ -26,39 +26,53 @@ def _select_model(config: dict) -> str:
     models = config.get("models", {}) if isinstance(config, dict) else {}
     return models.get("clippy") or config.get("model") or "gpt-4o-mini"
 
-def _extract_first_warning(output: str) -> Tuple[str, Optional[str], Optional[int]]:
+def _extract_all_issues(output: str) -> Tuple[str, Optional[str], Optional[int]]:
+    """Extract all clippy warnings/errors for agent visibility.
+    
+    Returns: (all_issues_text, first_file_path, first_line_no)
+    """
     lines = output.splitlines()
-    start_idx = None
-    for i, line in enumerate(lines):
-        stripped = line.lstrip()
+    issues: list[str] = []
+    first_file: Optional[str] = None
+    first_line: Optional[int] = None
+    
+    i = 0
+    while i < len(lines):
+        stripped = lines[i].lstrip()
         if stripped.startswith("warning:") or stripped.startswith("error:"):
-            start_idx = i
-            break
-
-    if start_idx is None:
+            issue_block: list[str] = []
+            start_i = i
+            
+            # Collect this issue until we hit the next one
+            while i < len(lines):
+                line = lines[i]
+                stripped_inner = line.lstrip()
+                if i > start_i and (stripped_inner.startswith("warning:") or stripped_inner.startswith("error:")):
+                    break
+                issue_block.append(line)
+                
+                # Extract file/line from first issue only
+                if first_file is None and "-->" in line:
+                    arrow = line.split("-->", 1)[1].strip()
+                    parts = arrow.rsplit(":", 2)
+                    if len(parts) == 3:
+                        first_file = parts[0].strip()
+                        try:
+                            first_line = int(parts[1])
+                        except ValueError:
+                            pass
+                i += 1
+            
+            issues.append("\n".join(issue_block).strip())
+        else:
+            i += 1
+    
+    if not issues:
         return (output.strip(), None, None)
-
-    block: list[str] = []
-    file_path: Optional[str] = None
-    line_no: Optional[int] = None
-
-    for j in range(start_idx, len(lines)):
-        line = lines[j]
-        stripped = line.lstrip()
-        if j > start_idx and (stripped.startswith("warning:") or stripped.startswith("error:")):
-            break
-        block.append(line)
-        if "-->" in line:
-            arrow = line.split("-->", 1)[1].strip()
-            parts = arrow.rsplit(":", 2)
-            if len(parts) == 3:
-                file_path = parts[0].strip()
-                try:
-                    line_no = int(parts[1])
-                except ValueError:
-                    line_no = None
-
-    return ("\n".join(block).strip(), file_path, line_no)
+    
+    # Return all issues as context
+    all_text = "\n\n".join(f"ISSUE {idx + 1}:\n{issue}" for idx, issue in enumerate(issues))
+    return (all_text, first_file, first_line)
 
 def _read_context_snippet(repo_path: str, file_path: Optional[str], line_no: Optional[int], radius: int = 20) -> str:
     if not file_path or not line_no:
@@ -115,9 +129,11 @@ STRICT RULES:
 - Do NOT use *** markers or *** Begin Patch / *** End Patch
 - Put your diff inside a markdown code block with 'diff' language tag
 - Do not suggest external dependencies.
-- Fix one warning/error at a time.
+- CRITICAL: Fix EXACTLY ONE warning/error at a time with minimal changes.
+- CRITICAL: When multiple issues exist, ALWAYS pick the SIMPLEST fix (fewest lines changed).
 - CRITICAL: NEVER add #[allow(...)], #[warn(...)], or any suppression attributes.
 - ALWAYS fix the root cause. Suppressing warnings/errors is forbidden.
+- Skip issues that require large refactors (>20 lines); pick simpler ones first.
 """,
         "refactoring": """
 You are Cody's RefactoringAgent.
@@ -244,12 +260,19 @@ def clippy_agent(state: CodyState) -> CodyState:
     # We inject the last tool output (either code or clippy errors) 
     # as a "user" message so the LLM reacts to the current state.
     last_output = state.get("last_output", "") or ""
-    warning_text, file_path, line_no = _extract_first_warning(last_output)
+    all_issues_text, file_path, line_no = _extract_all_issues(last_output)
     snippet = _read_context_snippet(state.get("repo_path", ""), file_path, line_no)
 
     context_parts = []
-    if warning_text:
-        context_parts.append("FIRST_CLIPPY_WARNING:\n" + warning_text)
+    if all_issues_text:
+        issue_count = all_issues_text.count("ISSUE ")
+        context_parts.append(f"ALL_CLIPPY_ISSUES ({issue_count} total):\n" + all_issues_text)
+        if issue_count > 1:
+            context_parts.append(
+                "\nIMPORTANT: Multiple issues present. "
+                "Pick the SIMPLEST one that requires the FEWEST lines changed. "
+                "Make ONE incremental fix only."
+            )
     if snippet:
         context_parts.append("CODE_CONTEXT:\n" + snippet)
 
