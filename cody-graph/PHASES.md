@@ -29,9 +29,11 @@ In `cody-agent/config.json`, add a model assignment for your phase:
 {
     "models": {
         "clippy": "gpt-5-mini",
-        "refactoring": "gpt-4o",    // NEW PHASE
-        "performance": "gpt-5.1",   // NEW PHASE
-        "features": "gpt-5.1"       // NEW PHASE
+        "refactoring": "gpt-5.1",
+        "features": "gpt-5.1",
+        "performance": "o3",        // Complex optimizations
+        "ELOGain": "o3",            // Chess-specific improvements
+        "unit_tests_docs": "gpt-5-nano"
     }
 }
 ```
@@ -124,15 +126,27 @@ If any step fails:
 - **Process**: Improve structure, readability, maintainability
 - **Stop**: No more quality improvements found
 
-### Performance Phase (Planned)
-- **Input**: Benchmark results
-- **Process**: Optimize hot paths, reduce allocations
+### Performance Phase
+- **Input**: Benchmark results, profiling data
+- **Process**: Optimize hot paths, reduce allocations, improve critical algorithms
+- **Model**: o3 (complex optimization reasoning)
 - **Stop**: Diminishing returns (<5% improvement)
 
-### Features Phase (Planned)
+### ELOGain Phase
+- **Input**: Engine playing strength metrics, evaluation scores
+- **Process**: Improve chess-specific logic (evaluation, search pruning, move ordering, extensions)
+- **Model**: o3 (deep chess knowledge required)
+- **Stop**: No more high-impact ELO improvements found
+- **Focus Areas**:
+  - Evaluation function tuning
+  - Search enhancements (LMR, null-move pruning, extensions)
+  - Move ordering improvements
+  - Endgame knowledge
+
+### Features Phase
 - **Input**: Feature requirements
-- **Process**: Implement up to 3 features
-- **Stop**: 3 features completed or no more features
+- **Process**: Implement new chess engine capabilities
+- **Stop**: Requested features completed
 
 ## Logging and Diagnostics
 
