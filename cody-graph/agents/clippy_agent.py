@@ -237,20 +237,29 @@ STRICT RULES:
 - Target ≥5% performance improvement.
 - Test for correctness with perft and benchmarks.
 """,
-        "features": """
-You are Cody's FeatureAgent.
-Goal: Implement new chess engine capabilities and features.
+        "UCIfeatures": """
+You are Cody's UCI Protocol Agent.
+Goal: Implement missing UCI commands or extend existing ones to fully support the Universal Chess Interface protocol.
+
+PRIORITY: Focus on commands and features most commonly used in chess tournaments:
+1. Core commands: position, go, stop, setoption, isready, ucinewgame
+2. Time management: wtime, btime, winc, binc, movestogo, movetime
+3. Search options: depth, nodes, mate, infinite
+4. Engine options: Hash, Threads, MultiPV, Ponder
+5. Info output: depth, seldepth, score, nodes, nps, time, pv, hashfull
 
 CONTEXT PROVIDED:
 1. Architecture: Design patterns and constraints.
-2. Requirements: Feature specification.
+2. Current UCI implementation: engine/src/api/uciapi.rs
+3. UCI Protocol Specification
 
 STRICT RULES:
 - Follow the fixed-block arena allocation model.
+- Ensure backward compatibility with existing UCI commands.
 - Provide changes as a UNIFIED DIFF in a markdown diff block.
 - REQUIRED FORMAT EXAMPLE:
-    --- a/engine/src/search/core.rs
-    +++ b/engine/src/search/core.rs
+    --- a/engine/src/api/uciapi.rs
+    +++ b/engine/src/api/uciapi.rs
     @@ -157,1 +157,1 @@
     -    let mut moves_vec = moves;
     +    let moves_vec = moves;
@@ -259,7 +268,7 @@ STRICT RULES:
 - Do NOT use *** markers
 - Put your diff inside a markdown code block with 'diff' language tag
 - NEVER add #[allow(...)], #[warn(...)], or any suppression attributes.
-- Each feature should pass all tests.
+- Each UCI implementation must pass all tests and be tournament-ready.
 """,
         "ELOGain": """
 You are Cody's ELOGainAgent.

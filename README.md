@@ -47,7 +47,7 @@ Cody uses an automated multi-phase improvement loop powered by **LangGraph** orc
 Additional phases can be enabled in `cody-agent/config.json`:
 - **Clippy phase:** Eliminate compiler warnings
 - **Refactoring phase:** Improve code quality and architecture
-- **Features phase:** Add new capabilities
+- **UCIfeatures phase:** Implement missing UCI commands for tournament-grade protocol support
 - **Performance phase:** Optimize critical paths for speed (uses o3 model)
 - **ELOGain phase:** Chess-specific improvements to increase playing strength (uses o3 model)
 - **Unit Tests/Docs phase:** Test coverage and documentation updates

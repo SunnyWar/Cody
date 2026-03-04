@@ -18,7 +18,7 @@ class CodyState(TypedDict):
     best_clippy_error_count: Optional[int]   # best (lowest) count this phase
     clippy_has_syntax_error: Optional[bool]  # critical syntax error flag
     # Multi-phase orchestration
-    current_phase: str            # "clippy", "refactoring", "performance", "features"
+    current_phase: str            # "clippy", "refactoring", "performance", "UCIfeatures"
     phases_todo: List[str]        # remaining phases to execute
     phases_completed: List[str]   # completed phases
     phase_iteration: int          # iteration count within current phase

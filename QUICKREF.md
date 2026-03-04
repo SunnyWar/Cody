@@ -261,5 +261,5 @@ After `python .\cody-graph\main.py` completes:
 
 1. **To improve code quality:** Implement refactoring phase (see [cody-graph/PHASES.md](cody-graph/PHASES.md))
 2. **To optimize performance:** Implement performance phase with benchmark tracking
-3. **To add features:** Implement features phase with TODO management
+3. **To add UCI protocol support:** Implement UCIfeatures phase for tournament-grade UCI compliance
 4. **To debug issues:** Check diagnostics in `cody-graph/DIAGNOSTICS.md`
