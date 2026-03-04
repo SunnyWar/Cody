@@ -162,7 +162,7 @@ cargo run --release -p engine -- perft 5
 ## 🎯 Playing Strength
 
 Cody currently plays at much less than **<1000 ELO**, reflecting its development stage as an AI-generated engine. 
-
+v1.0.0 - Too weak to measure
 
 ## 🚀 Development Status
 
