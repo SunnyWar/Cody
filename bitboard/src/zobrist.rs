@@ -93,4 +93,3 @@ pub fn compute_zobrist(pos: &Position) -> u64 {
 
     h
 }
-

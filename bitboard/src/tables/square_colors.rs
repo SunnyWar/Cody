@@ -67,4 +67,3 @@ pub const SQUARE_COLOR_MASK: [BitBoardMask; 64] = [
     BitBoardMask(0x55AA_55AA_55AA_55AA),
     BitBoardMask(0xAA55_AA55_AA55_AA55),
 ];
-

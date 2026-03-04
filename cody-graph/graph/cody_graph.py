@@ -5,6 +5,7 @@ from agents.clippy_agent import clippy_agent
 from tools.run_build import run_build
 from tools.run_clippy import run_clippy
 from tools.run_tests import run_tests
+from tools.run_fmt import run_fmt
 from tools.apply_diff import apply_diff
 from tools.rollback_changes import rollback_changes
 
@@ -79,6 +80,12 @@ def after_rollback(state: CodyState):
 
 def after_tests(state: CodyState):
     if state["status"] == "ok":
+        return "run_fmt"
+    return "rollback_changes"
+
+def after_fmt(state: CodyState):
+    if state["status"] == "ok":
+        print("[cody-graph] [DIAG] Code formatted, phase complete", flush=True)
         return "phase_complete"
     return "rollback_changes"
 
@@ -140,6 +147,7 @@ builder.add_node("apply_diff", apply_diff)
 builder.add_node("run_clippy", run_clippy)
 builder.add_node("run_build", run_build)
 builder.add_node("run_tests", run_tests)
+builder.add_node("run_fmt", run_fmt)
 builder.add_node("rollback_changes", rollback_changes)
 builder.add_node("phase_complete", phase_complete)
 
@@ -170,10 +178,16 @@ builder.add_conditional_edges(
     after_build,
 )
 
-# 6. Tests -> Phase Complete or Rollback
+# 6. Tests -> Format or Rollback
 builder.add_conditional_edges(
     "run_tests",
     after_tests,
+)
+
+# 6b. Format -> Check for more warnings or Rollback
+builder.add_conditional_edges(
+    "run_fmt",
+    after_fmt,
 )
 
 # 7. Phase Complete -> Next Phase or End

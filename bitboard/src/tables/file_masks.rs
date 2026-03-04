@@ -20,4 +20,3 @@ pub const NOT_FILE_A: BitBoardMask = BitBoardMask(0xFEFE_FEFE_FEFE_FEFE);
 pub const NOT_FILE_AB: BitBoardMask = BitBoardMask(0xFCFC_FCFC_FCFC_FCFC);
 pub const NOT_FILE_H: BitBoardMask = BitBoardMask(0x7F7F_7F7F_7F7F_7F7F);
 pub const NOT_FILE_GH: BitBoardMask = BitBoardMask(0x3F3F_3F3F_3F3F_3F3F);
-
