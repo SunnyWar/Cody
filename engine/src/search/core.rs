@@ -125,13 +125,12 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     let mut tt_exact_needs_verify: Option<crate::core::tt::TTEntry> = None;
     {
         let key = arena.get(ply).position.zobrist_hash();
-        if let Some(e) = tt.probe(key, remaining as i8, alpha, beta) {
-            if e.flag == crate::core::tt::TTFlag::Exact as u8 {
-                if e.best_move.is_null() {
-                    return e.value;
-                }
-                tt_exact_needs_verify = Some(e);
+        if let Some(e) = tt.probe(key, remaining as i8, alpha, beta)
+            && e.flag == crate::core::tt::TTFlag::Exact as u8 {
+            if e.best_move.is_null() {
+                return e.value;
             }
+            tt_exact_needs_verify = Some(e);
         }
     }
 

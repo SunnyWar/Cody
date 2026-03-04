@@ -15,11 +15,12 @@ def rollback_changes(state: CodyState) -> CodyState:
     state["logs_dir"] = logs_dir
     
     diff_content = state.get("last_diff")
+    original_command = state.get("last_command")  # Preserve context for after_rollback
     if not diff_content:
         result_state = {
             **state,
             "last_output": "No diff available to rollback.",
-            "last_command": "rollback",
+            "last_command": original_command,  # Preserve original context
             "status": "error",
         }
         print(f"[cody-graph] rollback_changes: ERROR - {result_state['last_output']}", flush=True)
@@ -54,7 +55,7 @@ def rollback_changes(state: CodyState) -> CodyState:
             return {
                 **state,
                 "last_output": "No patching tool found (git or patch).",
-                "last_command": "rollback",
+                "last_command": original_command,  # Preserve original context
                 "status": "error",
             }
 
@@ -73,7 +74,7 @@ def rollback_changes(state: CodyState) -> CodyState:
             result_state = {
                 **state,
                 "last_output": "Rollback applied successfully.",
-                "last_command": "rollback",
+                "last_command": original_command,  # Preserve original context
                 "status": "error",
             }
             print(f"[cody-graph] rollback_changes: SUCCESS - {result_state['last_output']}", flush=True)
@@ -82,7 +83,7 @@ def rollback_changes(state: CodyState) -> CodyState:
         result_state = {
             **state,
             "last_output": f"Rollback failed: {result.stderr}",
-            "last_command": "rollback",
+            "last_command": original_command,  # Preserve original context
             "status": "error",
         }
         print(f"[cody-graph] rollback_changes: ERROR - {result_state['last_output']}", flush=True)
