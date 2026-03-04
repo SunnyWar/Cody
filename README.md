@@ -147,6 +147,11 @@ cargo run --release -p engine -- perft 5
 - **Time management** with absolute and remaining time budgets
 - **UCI protocol** for integration with chess GUIs
 
+## 🎯 Playing Strength
+
+Cody currently plays at much less than **<1000 ELO**, reflecting its development stage as an AI-generated engine. 
+
+
 ## 🚀 Development Status
 
 **Completed:**
