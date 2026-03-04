@@ -1,6 +1,7 @@
 # main.py
 import os
 import json
+import sys
 from pathlib import Path
 
 from graph.cody_graph import app
@@ -35,9 +36,41 @@ def _load_phases_config(repo_root: Path) -> list:
     print(f"[cody-graph] [DIAG] Final phase order (clippy first): {phases}", flush=True)
     return phases
 
+
+def _print_usage(phases: list[str]) -> None:
+    print("Usage:")
+    print("  python .\\cody-graph\\main.py <phase|all>")
+    print("")
+    print("Options:")
+    print("  all          Run full orchestration (current behavior)")
+    for phase in phases:
+        print(f"  {phase:<12} Run only the '{phase}' phase")
+    print("")
+    print("Examples:")
+    print("  python .\\cody-graph\\main.py all")
+    print("  python .\\cody-graph\\main.py clippy")
+    print("  python .\\cody-graph\\main.py refactoring")
+
 phases_list = _load_phases_config(repo_root)
-first_phase = phases_list[0] if phases_list else "clippy"
-remaining_phases = phases_list[1:] if len(phases_list) > 1 else []
+
+if len(sys.argv) < 2:
+    _print_usage(phases_list)
+    raise SystemExit(0)
+
+selection = sys.argv[1].strip().lower()
+
+if selection == "all":
+    scheduled_phases = phases_list
+elif selection in phases_list:
+    scheduled_phases = [selection]
+else:
+    print(f"Invalid phase option: {selection}")
+    print("")
+    _print_usage(phases_list)
+    raise SystemExit(1)
+
+first_phase = scheduled_phases[0] if scheduled_phases else "clippy"
+remaining_phases = scheduled_phases[1:] if len(scheduled_phases) > 1 else []
 
 initial_state: CodyState = {
     "messages": [
@@ -70,7 +103,7 @@ print("=" * 80)
 print("CODY-GRAPH: Multi-Phase Automated Improvement Agent")
 print("=" * 80)
 print(f"Repository: {repo_root}")
-print(f"Phases scheduled: {phases_list}")
+print(f"Phases scheduled: {scheduled_phases}")
 print("=" * 80)
 
 result = app.invoke(initial_state)
