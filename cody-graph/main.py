@@ -10,6 +10,23 @@ from tools.phase_manager import save_phase_state
 
 repo_root = Path(os.environ.get("CODY_REPO_PATH", Path(__file__).resolve().parents[1]))
 
+PHASE_CLI_ALIASES = {
+    "unit_tests_docs": "tests",
+}
+
+
+def _to_cli_phase(phase: str) -> str:
+    return PHASE_CLI_ALIASES.get(phase, phase)
+
+
+def _to_internal_phase(selection: str, phases: list[str]) -> str | None:
+    if selection in phases:
+        return selection
+    for internal, cli in PHASE_CLI_ALIASES.items():
+        if selection == cli and internal in phases:
+            return internal
+    return None
+
 def _load_phases_config(repo_root: Path) -> list:
     """Load and order phases configuration from cody-agent/config.json.
     
@@ -44,12 +61,14 @@ def _print_usage(phases: list[str]) -> None:
     print("Options:")
     print("  all          Run full orchestration (current behavior)")
     for phase in phases:
-        print(f"  {phase:<12} Run only the '{phase}' phase")
+        cli_phase = _to_cli_phase(phase)
+        print(f"  {cli_phase:<12} Run only the '{cli_phase}' phase")
     print("")
     print("Examples:")
     print("  python .\\cody-graph\\main.py all")
     print("  python .\\cody-graph\\main.py clippy")
     print("  python .\\cody-graph\\main.py refactoring")
+    print("  python .\\cody-graph\\main.py tests")
 
 phases_list = _load_phases_config(repo_root)
 
@@ -61,9 +80,17 @@ selection = sys.argv[1].strip().lower()
 
 if selection == "all":
     scheduled_phases = phases_list
-elif selection in phases_list:
-    scheduled_phases = [selection]
 else:
+    selected_phase = _to_internal_phase(selection, phases_list)
+    if selected_phase is not None:
+        scheduled_phases = [selected_phase]
+    else:
+        print(f"Invalid phase option: {selection}")
+        print("")
+        _print_usage(phases_list)
+        raise SystemExit(1)
+
+if selection != "all" and not scheduled_phases:
     print(f"Invalid phase option: {selection}")
     print("")
     _print_usage(phases_list)
@@ -103,7 +130,7 @@ print("=" * 80)
 print("CODY-GRAPH: Multi-Phase Automated Improvement Agent")
 print("=" * 80)
 print(f"Repository: {repo_root}")
-print(f"Phases scheduled: {scheduled_phases}")
+print(f"Phases scheduled: {[_to_cli_phase(phase) for phase in scheduled_phases]}")
 print("=" * 80)
 
 result = app.invoke(initial_state)
