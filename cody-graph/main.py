@@ -53,6 +53,8 @@ initial_state: CodyState = {
     "llm_response": None,
     "diff_extracted": None,
     "logs_dir": None,
+    "clippy_error_count": None,
+    "best_clippy_error_count": None,
     "current_phase": first_phase,
     "phases_todo": remaining_phases,
     "phases_completed": [],

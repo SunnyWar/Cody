@@ -188,6 +188,28 @@ def _validate_diff_policy(diff_content: str, state: dict) -> tuple[bool, str, di
     summary = _summarize_diff(patches)
     phase = state.get("current_phase", "clippy")
 
+    # Universal rule: NEVER allow suppression attributes
+    suppression_patterns = [
+        "#[allow(",
+        "#[warn(",
+        "#![allow(",
+        "#![warn(",
+    ]
+    for patch in patches:
+        for hunk in patch.get("hunks", []):
+            for hline in hunk.get("lines", []):
+                if not hline or hline[0] != "+":
+                    continue
+                content = hline[1:].strip()
+                for pattern in suppression_patterns:
+                    if pattern in content:
+                        return (
+                            False,
+                            f"Rejected diff: adds suppression attribute '{pattern}'. "
+                            "Orchestration policy: ALWAYS fix root cause, NEVER hide warnings/errors.",
+                            summary,
+                        )
+
     if phase == "clippy":
         if summary["file_count"] != 1:
             return (

@@ -51,11 +51,19 @@ def run_clippy(state: CodyState) -> CodyState:
         status = "error"
         print(f"[cody-graph] [DIAG] Exception: {e}", flush=True)
 
+    prev_best = state.get("best_clippy_error_count")
+    if isinstance(prev_best, int):
+        best_error_count = min(prev_best, error_count)
+    else:
+        best_error_count = error_count
+
     result_state = {
         **state,
         "last_output": output,
         "last_command": "clippy",
         "status": status,
+        "clippy_error_count": error_count,
+        "best_clippy_error_count": best_error_count,
     }
     if status != "ok":
         print(f"[cody-graph] run_clippy: ERROR (exit code {result.returncode})", flush=True)

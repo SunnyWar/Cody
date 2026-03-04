@@ -11,6 +11,23 @@ from tools.rollback_changes import rollback_changes
 def after_clippy(state: CodyState):
     if state["status"] == "ok":
         return "run_build"
+
+    # Safety gate: if an applied diff worsens clippy errors, rollback immediately.
+    current_errors = state.get("clippy_error_count")
+    best_errors = state.get("best_clippy_error_count")
+    if (
+        isinstance(current_errors, int)
+        and isinstance(best_errors, int)
+        and current_errors > best_errors
+        and state.get("last_diff")
+    ):
+        print(
+            "[cody-graph] [DIAG] Clippy regression detected "
+            f"(current={current_errors}, best={best_errors}); routing to rollback",
+            flush=True,
+        )
+        return "rollback_changes"
+
     return "clippy_agent"
 
 def after_clippy_agent(state: CodyState):
@@ -53,6 +70,8 @@ def phase_complete(state: CodyState) -> CodyState:
             "phases_todo": todo[1:],
             "phases_completed": completed,
             "phase_iteration": 0,
+            "clippy_error_count": None,
+            "best_clippy_error_count": None,
             "last_output": f"Phase '{current}' complete. Starting phase '{next_phase}'.",
             "status": "pending",
         }

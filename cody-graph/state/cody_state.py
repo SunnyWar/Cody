@@ -11,6 +11,9 @@ class CodyState(TypedDict):
     llm_response: Optional[str]   # raw LLM response for debugging
     diff_extracted: Optional[str] # extracted diff for debugging
     logs_dir: Optional[str]       # directory where logs are saved
+    # Clippy loop safety tracking
+    clippy_error_count: Optional[int]        # latest clippy error count
+    best_clippy_error_count: Optional[int]   # best (lowest) count this phase
     # Multi-phase orchestration
     current_phase: str            # "clippy", "refactoring", "performance", "features"
     phases_todo: List[str]        # remaining phases to execute
