@@ -355,13 +355,34 @@ Optional environment variables:
 CODY_ELO_TIME_CONTROL="10+0.1"
 
 # Number of games per gauntlet (default 50)
-CODY_ELO_GAUNTLET_GAMES="100"
+CODY_ELO_GAUNTLET_GAMES="50"
 
-# Max iterations of ELO loop (default 10)
-CODY_ELO_MAX_ITERATIONS="10"
+# Target number of successful improvements (default 5)
+CODY_ELO_TARGET_SUCCESSES="5"
+
+# Max iterations of ELO loop (default 50)
+CODY_ELO_MAX_ITERATIONS="50"
 
 # Statistical significance threshold (default 0.0)
 CODY_ELO_THRESH_ELO="5.0"
+```
+
+### Loop Termination
+
+The ELO Gain phase will iterate until one of these conditions is met:
+
+1. **Success Target** (Primary): Achieve N successful improvements (default N=5, configurable via `CODY_ELO_TARGET_SUCCESSES`)
+2. **Max Iterations** (Failsafe): Reach maximum number of attempts (default 50, configurable via `CODY_ELO_MAX_ITERATIONS`)
+
+**Example Run**:
+```
+[Iteration 1] PROPOSED: Null Move Pruning → BUILD ✓ → GAUNTLET → STATS → COMMIT (+15 ELO)    [1/5 success]
+[Iteration 2] PROPOSED: Evaluation Tweak → BUILD ✓ → GAUNTLET → STATS → REVERT (-5 ELO)      [1/5 success]
+[Iteration 3] PROPOSED: Better Move Ordering → BUILD ✓ → GAUNTLET → STATS → COMMIT (+12 ELO) [2/5 success]
+...
+[Iteration 8] PROPOSED: SEE-based Pruning → BUILD ✓ → GAUNTLET → STATS → COMMIT (+8 ELO)    [5/5 success]
+
+✓ ACHIEVED 5 SUCCESSFUL IMPROVEMENTS — ELO GAIN PHASE COMPLETE
 ```
 
 ---

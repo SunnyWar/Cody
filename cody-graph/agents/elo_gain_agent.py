@@ -17,8 +17,9 @@ from typing import Optional
 from openai import OpenAI
 from state.cody_state import CodyState
 
-DEFAULT_MAX_ELO_PHASE_ITERATIONS = 10
-DEFAULT_GAUNTLET_GAME_COUNT = 50  # 50–100 games at fast time control
+DEFAULT_MAX_ELO_PHASE_ITERATIONS = 50  # Max attempts to get N successful improvements
+DEFAULT_TARGET_ELO_SUCCESSES = 5     # Number of successful improvements to achieve
+DEFAULT_GAUNTLET_GAME_COUNT = 50    # 50–100 games at fast time control
 
 def _load_config(repo_path: str) -> dict:
     """Load configuration from cody-agent/config.json."""
@@ -214,6 +215,10 @@ def elo_gain_decision(state: CodyState) -> CodyState:
         # - Update 'stable' branch pointer (or merge to main)
         # - Tag with version
         
+        # Track successful commit
+        successful_commits = state.get("elo_successful_commits", 0) + 1
+        state["elo_successful_commits"] = successful_commits
+        
         state["status"] = "ok"
         state["elo_phase_outcome"] = "committed"
         state["elo_improvement_committed"] = elo_gain
@@ -245,20 +250,35 @@ def elo_gain_agent(state: CodyState) -> CodyState:
     """
     Main ELO Gain Orchestration
     
-    Routes through the 5-phase loop until max iterations reached or
-    stable performance achieved.
+    Routes through the 5-phase loop until N successful improvements achieved
+    or max iterations reached. Default target: N=5 successful commits.
     """
-    print("[cody-graph] [ELO Gain] Starting ELO Gain phase orchestration", flush=True)
+    if state.get("elo_iterations", 0) == 0:
+        # First call: initialize tracking
+        print("[cody-graph] [ELO Gain] Starting ELO Gain phase orchestration", flush=True)
     
     repo_path = state.get("repo_path", ".")
     iteration = state.get("elo_iterations", 0)
+    successful_commits = state.get("elo_successful_commits", 0)
+    target_successes = state.get("elo_target_successes", DEFAULT_TARGET_ELO_SUCCESSES)
     max_iterations = state.get("elo_max_iterations", DEFAULT_MAX_ELO_PHASE_ITERATIONS)
+    
+    # Check if we've reached the success target
+    if successful_commits >= target_successes:
+        print(
+            f"[cody-graph] [ELO Gain] ✓ Achieved {successful_commits} successful improvements "
+            f"(target: {target_successes}), ending ELO phase",
+            flush=True
+        )
+        state["status"] = "ok"
+        return state
     
     # Check iteration limit
     if iteration >= max_iterations:
         print(
-            f"[cody-graph] [ELO Gain] Reached max iterations ({max_iterations}), "
-            "ending ELO phase",
+            f"[cody-graph] [ELO Gain] Reached max iterations ({max_iterations}). "
+            f"Completed {successful_commits}/{target_successes} target improvements. "
+            "Ending ELO phase.",
             flush=True
         )
         state["status"] = "ok"
@@ -278,10 +298,38 @@ def elo_gain_agent(state: CodyState) -> CodyState:
     elif stage == "decision":
         return elo_gain_decision(state)
     elif stage == "complete":
-        # Increment iteration counter and loop back
+        # Increment iteration counter
         state["elo_iterations"] = iteration + 1
+        successful_commits = state.get("elo_successful_commits", 0)
+        target_successes = state.get("elo_target_successes", DEFAULT_TARGET_ELO_SUCCESSES)
+        
+        # Check success target before looping
+        if successful_commits >= target_successes:
+            print(
+                f"[cody-graph] [ELO Gain] ✓ Achieved {successful_commits} successful improvements "
+                f"(target: {target_successes}), ending ELO phase",
+                flush=True
+            )
+            state["status"] = "ok"
+            return state
+        
+        # Check max iterations before looping
+        if state["elo_iterations"] >= state.get("elo_max_iterations", DEFAULT_MAX_ELO_PHASE_ITERATIONS):
+            print(
+                f"[cody-graph] [ELO Gain] Max iterations reached. "
+                f"Completed {successful_commits}/{target_successes} target improvements.",
+                flush=True
+            )
+            state["status"] = "ok"
+            return state
+        
+        # Continue to next iteration
         state["elo_phase_stage"] = "candidate_generation"
-        print(f"[cody-graph] [ELO Gain] Iteration {iteration + 1} starting", flush=True)
+        print(
+            f"[cody-graph] [ELO Gain] Iteration {state['elo_iterations']} starting "
+            f"({successful_commits}/{target_successes} successes)",
+            flush=True
+        )
         return elo_gain_agent(state)
     else:
         print(f"[cody-graph] [ELO Gain] Unknown stage: {stage}", flush=True)
