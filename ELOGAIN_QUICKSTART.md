@@ -140,6 +140,8 @@ The following scripts are ready for implementation in priority order:
 
 ### 5-Phase Loop (Flow Chart)
 
+The ELO Gain phase loops until **N=5 successful improvements achieved** or **50 max iterations reached**:
+
 ```
 ┌──────────────────────────────────────────┐
 │ Candidate Generation                     │
@@ -156,7 +158,7 @@ The following scripts are ready for implementation in priority order:
 └──────────────────────────────────────────┘
                     ↓
 ┌──────────────────────────────────────────┐
-│ The Gauntlet (50–100 games)              │
+│ The Gauntlet (50 games)                  │
 │ Candidate vs. Stable at 10s + 0.1s       │
 │ Output: PGN + match statistics           │
 └──────────────────────────────────────────┘
@@ -169,11 +171,13 @@ The following scripts are ready for implementation in priority order:
                     ↓
 ┌──────────────────────────────────────────┐
 │ Decision: Commit or Revert               │
-│ If ΔElo > 0: git commit + tag            │
+│ If ΔElo > 0: git commit + tag (SUCCESS++)│
 │ If ΔElo ≤ 0: git reset + analyze losses │
 └──────────────────────────────────────────┘
                     ↓
-          ⏁ Loop up to 10 times
+   ⏁ Continue until:
+     • 5 successes achieved (PRIMARY)
+     • 50 iterations reached (FAILSAFE)
 ```
 
 ### State Machine (Internal to elo_gain_agent)
@@ -190,10 +194,19 @@ elif stage == "gauntlet":
 elif stage == "statistical_check":
     return elo_gain_statistical_check(state)
 elif stage == "decision":
-    return elo_gain_decision(state)
+    elo_gain_decision(state)
+    # If committed: state["elo_successful_commits"] incremented
+    # If reverted: state unchanged
+    return state
 elif stage == "complete":
-    # Increment iteration and loop
     state["elo_iterations"] += 1
+    # Check if target reached (default N=5 successes)
+    if state.get("elo_successful_commits", 0) >= state.get("elo_target_successes", 5):
+        return state  # Exit: target achieved
+    # Check if max iterations reached (default 50)
+    if state["elo_iterations"] >= state.get("elo_max_iterations", 50):
+        return state  # Exit: max attempts reached
+    # Otherwise: loop back to next iteration
     state["elo_phase_stage"] = "candidate_generation"
     return elo_gain_agent(state)  # Recursive: next iteration
 ```
@@ -215,15 +228,19 @@ elif stage == "complete":
 ### Optional Env Vars
 ```bash
 # Windows PowerShell
-$env:CODY_ELO_TIME_CONTROL = "10+0.1"      # Time control
-$env:CODY_ELO_GAUNTLET_GAMES = "50"        # Games per match
-$env:CODY_ELO_MAX_ITERATIONS = "10"        # Max candidate attempts
-$env:CODY_ELO_THRESH_ELO = "0.0"           # Commitment threshold
+$env:CODY_ELO_TIME_CONTROL = "10+0.1"           # Time control
+$env:CODY_ELO_GAUNTLET_GAMES = "50"             # Games per match
+$env:CODY_ELO_TARGET_SUCCESSES = "5"            # Target improvements (default 5)
+$env:CODY_ELO_MAX_ITERATIONS = "50"             # Max attempts (default 50)
+$env:CODY_ELO_THRESH_ELO = "0.0"                # Commitment threshold
 
 # Linux/macOS
 export CODY_ELO_TIME_CONTROL="10+0.1"
+export CODY_ELO_TARGET_SUCCESSES="5"
 # ... etc
 ```
+
+**Target Behavior**: The ELO Gain phase will loop until **5 successful improvements are committed** or **50 iterations are attempted**, whichever comes first.
 
 ---
 

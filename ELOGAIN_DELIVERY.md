@@ -214,7 +214,9 @@ stage ∈ {
 ```python
 {
   "elo_phase_stage": str,              # Current sub-phase
-  "elo_iterations": int,               # Attempt counter (0-10)
+  "elo_iterations": int,               # Attempt counter (0-50 by default)
+  "elo_successful_commits": int,       # Number of successful improvements (NEW)
+  "elo_target_successes": int,         # Target successes (default 5) (NEW)
   "elo_gauntlet_games": int,           # Games per match (default 50)
   "elo_gain_value": float,             # Calculated ΔElo
   "elo_error_bar": float,              # 95% credible interval
@@ -229,10 +231,13 @@ stage ∈ {
 ```
 if elo_gain_value > decision_threshold (default 0.0):
     COMMIT: git add → commit → tag → update stable
+    successful_commits++
 else:
     REVERT: git reset → analyze losses → store for LLM
     
-Loop: Up to 10 times or until converged
+Loop until:
+  • successful_commits >= target_successes (default 5) [PRIMARY]
+  • iterations >= max_iterations (default 50) [FAILSAFE]
 ```
 
 ---
