@@ -3,7 +3,7 @@
     "model": "gpt-5.1",
     "models": {
         "refactoring": "gpt-5.1",
-        "features": "gpt-5.1",
+        "UCIfeatures": "gpt-5.1",
         "performance": "o3",
         "ELOGain": "o3",
         "clippy": "gpt-5-mini",

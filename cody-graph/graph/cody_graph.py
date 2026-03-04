@@ -15,7 +15,7 @@ def route_phase(state: CodyState) -> str:
     Route to the appropriate phase agent based on current_phase.
     
     Different phases have fundamentally different workflows:
-    - Clippy, Refactoring, Features, Performance, Tests: Use clippy_agent (iterative LLM fixes)
+    - Clippy, Refactoring, UCIfeatures, Performance, Tests: Use clippy_agent (iterative LLM fixes)
     - ELOGain: Use elo_gain_agent (complex multi-step chess improvement loop)
     """
     phase = state.get("current_phase", "clippy")
