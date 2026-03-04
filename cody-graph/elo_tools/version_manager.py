@@ -133,7 +133,7 @@ def copy_binary_with_version(
     target_path = engines_path / versioned_name
     
     shutil.copy2(source_path, target_path)
-    print(f"[version_manager] Copied {source_path.name} → {target_path}")
+    print(f"[version_manager] Copied {source_path.name} >> {target_path}")
     
     return str(target_path)
 
@@ -164,7 +164,7 @@ def copy_candidate_binary(
     target_path = engines_path / source_path.name
     
     shutil.copy2(source_path, target_path)
-    print(f"[version_manager] Copied candidate: {source_path.name} → {target_path}")
+    print(f"[version_manager] Copied candidate: {source_path.name} >> {target_path}")
     
     return str(target_path)
 

@@ -2,11 +2,14 @@
 ELO Gain Agent - Orchestrates the chess engine improvement loop.
 
 This agent manages a sophisticated multi-step process:
+0. Sanity Check: Self-play validation to detect critical bugs
 1. Candidate Generation: LLM proposes chess-related improvements
 2. Compilation: Verify code builds and passes perft tests
 3. Gauntlet: Run matches against the stable version
 4. Statistical Check: Calculate ELO difference with error bars
 5. Decision: Commit improvements or revert and analyze losses
+
+If sanity check finds CRITICAL issues, the process stops and blocks improvements.
 """
 
 import json
@@ -26,6 +29,7 @@ from version_manager import (
     copy_binary_with_version,
     copy_candidate_binary,
 )
+from sanity_check import run_self_play_sanity_check, SanityCheckResult
 
 # Add tools to path for commit utility
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
@@ -54,6 +58,81 @@ def _select_model(config: dict, phase: str = "ELOGain") -> str:
     models = config.get("models", {}) if isinstance(config, dict) else {}
     return models.get(phase) or config.get("model") or "gpt-4o"
 
+def elo_gain_sanity_check(state: CodyState) -> CodyState:
+    """
+    PHASE 0: Engine Sanity Check (Self-Play Validation)
+    
+    Before attempting any improvements, verify engine correctness:
+    - Runs 10-20 games of self-play
+    - Detects: illegal moves, crashes, quick checkmate losses
+    - BLOCKS ELO improvements if critical issues found
+    - Allows proceeding with WARNINGS (non-critical issues)
+    """
+    print("[cody-graph] [ELO Gain] [0/6] Engine Sanity Check (Self-Play)", flush=True)
+    
+    repo_path = state.get("repo_path", ".")
+    engines_dir = state.get("elo_engines_dir", r"C:\chess\Engines")
+    sanity_games = state.get("elo_sanity_games", 10)  # Quick validation: 10 games
+    
+    binary_path = os.path.join(repo_path, "target", "release", "cody.exe")
+    
+    try:
+        sanity_result: SanityCheckResult = run_self_play_sanity_check(
+            binary_path=binary_path,
+            engines_dir=engines_dir,
+            game_count=sanity_games,
+            time_control="10+0.1",
+        )
+        
+        # Store results in state
+        state["elo_sanity_result"] = sanity_result.to_dict()
+        state["elo_sanity_pgn"] = sanity_result.pgn_file
+        
+        if sanity_result.has_critical_issues():
+            # BLOCK improvements - engine has serious bugs
+            print(
+                "[cody-graph] [ELO Gain] [CRITICAL] Issues in self-play - BLOCKING improvements",
+                flush=True
+            )
+            for issue in sanity_result.critical_issues:
+                print(f"  - {issue}", flush=True)
+            print(
+                "[cody-graph] [ELO Gain] Fix these issues manually before attempting ELO improvements",
+                flush=True
+            )
+            state["status"] = "sanity_check_failed"
+            state["elo_phase_stage"] = "complete"
+            state["elo_phase_outcome"] = "sanity_failed"
+            return state
+        
+        if sanity_result.has_issues():
+            # Warnings only - allow proceeding but flag for attention
+            print(
+                "[cody-graph] [ELO Gain] [WARNING] Warnings found in self-play:",
+                flush=True
+            )
+            for warning in sanity_result.warnings:
+                print(f"  - {warning}", flush=True)
+            print(
+                "[cody-graph] [ELO Gain] Proceeding with improvements, but review results",
+                flush=True
+            )
+            state["elo_sanity_warnings"] = sanity_result.warnings
+        else:
+            print("[cody-graph] [ELO Gain] [OK] Engine sanity check passed - no critical issues", flush=True)
+        
+        state["status"] = "ok"
+        state["elo_phase_stage"] = "candidate_generation"
+        state["last_command"] = "sanity_check"
+        
+    except Exception as e:
+        print(f"[cody-graph] [ELO Gain] Sanity check ERROR: {e}", flush=True)
+        state["status"] = "error"
+        state["elo_phase_stage"] = "complete"
+        state["elo_error_message"] = str(e)
+    
+    return state
+
 def elo_gain_candidate_generation(state: CodyState) -> CodyState:
     """
     PHASE 1: Candidate Generation
@@ -63,7 +142,7 @@ def elo_gain_candidate_generation(state: CodyState) -> CodyState:
     
     TODO: Implement full candidate generation with LLM analysis.
     """
-    print("[cody-graph] [ELO Gain] [1/5] Candidate Generation phase [NOT IMPLEMENTED]", flush=True)
+    print("[cody-graph] [ELO Gain] [1/6] Candidate Generation phase [NOT IMPLEMENTED]", flush=True)
     
     repo_path = state.get("repo_path", ".")
     config = _load_config(repo_path)
@@ -91,7 +170,7 @@ def elo_gain_compilation_check(state: CodyState) -> CodyState:
     - Passes basic perft tests (move generation correctness)
     - Does not introduce clippy warnings
     """
-    print("[cody-graph] [ELO Gain] [2/5] Compilation & Validation phase", flush=True)
+    print("[cody-graph] [ELO Gain] [2/6] Compilation & Validation phase", flush=True)
     
     repo_path = state.get("repo_path", ".")
     perft_depth = state.get("elo_perft_depth", 5)
@@ -128,7 +207,7 @@ def elo_gain_gauntlet_match(state: CodyState) -> CodyState:
     
     Generates a PGN file with all games for statistical analysis and later review.
     """
-    print("[cody-graph] [ELO Gain] [3/5] Running Gauntlet matches", flush=True)
+    print("[cody-graph] [ELO Gain] [3/6] Running Gauntlet matches", flush=True)
     
     repo_path = state.get("repo_path", ".")
     game_count = state.get("elo_gauntlet_games", DEFAULT_GAUNTLET_GAME_COUNT)
@@ -161,7 +240,7 @@ def elo_gain_gauntlet_match(state: CodyState) -> CodyState:
         # Handle different result scenarios
         if result.status == "illegal_move":
             print(
-                "[cody-graph] [ELO Gain] 🛑 CRITICAL: Candidate made an illegal move!",
+                "[cody-graph] [ELO Gain] [CRITICAL] Candidate made an illegal move!",
                 flush=True
             )
             state["status"] = "illegal_move"
@@ -203,7 +282,7 @@ def elo_gain_statistical_check(state: CodyState) -> CodyState:
     - H0: Candidate is NOT better (rejected hypothesis)
     - None: Inconclusive (max games reached without decision)
     """
-    print("[cody-graph] [ELO Gain] [4/5] Statistical Analysis", flush=True)
+    print("[cody-graph] [ELO Gain] [4/6] Statistical Analysis", flush=True)
     
     gauntlet_result = state.get("elo_gauntlet_result", {})
     sprt_decision = gauntlet_result.get("sprt_decision")
@@ -212,7 +291,7 @@ def elo_gain_statistical_check(state: CodyState) -> CodyState:
     # SPRT provides the statistical test
     if sprt_decision == "H1":
         # Candidate passed: statistically significant improvement
-        print("[cody-graph] [ELO Gain] ✓ SPRT: H1 accepted (candidate is better)", flush=True)
+        print("[cody-graph] [ELO Gain] [OK] SPRT: H1 accepted (candidate is better)", flush=True)
         elo_estimate = 5.0  # Minimum improvement per SPRT config
         state["elo_gain_value"] = elo_estimate
         state["elo_passed_sprt"] = True
@@ -226,7 +305,7 @@ def elo_gain_statistical_check(state: CodyState) -> CodyState:
     
     else:
         # Inconclusive: estimate from win rate
-        print("[cody-graph] [ELO Gain] ⚠ SPRT: Inconclusive (max games reached)", flush=True)
+        print("[cody-graph] [ELO Gain] [WARNING] SPRT: Inconclusive (max games reached)", flush=True)
         # Rough ELO estimate from win percentage
         if candidate_score > 50:
             elo_estimate = (candidate_score - 50) * 7  # Rough conversion
@@ -262,7 +341,7 @@ def elo_gain_decision(state: CodyState) -> CodyState:
       * Feed loss PGNs back to LLM for analysis of failure modes
       * Record in learning state for future iterations
     """
-    print("[cody-graph] [ELO Gain] [5/5] Decision phase", flush=True)
+    print("[cody-graph] [ELO Gain] [5/6] Decision phase", flush=True)
     
     repo_path = state.get("repo_path", ".")
     passed_sprt = state.get("elo_passed_sprt", False)
@@ -270,7 +349,7 @@ def elo_gain_decision(state: CodyState) -> CodyState:
     engines_dir = state.get("elo_engines_dir", r"C:\chess\Engines")
     
     if passed_sprt:
-        print(f"[cody-graph] [ELO Gain] ✓ SPRT passed — COMMITTING", flush=True)
+        print(f"[cody-graph] [ELO Gain] [OK] SPRT passed — COMMITTING", flush=True)
         
         try:
             # 1. Get current version before commit (commit_util will increment it)
@@ -366,7 +445,7 @@ def elo_gain_agent(state: CodyState) -> CodyState:
         # Check if we've reached the success target
         if successful_commits >= target_successes:
             print(
-                f"[cody-graph] [ELO Gain] ✓ Achieved {successful_commits} successful improvements "
+                f"[cody-graph] [ELO Gain] [OK] Achieved {successful_commits} successful improvements "
                 f"(target: {target_successes}), ending ELO phase",
                 flush=True
             )
@@ -385,9 +464,11 @@ def elo_gain_agent(state: CodyState) -> CodyState:
             return state
         
         # Route through stages
-        stage = state.get("elo_phase_stage", "candidate_generation")
+        stage = state.get("elo_phase_stage", "sanity_check")  # Start with sanity check
         
-        if stage == "candidate_generation":
+        if stage == "sanity_check":
+            state = elo_gain_sanity_check(state)
+        elif stage == "candidate_generation":
             state = elo_gain_candidate_generation(state)
         elif stage == "compilation":
             state = elo_gain_compilation_check(state)
