@@ -49,18 +49,21 @@
    - LLM analyzes code for quality improvements
    - Proposes refactoring patches
    - Integrate with cody-graph routing
+   - **MUST use `commit_util.py` for all commits** (auto version bump)
    - Time: Medium effort, 4-6 hours
 
 2. **[Implement] Performance Agent** (`agents/performance_agent.py`)
    - LLM proposes search/evaluation optimizations
    - Benchmark comparison infrastructure
    - Integrate with cody-graph routing
+   - **MUST use `commit_util.py` for all commits** (auto version bump)
    - Time: Medium effort, 4-6 hours
 
 3. **[Implement] UCI Features Agent** (`agents/ucifeatures_agent.py`)
    - LLM enhances UCI protocol compliance
    - Protocol validation testing
    - Integrate with cody-graph routing
+   - **MUST use `commit_util.py` for all commits** (auto version bump)
    - Time: Medium effort, 4-6 hours
 
 #### Phase 5: ELO Gain Loop 🎯 PRIORITY
@@ -129,6 +132,7 @@ engine/
 - **Fixed-block arena** — Nodes preallocated, reused via ID
 - **Separation of concerns** — bitboard = rules, engine = search
 - **Type safety** — Use newtypes, not raw integers
+- **Version management** — Commits that modify .rs files MUST increment version (see `cody-graph/VERSION_MANAGEMENT.md`)
 
 ## Known Issues & Workarounds
 
