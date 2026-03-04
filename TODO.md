@@ -4,9 +4,11 @@
 
 ## Current Status (March 2026)
 
-**Phase:** Automated Improvement via LangGraph  
-**Latest Phase:** Clippy warning fixes (automated)  
-**Overall Status:** MVP Complete + Optimization in Progress
+**Phase:** Automated Improvement Orchestration Infrastructure  
+**Latest Work:** Refactoring orchestration agents pending  
+**Overall Status:** MVP Complete + Orchestration Infrastructure in Progress
+
+**Development Goal:** Implement the orchestration/AI infrastructure so the engine improvements (refactoring, performance, UCI features, ELO gains) happen automatically without manual coding.
 
 ## Current Work
 
@@ -14,29 +16,19 @@
 **Tool:** LangGraph-based multi-phase orchestration (`cody-graph/`)  
 **Status:** Phase routing complete, sub-phase implementations in progress
 
-**Phase 1: Clippy Fixes** (Active)
-- [x] System detects compiler warnings
-- [x] LLM proposes unified diff fixes
-- [x] Patches applied with `git apply`
-- [x] Validation: build + test + clippy pass
-- [x] Automatic rollback on failure
-- [ ] Continuous improvement until all warnings gone
+**Phase 2: Refactoring** (Orchestration pending)
+- [ ] **Refactoring Agent** — LLM-driven code quality improvements
+- [ ] **Integration with cody-graph** — Routing and state management
 
-**Phase 2: Refactoring** (Ready to implement)
-- [ ] Code quality improvements
-- [ ] Architecture optimization
-- [ ] API simplification
+**Phase 3: Performance Optimizations** (Orchestration pending)
+- [ ] **Performance Agent** — LLM-driven search/evaluation improvements
+- [ ] **Benchmark tracking** — Automated benchmark comparisons
+- [ ] **Integration with cody-graph** — Routing and state management
 
-**Phase 3: Performance Optimizations** (Ready to implement)
-- [ ] Search speed improvements
-- [ ] Evaluation optimization
-- [ ] Benchmark-driven enhancements
-
-**Phase 4: UCIfeatures** (Ready to implement)
-- [ ] Implement missing UCI commands (time management, search options)
-- [ ] Extend UCI info output (depth, seldepth, score, nodes, nps, pv, hashfull)
-- [ ] Add engine options support (Hash, Threads, MultiPV, Ponder)
-- [ ] Tournament-grade UCI protocol compliance
+**Phase 4: UCIfeatures** (Orchestration pending)
+- [ ] **UCI Enhancement Agent** — LLM-driven UCI protocol improvements
+- [ ] **Protocol validation** — Automated compliance testing
+- [ ] **Integration with cody-graph** — Routing and state management
 
 **Phase 5: ELO Gain Loop** 🔴 HIGH PRIORITY (Scaffolding Complete)
 - [x] Orchestration agent created (`agents/elo_gain_agent.py`)
@@ -52,57 +44,61 @@
 
 ### 🔴 CRITICAL: Complete Orchestration Phases (Including ELO Loop)
 
-#### Phase 1: Finish & Polish
-1. **[Auto] Complete Clippy fixes** — Run `python .\cody-graph\main.py` until all warnings resolved
-2. Verify phase transitions work correctly
-3. Monitor `.cody_logs/` for any errors
+#### Phase 2–4: Implement Orchestration Agents
+1. **[Implement] Refactoring Agent** (`agents/refactoring_agent.py`)
+   - LLM analyzes code for quality improvements
+   - Proposes refactoring patches
+   - Integrate with cody-graph routing
+   - Time: Medium effort, 4-6 hours
 
-#### Phase 2–4: Implement & Enable
-4. **[Auto] Refactoring phase** — Implement when clippy complete
-5. **[Auto] Performance optimization phase** — Benchmark-driven improvements
-6. **[Auto] UCIfeatures phase** — UCI protocol compliance and tournament readiness
+2. **[Implement] Performance Agent** (`agents/performance_agent.py`)
+   - LLM proposes search/evaluation optimizations
+   - Benchmark comparison infrastructure
+   - Integrate with cody-graph routing
+   - Time: Medium effort, 4-6 hours
+
+3. **[Implement] UCI Features Agent** (`agents/ucifeatures_agent.py`)
+   - LLM enhances UCI protocol compliance
+   - Protocol validation testing
+   - Integrate with cody-graph routing
+   - Time: Medium effort, 4-6 hours
 
 #### Phase 5: ELO Gain Loop 🎯 PRIORITY
-7. **[Implement] Compilation Validator** (`elo_tools/validate_compilation.py`)
+4. **[Implement] Compilation Validator** (`elo_tools/validate_compilation.py`)
    - Run `cargo build --release`
    - Run `cargo run --release -- perft 5`
    - Validate output against known node counts
    - Time: Low effort, 1-2 hours
 
-8. **[Implement] Gauntlet Runner** (`elo_tools/gauntlet_runner.py`) 🔴 BLOCKING
+5. **[Implement] Gauntlet Runner** (`elo_tools/gauntlet_runner.py`) 🔴 BLOCKING
    - Integrate cutechess-cli or build UCI orchestrator
    - Configure 50 games at 10s + 0.1s increment
    - Parse game results and generate statistics
    - Time: Medium effort, 3-4 hours
    - **BLOCKS:** All downstream analysis
 
-9. **[Implement] Statistical Analyzer** (`elo_tools/analyze_statistics.py`)
+6. **[Implement] Statistical Analyzer** (`elo_tools/analyze_statistics.py`)
    - Parse PGN files for game results
    - Calculate Bayesian ELO difference
    - Compute 95% credible intervals
    - Time: Medium effort, 2-3 hours
 
-10. **[Implement] Commit/Revert Handler** (`elo_tools/commit_or_revert.py`)
-    - Git operations: add, commit, tag
-    - Loss analysis from PGN files
-    - State updates and persistence
-    - Time: Medium effort, 2-3 hours
+7. **[Implement] Commit/Revert Handler** (`elo_tools/commit_or_revert.py`)
+   - Git operations: add, commit, tag
+   - Loss analysis from PGN files
+   - State updates and persistence
+   - Time: Medium effort, 2-3 hours
 
-11. **[Test] Full ELO Loop** with manual candidate improvements
-    - Target: 5 successful improvements (N=5)
-    - Verify success tracking and exit conditions
-    - Monitor progress in console and logs
+8. **[Test] Full ELO Loop** with manual candidate improvements
+   - Target: 5 successful improvements (N=5)
+   - Verify success tracking and exit conditions
+   - Monitor progress in console and logs
 
-### Medium Priority (After Orchestration Complete)
-12. **[Manual] Move ordering** — Killer heuristics, history tables
-13. **[Manual] Search improvements** — Null move pruning, aspiration windows
-14. **[Manual] Opening book** — Integrate polyglot-format opening book
-15. **[Manual] Endgame tables** — Syzygy or similar EGT format
-
-### Low Priority (Future)
-16. **[Manual] Strength evaluation** — Test against known engines
-17. **[Manual] NNUE evaluation** — Neural network-based scoring (if feasible)
-18. **[Manual] Distributed search** — Multi-machine analysis
+#### Phase Orchestration Complete
+9. **[Run] Full Automated Improvement Loop**
+   - Execute `python .\cody-graph\main.py all` for continuous improvement
+   - AI will handle: Refactoring, Performance, UCI features, ELO gains
+   - Monitor progress through phases automatically
 
 ## Architecture Notes
 
@@ -136,13 +132,14 @@ engine/
 
 ## Known Issues & Workarounds
 
-| Issue | Status | Workaround |
-|-------|--------|-----------|
-| High memory usage in deep searches | Known | Increase arena size in config |
-| Move ordering could be better | Known | Implement killer heuristics |
-| No opening book | Known | Play with built-in search only |
-| Evaluation is basic | Known | Add PST tuning phase |
-| Search is single-threaded | Partially addressed | Rayon pool created but not maximally utilized |
+| Issue | Status | Solution |
+|-------|--------|----------|
+| High memory usage in deep searches | Known | Refactoring Agent will optimize arena sizing |
+| Move ordering could be better | Known | Performance Agent will implement killer heuristics |
+| No opening book | Known | Refactoring Agent can integrate opening book |
+| Evaluation is basic | Known | Performance Agent will optimize evaluation |
+| Search is single-threaded | Partially addressed | Performance Agent will enhance parallelism |
+| UCI protocol incomplete | Known | UCI Features Agent will add missing commands |
 
 ## Metrics & Goals
 
@@ -216,10 +213,17 @@ See `ELOGAIN_QUICKSTART.md` for testing and `ELO_GAIN_PHASE.md` for architecture
 
 ## Contributing
 
-The project uses an automated improvement loop via LangGraph. To contribute:
-1. Run `python .\cody-graph\main.py` to execute improvement phases
-2. Review `.cody_logs/` for detailed execution traces
-3. Check `orchestrator_state.json` for phase progress
-4. Manual improvements: Edit Rust files directly, tests will validate
+The project uses an automated improvement orchestration via LangGraph. Development focuses on implementing the orchestration infrastructure:
+
+1. **Build orchestration agents** — Create new agents for improvement phases
+2. **Implement supporting tools** — Build validators, runners, analyzers
+3. **Run the automated loop** — Execute `python .\cody-graph\main.py all` for continuous hands-off improvement
+4. **Monitor and tune** — Review `.cody_logs/` for results, adjust LLM prompts as needed
+
+Once the orchestration infrastructure is complete, the AI automatically handles:
+- Code refactoring and quality improvements
+- Performance optimizations and search enhancements
+- UCI protocol improvements
+- ELO strength increases via the gauntlet feedback loop
 
 See [QUICKREF.md](QUICKREF.md) for command reference.
