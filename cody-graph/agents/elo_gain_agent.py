@@ -12,10 +12,24 @@ This agent manages a sophisticated multi-step process:
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import Optional
 from openai import OpenAI
 from state.cody_state import CodyState
+
+# Add elo_tools to path for imports
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "elo_tools"))
+from gauntlet_runner import run_gauntlet, GauntletResult
+from version_manager import (
+    get_version_string,
+    copy_binary_with_version,
+    copy_candidate_binary,
+)
+
+# Add tools to path for commit utility
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+from commit_util import commit_with_version_bump
 
 DEFAULT_MAX_ELO_PHASE_ITERATIONS = 1  # Demo mode: just 1 iteration to show phases
 DEFAULT_TARGET_ELO_SUCCESSES = 5     # Number of successful improvements to achieve
@@ -109,38 +123,71 @@ def elo_gain_gauntlet_match(state: CodyState) -> CodyState:
     """
     PHASE 3: The Gauntlet
     
-    Runs a short match (50–100 games) at fast time control (10s + 0.1s increment)
-    against the stable/previous version of Cody.
+    Runs a short match (50–200 games) at fast time control (10s + 0.1s increment)
+    against the stable/previous version of Cody using SPRT.
     
     Generates a PGN file with all games for statistical analysis and later review.
-    
-    TODO: Implement full gauntlet runner using cutechess-cli or similar.
     """
-    print("[cody-graph] [ELO Gain] [3/5] Running Gauntlet matches [NOT IMPLEMENTED]", flush=True)
+    print("[cody-graph] [ELO Gain] [3/5] Running Gauntlet matches", flush=True)
     
     repo_path = state.get("repo_path", ".")
     game_count = state.get("elo_gauntlet_games", DEFAULT_GAUNTLET_GAME_COUNT)
+    engines_dir = state.get("elo_engines_dir", r"C:\chess\Engines")
     
-    # TODO: Call gauntlet runner script
-    # - Ensure stable binary exists (build from stable branch or tag)
-    # - Run gauntlet_runner.py with:
-    #   - Current candidate vs. stable
-    #   - Game count (default 50)
-    #   - Time control (10s + 0.1s increment, or from config)
-    # - Capture PGN output
-    # - Store match statistics (wins, losses, draws, score %)
+    # Build candidate binary path
+    candidate_binary = os.path.join(repo_path, "target", "release", "cody.exe")
     
-    state["status"] = "ok"
-    state["elo_phase_stage"] = "statistical_check"
-    state["elo_gauntlet_pgn"] = "PLACEHOLDER: PGN file path"
-    state["elo_match_stats"] = {
-        "games": game_count,
-        "candidate_wins": 0,  # TODO: Parse from gauntlet result
-        "stable_wins": 0,     # TODO: Parse from gauntlet result
-        "draws": 0,           # TODO: Parse from gauntlet result
-        "candidate_score_percent": 0.0,  # TODO: Calculate
-    }
-    state["last_command"] = "gauntlet_match"
+    # Run the gauntlet using cutechess-cli with SPRT
+    try:
+        result: GauntletResult = run_gauntlet(
+            candidate_binary=candidate_binary,
+            engines_dir=engines_dir,
+            game_count=game_count,
+            time_control="10+0.1",
+        )
+        
+        # Store results in state
+        state["elo_gauntlet_result"] = result.to_dict()
+        state["elo_gauntlet_pgn"] = result.pgn_file
+        state["elo_worst_fail_pgn"] = result.worst_fail_pgn
+        state["elo_match_stats"] = {
+            "games": result.games_played,
+            "candidate_wins": result.candidate_wins,
+            "champion_wins": result.champion_wins,
+            "draws": result.draws,
+            "candidate_score_percent": result.candidate_score * 100,
+        }
+        
+        # Handle different result scenarios
+        if result.status == "illegal_move":
+            print(
+                "[cody-graph] [ELO Gain] 🛑 CRITICAL: Candidate made an illegal move!",
+                flush=True
+            )
+            state["status"] = "illegal_move"
+            state["elo_phase_stage"] = "revert"
+            state["elo_phase_outcome"] = "illegal_move"
+            return state
+        
+        elif result.status == "error":
+            print(
+                f"[cody-graph] [ELO Gain] ERROR: {result.error_message}",
+                flush=True
+            )
+            state["status"] = "error"
+            state["elo_phase_stage"] = "revert"
+            return state
+        
+        # Normal flow - proceed to statistical check
+        state["status"] = "ok"
+        state["elo_phase_stage"] = "statistical_check"
+        state["last_command"] = "gauntlet_match"
+        
+    except Exception as e:
+        print(f"[cody-graph] [ELO Gain] Gauntlet ERROR: {e}", flush=True)
+        state["status"] = "error"
+        state["elo_phase_stage"] = "revert"
+        state["elo_error_message"] = str(e)
     
     return state
 
@@ -148,36 +195,53 @@ def elo_gain_statistical_check(state: CodyState) -> CodyState:
     """
     PHASE 4: Statistical Analysis
     
-    Uses cutechess-cli or Bayesian analysis to:
-    - Calculate ELO difference (ΔElo)
-    - Compute Bayes error bar (confidence interval)
-    - Determine if the improvement is statistically significant
+    With SPRT, the statistical decision is already made by cutechess-cli.
+    This phase extracts and interprets the SPRT result.
     
-    TODO: Implement statistical analyzer.
+    SPRT Decision:
+    - H1: Candidate is significantly better (+5 ELO with 95% confidence)
+    - H0: Candidate is NOT better (rejected hypothesis)
+    - None: Inconclusive (max games reached without decision)
     """
-    print("[cody-graph] [ELO Gain] [4/5] Statistical Analysis [NOT IMPLEMENTED]", flush=True)
+    print("[cody-graph] [ELO Gain] [4/5] Statistical Analysis", flush=True)
     
-    repo_path = state.get("repo_path", ".")
-    pgn_path = state.get("elo_gauntlet_pgn")
+    gauntlet_result = state.get("elo_gauntlet_result", {})
+    sprt_decision = gauntlet_result.get("sprt_decision")
+    candidate_score = gauntlet_result.get("candidate_score_percent", 0.0)
     
-    # TODO: Call statistical analyzer script
-    # - Input: PGN file from gauntlet
-    # - Tool options:
-    #   a. Call cutechess-cli's Bayes ELO calculator
-    #   b. Implement Bayesian analysis (scipy/numpy)
-    # - Output: ELO difference, error bar, statistical significance
+    # SPRT provides the statistical test
+    if sprt_decision == "H1":
+        # Candidate passed: statistically significant improvement
+        print("[cody-graph] [ELO Gain] ✓ SPRT: H1 accepted (candidate is better)", flush=True)
+        elo_estimate = 5.0  # Minimum improvement per SPRT config
+        state["elo_gain_value"] = elo_estimate
+        state["elo_passed_sprt"] = True
     
-    elo_gain = 0.0  # TODO: Calculate from match result
-    error_bar = 0.0  # TODO: Calculate Bayes error bar
+    elif sprt_decision == "H0":
+        # Candidate failed: no significant improvement
+        print("[cody-graph] [ELO Gain] ✗ SPRT: H0 (candidate not better)", flush=True)
+        elo_estimate = 0.0
+        state["elo_gain_value"] = elo_estimate
+        state["elo_passed_sprt"] = False
+    
+    else:
+        # Inconclusive: estimate from win rate
+        print("[cody-graph] [ELO Gain] ⚠ SPRT: Inconclusive (max games reached)", flush=True)
+        # Rough ELO estimate from win percentage
+        if candidate_score > 50:
+            elo_estimate = (candidate_score - 50) * 7  # Rough conversion
+        else:
+            elo_estimate = 0.0
+        state["elo_gain_value"] = elo_estimate
+        state["elo_passed_sprt"] = False
     
     state["status"] = "ok"
     state["elo_phase_stage"] = "decision"
-    state["elo_gain_value"] = elo_gain
-    state["elo_error_bar"] = error_bar
     state["last_command"] = "statistical_check"
     
     print(
-        f"[cody-graph] [ELO Gain] Statistical result: {elo_gain:.1f} ± {error_bar:.1f} ELO",
+        f"[cody-graph] [ELO Gain] Estimated ELO: {elo_estimate:+.1f} "
+        f"(Win rate: {candidate_score:.1f}%)",
         flush=True
     )
     
@@ -188,63 +252,97 @@ def elo_gain_decision(state: CodyState) -> CodyState:
     PHASE 5: Decision & Commit or Revert
     
     Logic:
-    - If ELO Gain > 0 (statistically acceptable):
-      * Commit the change to main branch (or stable branch)
+    - If SPRT H1 (passed): 
+      * Increment patch version
+      * Copy binary to engines dir with version
+      * Commit changes with version bump
       * Update baseline for next iteration
-    - If ELO Gain <= 0:
+    - If SPRT H0 or failed:
       * Revert the candidate
       * Feed loss PGNs back to LLM for analysis of failure modes
       * Record in learning state for future iterations
-    
-    TODO: Implement decision logic and commit/revert handling.
     """
-    print("[cody-graph] [ELO Gain] [5/5] Decision phase [NOT IMPLEMENTED]", flush=True)
+    print("[cody-graph] [ELO Gain] [5/5] Decision phase", flush=True)
     
     repo_path = state.get("repo_path", ".")
+    passed_sprt = state.get("elo_passed_sprt", False)
     elo_gain = state.get("elo_gain_value", 0.0)
-    pgn_path = state.get("elo_gauntlet_pgn")
+    engines_dir = state.get("elo_engines_dir", r"C:\chess\Engines")
     
-    decision_threshold = 0.0  # Gain must be > 0 to commit
+    if passed_sprt:
+        print(f"[cody-graph] [ELO Gain] ✓ SPRT passed — COMMITTING", flush=True)
+        
+        try:
+            # 1. Get current version before commit (commit_util will increment it)
+            current_version = get_version_string(os.path.join(repo_path, "engine", "Cargo.toml"))
+            print(f"[cody-graph] [ELO Gain] Current version: {current_version}", flush=True)
+            
+            # 2. Commit changes with automatic version bump
+            commit_message = f"ELO gain (+{elo_gain:.1f} ELO estimated)"
+            success, new_version, error = commit_with_version_bump(
+                repo_path=repo_path,
+                commit_message=commit_message,
+                phase="ELOGain",
+                files_to_add=None  # Will add all modified files + Cargo.toml
+            )
+            
+            if not success:
+                raise Exception(f"Commit failed: {error}")
+            
+            print(f"[cody-graph] [ELO Gain] Version: {current_version} → {new_version}", flush=True)
+            
+            # 3. Copy binary to engines dir with new version
+            candidate_binary = os.path.join(repo_path, "target", "release", "cody.exe")
+            versioned_binary = copy_binary_with_version(
+                candidate_binary,
+                engines_dir,
+                new_version
+            )
+            print(f"[cody-graph] [ELO Gain] Copied to {versioned_binary}", flush=True)
+            
+            # Track successful commit
+            successful_commits = state.get("elo_successful_commits", 0) + 1
+            state["elo_successful_commits"] = successful_commits
+            
+            state["status"] = "ok"
+            state["elo_phase_outcome"] = "committed"
+            state["elo_improvement_committed"] = elo_gain
+            state["elo_committed_version"] = new_version
+            
+        except Exception as e:
+            print(f"[cody-graph] [ELO Gain] ERROR during commit: {e}", flush=True)
+            state["status"] = "error"
+            state["elo_phase_outcome"] = "commit_failed"
+            state["elo_error_message"] = str(e)
     
-    if elo_gain > decision_threshold:
-        print(f"[cody-graph] [ELO Gain] ✓ ELO gain {elo_gain:.1f} — COMMITTING", flush=True)
-        
-        # TODO: Commit logic
-        # - Stage all modified files in bitboard/ and engine/
-        # - Create commit with message: "ELOGain: [description] (+{elo_gain:.1f} ELO)"
-        # - Update 'stable' branch pointer (or merge to main)
-        # - Tag with version
-        
-        # Track successful commit
-        successful_commits = state.get("elo_successful_commits", 0) + 1
-        state["elo_successful_commits"] = successful_commits
-        
-        state["status"] = "ok"
-        state["elo_phase_outcome"] = "committed"
-        state["elo_improvement_committed"] = elo_gain
-        
     else:
         print(
-            f"[cody-graph] [ELO Gain] ✗ ELO gain {elo_gain:.1f} <= 0 — REVERTING",
+            f"[cody-graph] [ELO Gain] ✗ SPRT failed or inconclusive — REVERTING",
             flush=True
         )
         
         # TODO: Revert and analysis logic
-        # - Revert working directory to pre-candidate state
+        # - Revert working directory to pre-candidate state (if needed)
         # - Analyze loss PGNs:
         #   * Parse PGN games where candidate lost
         #   * Extract position contexts, move sequences
         #   * Feed failures to LLM as context for next iteration
         # - Store analysis in a side object for learning
         
+        # For now, just mark as reverted
+        worst_fail = state.get("elo_worst_fail_pgn")
+        if worst_fail:
+            print(f"[cody-graph] [ELO Gain] Worst failure saved: {worst_fail}", flush=True)
+        
         state["status"] = "ok"
         state["elo_phase_outcome"] = "reverted"
-        state["elo_failure_analysis"] = "PLACEHOLDER: Analysis of why candidate failed"
+        state["elo_failure_analysis"] = "TODO: Analyze failure games and feed to LLM"
     
     state["last_command"] = "decision"
     state["elo_phase_stage"] = "complete"
     
     return state
+
 
 def elo_gain_agent(state: CodyState) -> CodyState:
     """

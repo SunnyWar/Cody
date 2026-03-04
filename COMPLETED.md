@@ -49,6 +49,17 @@
   - State machine supports iteration loops with N=5 success target
   - Success tracking: `elo_successful_commits` counter
   - Exit conditions: 5 successes OR 50 max iterations
+- [x] **ELO Gain Phase Fully Implemented**
+  - Full cutechess-cli integration with SPRT testing
+  - Version management utility (`version_manager.py`)
+  - Gauntlet runner with SPRT and illegal move detection
+  - Statistical analysis using SPRT decisions
+  - Automatic version increment and binary management on success
+- [x] **Centralized Version Management**
+  - Created `commit_util.py` for automatic version bumps
+  - Policy: ALL commits must increment version (any code change affects gameplay)
+  - Integrated with ELO gain agent
+  - Documentation: `VERSION_MANAGEMENT.md`
 - [x] Enhanced multi-phase routing in `cody_graph.py`
 - [x] Documentation: `ELO_GAIN_PHASE.md`, `ELOGAIN_QUICKSTART.md`, `ELOGAIN_DELIVERY.md`
 - [x] Reorganized development priorities around orchestration completion

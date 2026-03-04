@@ -6,14 +6,15 @@ Handles the final step of the ELO Gain loop:
 - If ELO Gain > 0: Commit changes and update baseline
 - If ELO Gain <= 0: Revert changes and optionally analyze failures
 
+NOTE: This module is now mostly superseded by commit_util.py which handles
+version management automatically for all commits.
+
 Usage:
     python elo_tools/commit_or_revert.py \
         --repo-path <repo_path> \
         --elo-gain 25.5 \
         --candidate-description "Implement Null Move Pruning" \
         --pgn <failure_pgn> (if reverting)
-
-TODO: Implement Git operations and loss analysis.
 """
 
 import argparse
@@ -22,6 +23,10 @@ from pathlib import Path
 from typing import Optional
 import json
 import sys
+
+# Add parent directory to path for commit_util
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+from commit_util import commit_with_version_bump
 
 
 def run_command(cmd: list[str], cwd: Optional[Path] = None) -> tuple[int, str]:
@@ -47,30 +52,29 @@ def commit_improvement(
     elo_gain: float,
 ) -> bool:
     """
-    Commit the improvement to the repository.
+    Commit the improvement to the repository with automatic version bump.
     
-    TODO: Implement full commit workflow:
-    1. Stage modified files in bitboard/ and engine/
-    2. Create commit with message: "ELOGain: [description] (+{elo_gain:.1f} ELO)"
-    3. Tag with version (e.g., v1.0.1-elo001)
-    4. Optionally push to 'stable' branch
+    Uses commit_util.commit_with_version_bump() to ensure version is incremented.
     
     Returns True on success, False on failure.
     """
     print(f"[commit_handler] Committing improvement: {description}")
     print(f"  ELO Gain: +{elo_gain:.1f}")
     
-    commit_msg = f"ELOGain: {description} (+{elo_gain:.1f} ELO)"
+    commit_msg = f"{description} (+{elo_gain:.1f} ELO)"
     
-    # TODO: Implement stages:
-    # 1. git add bitboard/ engine/
-    # 2. git commit -m "{commit_msg}"
-    # 3. git tag -a v1.0.1-elo{number} -m "{commit_msg}"
-    # 4. git branch -f stable HEAD (or git push origin stable)
+    success, new_version, error = commit_with_version_bump(
+        repo_path=str(repo_path),
+        commit_message=commit_msg,
+        phase="ELOGain",
+        files_to_add=None  # Add all modified files
+    )
     
-    print(f"[commit_handler] PLACEHOLDER: Would commit with message:")
-    print(f"  {commit_msg}")
+    if not success:
+        print(f"[commit_handler] ERROR: {error}")
+        return False
     
+    print(f"[commit_handler] ✓ Committed as v{new_version}")
     return True
 
 
