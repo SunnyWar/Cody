@@ -47,16 +47,40 @@ def run_tests(state: CodyState) -> CodyState:
         print(f"[cody-graph] [DIAG] Saved test output to: {test_log}", flush=True)
         
         status = "ok" if result.returncode == 0 else "error"
+
+        changed_files: list[str] = []
+        try:
+            diff_proc = subprocess.run(
+                ["git", "diff", "--name-only"],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            changed_files = [line.strip() for line in diff_proc.stdout.splitlines() if line.strip()]
+            if changed_files:
+                print(
+                    f"[cody-graph] [DIAG] Changed files for repair context: {changed_files[:5]}",
+                    flush=True,
+                )
+        except Exception as e:
+            print(f"[cody-graph] [DIAG] Failed to collect changed files: {e}", flush=True)
     except Exception as e:
         output = f"Exception while running cargo test: {e}"
         status = "error"
+        changed_files = state.get("changed_files", []) or []
         print(f"[cody-graph] [DIAG] Exception: {e}", flush=True)
+
+    prev_failures = int(state.get("consecutive_test_failures", 0) or 0)
+    consecutive_failures = prev_failures + 1 if status != "ok" else 0
 
     result_state = {
         **state,
         "last_output": output,
         "last_command": "cargo_test",
         "status": status,
+        "changed_files": changed_files,
+        "consecutive_test_failures": consecutive_failures,
     }
     if status != "ok":
         print(f"[cody-graph] run_tests: ERROR (exit code {result.returncode})", flush=True)

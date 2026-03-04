@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -132,6 +133,25 @@ def _read_context_snippet(repo_path: str, file_path: Optional[str], line_no: Opt
         rel_path = full_path
 
     return "File: " + rel_path + "\n" + "\n".join(snippet_lines)
+
+def _read_file_head_snippet(repo_path: str, file_path: str, max_lines: int = 120) -> str:
+    full_path = file_path
+    if not os.path.isabs(full_path):
+        full_path = os.path.join(repo_path, file_path)
+    if not os.path.exists(full_path):
+        return ""
+    try:
+        lines = Path(full_path).read_text(encoding="utf-8").splitlines()
+    except Exception:
+        return ""
+
+    shown = lines[:max_lines]
+    numbered = [f"{i+1:4d} | {line}" for i, line in enumerate(shown)]
+    try:
+        rel_path = os.path.relpath(full_path, repo_path)
+    except ValueError:
+        rel_path = full_path
+    return f"File: {rel_path}\n" + "\n".join(numbered)
 
 def _get_system_prompt_for_phase(phase: str) -> str:
     """Get the system prompt appropriate for the current phase."""
@@ -296,11 +316,13 @@ def clippy_agent(state: CodyState) -> CodyState:
     attempted = state.get("attempted_warnings", []) or []
     current_warning_signature = None
     
+    is_test_repair = state.get("last_command") == "cargo_test" and int(state.get("consecutive_test_failures", 0) or 0) > 0
+
     if isinstance(all_issues_raw, list):
         # New format: list of dicts
         all_issues = _filter_attempted_issues(all_issues_raw, attempted)
         
-        if not all_issues and all_issues_raw:
+        if not all_issues and all_issues_raw and not is_test_repair:
             # All warnings have been attempted - mark phase as complete
             print(f"[cody-graph] [DIAG] All clippy warnings have been attempted. Moving to next phase.", flush=True)
             result_state = {
@@ -333,9 +355,28 @@ def clippy_agent(state: CodyState) -> CodyState:
         file_path = first_file
         line_no = first_line
     
-    snippet = _read_context_snippet(state.get("repo_path", ""), file_path, line_no)
+    repo_path = state.get("repo_path", "")
+    snippet = _read_context_snippet(repo_path, file_path, line_no)
 
     context_parts = []
+    if is_test_repair:
+        changed_files = state.get("changed_files", []) or []
+        context_parts.append(
+            "TEST FAILURE REPAIR MODE:\n"
+            "A recent code change caused tests to fail. Decide whether the code change is valid and tests should be updated, "
+            "or whether tests found a real bug and code must be fixed. Make ONE minimal fix now."
+        )
+        context_parts.append("TEST OUTPUT:\n" + last_output)
+        if changed_files:
+            context_parts.append("CHANGED FILES:\n" + "\n".join(changed_files[:10]))
+            snippet_blocks: list[str] = []
+            for changed in changed_files[:2]:
+                block = _read_file_head_snippet(repo_path, changed, max_lines=120)
+                if block:
+                    snippet_blocks.append(block)
+            if snippet_blocks:
+                context_parts.append("CHANGED FILE CODE CONTEXT:\n\n" + "\n\n".join(snippet_blocks))
+
     if all_issues_text:
         issue_count = all_issues_text.count("ISSUE ")
         context_parts.append(f"ALL_CLIPPY_ISSUES ({issue_count} total):\n" + all_issues_text)
