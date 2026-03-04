@@ -116,6 +116,8 @@ STRICT RULES:
 - Put your diff inside a markdown code block with 'diff' language tag
 - Do not suggest external dependencies.
 - Fix one warning/error at a time.
+- CRITICAL: NEVER add #[allow(...)], #[warn(...)], or any suppression attributes.
+- ALWAYS fix the root cause. Suppressing warnings/errors is forbidden.
 """,
         "refactoring": """
 You are Cody's RefactoringAgent.
@@ -139,6 +141,7 @@ STRICT RULES:
 - NEVER use @@ @@ without numbers - this is INVALID
 - Do NOT use *** markers
 - Put your diff inside a markdown code block with 'diff' language tag
+- NEVER add #[allow(...)], #[warn(...)], or any suppression attributes.
 - Maintain architecture constraints (allocation-free hot path, fixed-block arena).
 """,
         "performance": """
@@ -162,6 +165,7 @@ STRICT RULES:
 - NEVER use @@ @@ without numbers - this is INVALID
 - Do NOT use *** markers
 - Put your diff inside a markdown code block with 'diff' language tag
+- NEVER add #[allow(...)], #[warn(...)], or any suppression attributes.
 - Target ≥5% performance improvement.
 - Test for correctness with perft and benchmarks.
 """,
@@ -186,6 +190,7 @@ STRICT RULES:
 - NEVER use @@ @@ without numbers - this is INVALID
 - Do NOT use *** markers
 - Put your diff inside a markdown code block with 'diff' language tag
+- NEVER add #[allow(...)], #[warn(...)], or any suppression attributes.
 - Each feature should pass all tests.
 """,
     }

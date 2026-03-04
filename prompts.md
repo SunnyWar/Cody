@@ -76,6 +76,11 @@ Acceptance criteria:
 - Diagnostics are sufficient to debug the next failure quickly.
 - No unrelated changes.
 - No Rust engine/chess logic edits.
+
+Critical constraint for LLM-generated fixes:
+- NEVER suppress warnings/errors with allow/warn attributes (#[allow(...)], #[warn(...)], etc.)
+- ALWAYS fix the root cause instead of hiding the problem
+- Orchestration must reject any patch that adds suppression directives
 ```
 
 ---
