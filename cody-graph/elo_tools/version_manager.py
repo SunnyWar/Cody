@@ -183,7 +183,9 @@ def get_latest_champion_binary(engines_dir: str) -> Optional[str]:
     if not engines_path.exists():
         return None
     
-    pattern = re.compile(r"cody-?v?([\d\.]+)(?:\.exe)?", re.IGNORECASE)
+    # Match cody-v1.0.0.exe or cody-v1.0.0 (with optional hyphen and 'v')
+    # Captures version as three groups to avoid matching the .exe extension
+    pattern = re.compile(r"cody-?v?(\d+)\.(\d+)\.(\d+)(?:\.exe)?$", re.IGNORECASE)
     versioned_files = []
     
     for f in engines_path.iterdir():
@@ -192,18 +194,24 @@ def get_latest_champion_binary(engines_dir: str) -> Optional[str]:
         match = pattern.match(f.name)
         if match:
             try:
-                version_str = match.group(1)
-                # Parse as tuple for comparison
-                parts = tuple(map(int, version_str.split(".")))
+                # Extract version components
+                major = int(match.group(1))
+                minor = int(match.group(2))
+                patch = int(match.group(3))
+                parts = (major, minor, patch)
                 versioned_files.append((parts, str(f)))
+                print(f"[version_manager] Found champion: {f.name} (v{major}.{minor}.{patch})")
             except:
                 continue
     
     if not versioned_files:
+        print(f"[version_manager] No champion binaries found in {engines_dir}")
         return None
     
     versioned_files.sort(key=lambda x: x[0], reverse=True)
-    return versioned_files[0][1]
+    latest = versioned_files[0]
+    print(f"[version_manager] Latest champion: {Path(latest[1]).name} (v{'.'.join(map(str, latest[0]))})")
+    return latest[1]
 
 
 if __name__ == "__main__":
