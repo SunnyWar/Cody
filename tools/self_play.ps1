@@ -6,7 +6,7 @@ param(
     [int]$Depth = 2
 )
 
-$enginePath = Join-Path $PSScriptRoot '..\target\debug\engine.exe'
+$enginePath = Join-Path $PSScriptRoot '..\target\debug\cody.exe'
 if (-not (Test-Path $enginePath)) {
     Write-Error "Engine binary not found at $enginePath; build the project first"
     exit 1

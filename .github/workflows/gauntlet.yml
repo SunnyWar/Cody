@@ -39,8 +39,8 @@ jobs:
         mkdir results
         chmod +x scripts/run_gauntlet.sh
         ./scripts/run_gauntlet.sh \
-          --engine-new target/release/engine \
-          --engine-old base/target/release/engine \
+          --engine-new target/release/cody \
+          --engine-old base/target/release/cody \
           --games 100 \
           --output results/out.json
 
