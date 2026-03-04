@@ -1,33 +1,12 @@
 # Cody Chess Engine — Development Progress
 
+**Note:** For a list of completed features and milestones, see [COMPLETED.md](COMPLETED.md).
+
 ## Current Status (March 2026)
 
 **Phase:** Automated Improvement via LangGraph  
 **Latest Phase:** Clippy warning fixes (automated)  
 **Overall Status:** MVP Complete + Optimization in Progress
-
-## Completed Milestones
-
-### ✅ MVP Phase (2025-2026)
-- [x] **UCI Protocol** — Full command handling (position, go, quit, bench, perft)
-- [x] **Board Representation** — Bitboard infrastructure with occupancy maps
-- [x] **Legal Move Generation** — Pseudo-legal generation + legality verification
-- [x] **Search Core** — Negamax with alpha-beta pruning
-- [x] **Quiescence Search** — Horizon effect mitigation
-- [x] **Evaluation** — Material count + piece-square tables
-- [x] **Transposition Table** — Move ordering and cutoff reduction
-- [x] **Time Management** — Absolute and remaining time budgets
-- [x] **FEN Parsing & Move Notation** — Full position handling
-- [x] **Diagnostics** — UCI command logging and validation
-
-### ✅ Infrastructure Phase (2025-2026)
-- [x] **Cargo Workspace** — bitboard + engine crates properly separated
-- [x] **Fixed-Block Arena** — Allocation-free search node management
-- [x] **Type Safety** — Semantic newtypes (Ply, Depth, Square, NodeId)
-- [x] **Testing Harness** — Unit tests, integration tests, perft validation
-- [x] **Benchmarking** — Criterion bench setup for performance tracking
-- [x] **LangGraph Orchestration** — Automated improvement loop
-- [x] **Diagnostic System** — Timestamped logs with detailed output
 
 ## Current Work
 
@@ -196,38 +175,6 @@ cargo test -p engine
 # Benchmarks
 cargo bench -p engine
 ```
-
-## Recent Changes
-
-### March 2026 (ELO Gain Phase & Orchestration)
-- **ELO Gain Phase Scaffolding Complete**
-  - Created main orchestration agent: `agents/elo_gain_agent.py`
-  - Placeholder scripts for all 5 sub-phases in `elo_tools/`
-  - Integrated with main graph routing (START → route_phase → phase handler)
-  - State machine supports iteration loops with N=5 success target
-  - Success tracking: `elo_successful_commits` counter
-  - Exit conditions: 5 successes OR 50 max iterations
-- Enhanced multi-phase routing in `cody_graph.py`
-- Documentation: `ELO_GAIN_PHASE.md`, `ELOGAIN_QUICKSTART.md`, `ELOGAIN_DELIVERY.md`
-- Reorganized development priorities around orchestration completion
-
-### Earlier March 2026
-- Enhanced cody-graph with detailed diagnostics
-- Added multi-phase orchestration infrastructure
-- Implemented phase state persistence
-- Created DIAGNOSTICS.md and PHASES.md guides
-
-### February 2026
-- Fixed arena allocation patterns
-- Improved transposition table efficiency
-- Added time management system
-- Integrated rayon for potential parallelism
-
-### January 2026
-- Core search algorithm completion
-- Quiescence search implementation
-- PST integration
-- TT implementation with zobrist hashing
 
 ## ELO Gain Loop — Implementation Details
 
