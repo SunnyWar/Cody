@@ -102,8 +102,10 @@ Edit `cody-agent/config.json`:
   "models": {
     "clippy": "gpt-5-mini",
     "refactoring": "gpt-5.1",
-    "performance": "gpt-5.1", 
-    "features": "gpt-5.1"
+    "features": "gpt-5.1",
+    "performance": "o3",
+    "ELOGain": "o3",
+    "unit_tests_docs": "gpt-5-nano"
   },
   "use_local": false
 }
@@ -140,14 +142,22 @@ run_clippy (detect warnings)
 
 ## Phase System (Multi-Phase Ready)
 
-### Current Phases
-- **clippy** - Automatically enabled, fixes compiler warnings
-
-### Planned Phases
-When ready to implement, add to `cody-agent/config.json` models:
+### Available Phases
+- **clippy** - Fixes compiler warnings (always runs first)
 - **refactoring** - Code quality improvements
-- **performance** - Speed optimizations  
-- **features** - New capabilities
+- **features** - New capabilities  
+- **performance** - Speed optimizations on critical paths (uses o3)
+- **ELOGain** - Chess-specific improvements for playing strength (uses o3)
+- **unit_tests_docs** - Test coverage and documentation
+
+### Run Specific Phases
+```powershell
+python .\cody-graph\main.py all          # Run all phases
+python .\cody-graph\main.py clippy       # Run only clippy
+python .\cody-graph\main.py performance  # Run only performance
+python .\cody-graph\main.py ELOGain      # Run only ELOGain
+python .\cody-graph\main.py tests        # Run only unit_tests_docs
+```
 
 See [cody-graph/PHASES.md](cody-graph/PHASES.md) for phase implementation guide.
 

@@ -46,9 +46,11 @@ Cody uses an automated multi-phase improvement loop powered by **LangGraph** orc
 ### Multi-Phase (Ready to Deploy)
 Additional phases can be enabled in `cody-agent/config.json`:
 - **Clippy phase:** Eliminate compiler warnings
-- **Refactoring phase:** Improve code quality and architecture (when ready)
-- **Performance phase:** Optimize for speed (when ready)
-- **Features phase:** Add new capabilities (when ready)
+- **Refactoring phase:** Improve code quality and architecture
+- **Features phase:** Add new capabilities
+- **Performance phase:** Optimize critical paths for speed (uses o3 model)
+- **ELOGain phase:** Chess-specific improvements to increase playing strength (uses o3 model)
+- **Unit Tests/Docs phase:** Test coverage and documentation updates
 
 ## 🏗️ Architecture
 
@@ -92,8 +94,10 @@ Configure in `cody-agent/config.json`:
    "models": {
       "clippy": "gpt-5-mini",
       "refactoring": "gpt-5.1",
-      "performance": "gpt-5.1",
-      "features": "gpt-5.1"
+      "features": "gpt-5.1",
+      "performance": "o3",
+      "ELOGain": "o3",
+      "unit_tests_docs": "gpt-5-nano"
    },
    "use_local": false
 }
