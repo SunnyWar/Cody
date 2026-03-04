@@ -4,7 +4,8 @@
     "models": {
         "refactoring": "gpt-5.1",
         "features": "gpt-5.1",
-        "logic_bugs": "o3",
+        "performance": "o3",
+        "ELOGain": "o3",
         "clippy": "gpt-5-mini",
         "unit_tests_docs": "gpt-5-nano"
     },
