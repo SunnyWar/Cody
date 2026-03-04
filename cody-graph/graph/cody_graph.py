@@ -53,12 +53,29 @@ def after_apply_diff(state: CodyState):
     if state.get("last_command") == "apply_diff_rejected":
         print("[cody-graph] [DIAG] Diff rejected, running clippy again for next warning", flush=True)
         return "run_clippy"
-    return "run_clippy"
+    # After applying a patch, immediately validate that it compiles
+    print("[cody-graph] [DIAG] Patch applied, validating with build", flush=True)
+    return "run_build"
 
 def after_build(state: CodyState):
     if state["status"] == "ok":
         return "run_tests"
+    # Build failed - determine context for routing
+    # If we were validating a patch post-apply_diff, rollback and retry clippy
+    if state.get("last_command") == "apply_diff":
+        print("[cody-graph] [DIAG] Build failed after patch application, rolling back", flush=True)
+        return "rollback_changes"
+    # Otherwise (if validating after clippy phase), any build failure is critical
     return "rollback_changes"
+
+def after_rollback(state: CodyState):
+    """Route after rollback: either retry clippy or end phase."""
+    # If rollback happened after a failed patch validation, retry clippy
+    if state.get("last_command") == "apply_diff":
+        print("[cody-graph] [DIAG] Rollback complete, retrying clippy for next warning", flush=True)
+        return "run_clippy"
+    # Otherwise, end the phase (critical build failure)
+    return END
 
 def after_tests(state: CodyState):
     if state["status"] == "ok":
@@ -165,8 +182,11 @@ builder.add_conditional_edges(
     after_phase_complete,
 )
 
-# 8. Rollback -> End
-builder.add_edge("rollback_changes", END)
+# 8. Rollback -> Next Step (retry clippy or end)
+builder.add_conditional_edges(
+    "rollback_changes",
+    after_rollback,
+)
 
 # Compile the graph into a runnable executable
 app = builder.compile()
