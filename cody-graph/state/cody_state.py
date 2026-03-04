@@ -11,6 +11,8 @@ class CodyState(TypedDict):
     llm_response: Optional[str]   # raw LLM response for debugging
     diff_extracted: Optional[str] # extracted diff for debugging
     logs_dir: Optional[str]       # directory where logs are saved
+    changed_files: List[str]      # files changed by last applied patch (git diff)
+    consecutive_test_failures: int # consecutive cargo test failures after a patch
     # Clippy loop safety tracking
     clippy_error_count: Optional[int]        # latest clippy error count
     best_clippy_error_count: Optional[int]   # best (lowest) count this phase

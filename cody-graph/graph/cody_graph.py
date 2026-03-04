@@ -81,6 +81,23 @@ def after_rollback(state: CodyState):
 def after_tests(state: CodyState):
     if state["status"] == "ok":
         return "run_fmt"
+
+    # For test failures after a patch: give AI one repair attempt before rollback.
+    if state.get("last_diff"):
+        failures = int(state.get("consecutive_test_failures", 0) or 0)
+        if failures <= 1:
+            print(
+                "[cody-graph] [DIAG] Test failure after patch; routing to AI repair attempt",
+                flush=True,
+            )
+            return "clippy_agent"
+        print(
+            "[cody-graph] [DIAG] Test repair attempt failed; rolling back patch",
+            flush=True,
+        )
+        return "rollback_changes"
+
+    # If tests fail with no known patch context, rollback/end as before.
     return "rollback_changes"
 
 def after_fmt(state: CodyState):
@@ -109,6 +126,7 @@ def phase_complete(state: CodyState) -> CodyState:
             "phases_todo": todo[1:],
             "phases_completed": completed,
             "phase_iteration": 0,
+            "consecutive_test_failures": 0,
             "clippy_error_count": None,
             "best_clippy_error_count": None,
             "clippy_has_syntax_error": None,
