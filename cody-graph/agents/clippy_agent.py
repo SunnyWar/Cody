@@ -28,7 +28,8 @@ def _extract_first_warning(output: str) -> Tuple[str, Optional[str], Optional[in
     lines = output.splitlines()
     start_idx = None
     for i, line in enumerate(lines):
-        if line.lstrip().startswith("warning:"):
+        stripped = line.lstrip()
+        if stripped.startswith("warning:") or stripped.startswith("error:"):
             start_idx = i
             break
 
@@ -41,7 +42,8 @@ def _extract_first_warning(output: str) -> Tuple[str, Optional[str], Optional[in
 
     for j in range(start_idx, len(lines)):
         line = lines[j]
-        if j > start_idx and line.lstrip().startswith("warning:"):
+        stripped = line.lstrip()
+        if j > start_idx and (stripped.startswith("warning:") or stripped.startswith("error:")):
             break
         block.append(line)
         if "-->" in line:

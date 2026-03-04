@@ -5,6 +5,8 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
+HUNK_HEADER_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
+
 def _sanitize_diff(diff_content: str) -> str:
     """Clean up diff format if LLM generated non-standard formatting.
     
@@ -44,6 +46,166 @@ def _save_diagnostic(logs_dir: str, name: str, content: str) -> None:
     with open(filepath, "w") as f:
         f.write(content)
     print(f"[cody-graph] [DIAG] Saved: {filename}", flush=True)
+
+def _run_patch_with_strategies(repo_path: str) -> subprocess.CompletedProcess:
+    """Try multiple git apply strategies, including zero-context hunks.
+
+    LLM-generated diffs frequently resemble --unified=0 format (no unchanged
+    context lines), which can fail with plain `git apply`.
+    """
+    strategies = [
+        ["git", "apply", "--whitespace=nowarn", "changes.patch"],
+        ["git", "apply", "--whitespace=nowarn", "--unidiff-zero", "changes.patch"],
+        ["git", "apply", "--whitespace=nowarn", "--unidiff-zero", "--recount", "changes.patch"],
+    ]
+
+    last_result = None
+    for idx, cmd in enumerate(strategies, start=1):
+        print(f"[cody-graph] [DIAG] git apply strategy {idx}/{len(strategies)}: {' '.join(cmd)}", flush=True)
+        result = subprocess.run(
+            cmd,
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+        )
+        last_result = result
+        if result.returncode == 0:
+            print(f"[cody-graph] [DIAG] Strategy {idx} succeeded", flush=True)
+            return result
+        print(
+            f"[cody-graph] [DIAG] Strategy {idx} failed with exit code {result.returncode}",
+            flush=True,
+        )
+
+    return last_result
+
+def _normalize_diff_path(path: str) -> str:
+    path = path.strip()
+    if path.startswith("a/") or path.startswith("b/"):
+        path = path[2:]
+    return path.replace("\\", "/")
+
+def _parse_unified_diff(diff_content: str) -> list[dict]:
+    lines = diff_content.splitlines()
+    patches: list[dict] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if not line.startswith("--- "):
+            i += 1
+            continue
+
+        if i + 1 >= len(lines) or not lines[i + 1].startswith("+++ "):
+            raise ValueError("Malformed diff: missing +++ header")
+
+        old_path = _normalize_diff_path(line[4:])
+        new_path = _normalize_diff_path(lines[i + 1][4:])
+        i += 2
+
+        hunks: list[dict] = []
+        while i < len(lines):
+            if lines[i].startswith("--- "):
+                break
+            if not lines[i].startswith("@@ "):
+                i += 1
+                continue
+
+            header = lines[i]
+            match = HUNK_HEADER_RE.match(header)
+            if not match:
+                raise ValueError(f"Malformed hunk header: {header}")
+
+            old_start = int(match.group(1))
+            old_count = int(match.group(2) or "1")
+            new_start = int(match.group(3))
+            new_count = int(match.group(4) or "1")
+            i += 1
+
+            hunk_lines: list[str] = []
+            while i < len(lines):
+                hline = lines[i]
+                if hline.startswith("@@ ") or hline.startswith("--- "):
+                    break
+                hunk_lines.append(hline)
+                i += 1
+
+            hunks.append(
+                {
+                    "old_start": old_start,
+                    "old_count": old_count,
+                    "new_start": new_start,
+                    "new_count": new_count,
+                    "lines": hunk_lines,
+                }
+            )
+
+        patches.append({"old_path": old_path, "new_path": new_path, "hunks": hunks})
+
+    if not patches:
+        raise ValueError("No file patches found in diff")
+
+    return patches
+
+def _apply_patch_to_lines(path: str, original_text: str, hunks: list[dict]) -> str:
+    original_lines = original_text.splitlines()
+    has_trailing_newline = original_text.endswith("\n")
+    out_lines: list[str] = []
+    src_idx = 0
+
+    for hunk in hunks:
+        target_idx = max(0, hunk["old_start"] - 1)
+        if target_idx < src_idx:
+            raise ValueError(f"Overlapping hunks in {path}")
+
+        out_lines.extend(original_lines[src_idx:target_idx])
+        src_idx = target_idx
+
+        for hline in hunk["lines"]:
+            if not hline:
+                raise ValueError(f"Malformed empty hunk line in {path}")
+
+            marker = hline[0]
+            content = hline[1:]
+
+            if marker == " ":
+                if src_idx >= len(original_lines) or original_lines[src_idx] != content:
+                    raise ValueError(f"Context mismatch in {path} at source line {src_idx + 1}")
+                out_lines.append(content)
+                src_idx += 1
+            elif marker == "-":
+                if src_idx >= len(original_lines) or original_lines[src_idx] != content:
+                    raise ValueError(f"Removal mismatch in {path} at source line {src_idx + 1}")
+                src_idx += 1
+            elif marker == "+":
+                out_lines.append(content)
+            elif hline.startswith("\\ No newline at end of file"):
+                continue
+            else:
+                raise ValueError(f"Unsupported hunk marker '{marker}' in {path}")
+
+    out_lines.extend(original_lines[src_idx:])
+    result_text = "\n".join(out_lines)
+    if has_trailing_newline:
+        result_text += "\n"
+    return result_text
+
+def _apply_unified_diff_python(repo_path: str, diff_content: str) -> tuple[bool, str]:
+    patches = _parse_unified_diff(diff_content)
+    for patch in patches:
+        target_path = patch["new_path"] if patch["new_path"] != "/dev/null" else patch["old_path"]
+        abs_path = os.path.join(repo_path, target_path)
+        if not os.path.exists(abs_path):
+            return (False, f"Target file not found: {target_path}")
+
+        with open(abs_path, "r", encoding="utf-8") as f:
+            original_text = f.read()
+
+        updated_text = _apply_patch_to_lines(target_path, original_text, patch["hunks"])
+
+        with open(abs_path, "w", encoding="utf-8", newline="") as f:
+            f.write(updated_text)
+
+    return (True, f"Applied {len(patches)} file patch(es) using Python fallback")
 
 def apply_diff(state: dict) -> dict:
     """
@@ -104,13 +266,8 @@ def apply_diff(state: dict) -> dict:
 
         print("[cody-graph] [DIAG] Looking for patch tool (git or patch)...", flush=True)
         if shutil.which("git"):
-            print("[cody-graph] [DIAG] Using 'git apply'", flush=True)
-            result = subprocess.run(
-                ["git", "apply", "--whitespace=nowarn", "changes.patch"],
-                cwd=repo_path,
-                capture_output=True,
-                text=True,
-            )
+            print("[cody-graph] [DIAG] Using 'git apply' with fallback strategies", flush=True)
+            result = _run_patch_with_strategies(repo_path)
         elif shutil.which("patch"):
             print("[cody-graph] [DIAG] Using 'patch' command", flush=True)
             result = subprocess.run(
@@ -120,8 +277,22 @@ def apply_diff(state: dict) -> dict:
                 text=True,
             )
         else:
+            print("[cody-graph] [DIAG] No git/patch binary found, using Python diff applier fallback", flush=True)
+            ok, message = _apply_unified_diff_python(repo_path, diff_content)
             os.remove(patch_path)
-            error_msg = "No patching tool found (git or patch)."
+            if ok:
+                print(f"[cody-graph] apply_diff: SUCCESS - {message}", flush=True)
+                result_state = {
+                    **state,
+                    "status": "pending",
+                    "last_output": message,
+                    "last_diff": diff_content,
+                    "last_command": "apply_diff",
+                }
+                print("[cody-graph] apply_diff: END (ok)", flush=True)
+                return result_state
+
+            error_msg = f"Python diff fallback failed: {message}"
             print(f"[cody-graph] apply_diff: ERROR - {error_msg}", flush=True)
             result_state = {
                 **state,
