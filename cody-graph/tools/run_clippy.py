@@ -35,7 +35,18 @@ def run_clippy(state: CodyState) -> CodyState:
         # Count warnings
         warning_count = len(re.findall(r"^warning:", output, re.MULTILINE))
         error_count = len(re.findall(r"^error:", output, re.MULTILINE))
+        
+        # Detect critical syntax/parse errors that should trigger rollback
+        has_syntax_error = bool(
+            re.search(r"this file contains an unclosed delimiter", output)
+            or re.search(r"unexpected token", output, re.IGNORECASE)
+            or re.search(r"expected.*found", output)
+            or re.search(r"unresolved import", output)
+        )
+        
         print(f"[cody-graph] [DIAG] Warnings: {warning_count}, Errors: {error_count}", flush=True)
+        if has_syntax_error:
+            print("[cody-graph] [DIAG] CRITICAL: Syntax/parse error detected", flush=True)
         print(f"[cody-graph] [DIAG] Exit code: {result.returncode}", flush=True)
         
         # Save clippy output
@@ -64,6 +75,7 @@ def run_clippy(state: CodyState) -> CodyState:
         "status": status,
         "clippy_error_count": error_count,
         "best_clippy_error_count": best_error_count,
+        "clippy_has_syntax_error": has_syntax_error,
     }
     if status != "ok":
         print(f"[cody-graph] run_clippy: ERROR (exit code {result.returncode})", flush=True)

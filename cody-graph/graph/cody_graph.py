@@ -12,6 +12,14 @@ def after_clippy(state: CodyState):
     if state["status"] == "ok":
         return "run_build"
 
+    # CRITICAL: Syntax/parse errors must rollback immediately
+    if state.get("clippy_has_syntax_error") and state.get("last_diff"):
+        print(
+            "[cody-graph] [DIAG] Critical syntax error introduced by last patch; routing to rollback",
+            flush=True,
+        )
+        return "rollback_changes"
+
     # Safety gate: if an applied diff worsens clippy errors, rollback immediately.
     current_errors = state.get("clippy_error_count")
     best_errors = state.get("best_clippy_error_count")
@@ -72,6 +80,7 @@ def phase_complete(state: CodyState) -> CodyState:
             "phase_iteration": 0,
             "clippy_error_count": None,
             "best_clippy_error_count": None,
+            "clippy_has_syntax_error": None,
             "last_output": f"Phase '{current}' complete. Starting phase '{next_phase}'.",
             "status": "pending",
         }
