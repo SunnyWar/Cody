@@ -7,6 +7,8 @@ from openai import OpenAI
 
 from state.cody_state import CodyState
 
+DEFAULT_MAX_PHASE_ITERATIONS = 8
+
 def _load_config(repo_path: str) -> dict:
     config_override = os.environ.get("CODY_CONFIG_PATH")
     if config_override:
@@ -207,6 +209,27 @@ def clippy_agent(state: CodyState) -> CodyState:
         return result_state
 
     config = _load_config(state.get("repo_path", ""))
+    current_iteration = int(state.get("phase_iteration", 0) or 0)
+    max_iterations = int(config.get("max_phase_iterations", DEFAULT_MAX_PHASE_ITERATIONS))
+    print(
+        f"[cody-graph] [DIAG] Phase iteration: {current_iteration}/{max_iterations}",
+        flush=True,
+    )
+
+    if current_iteration >= max_iterations:
+        error_msg = (
+            f"Phase '{phase}' exceeded max iterations ({max_iterations}). "
+            "Stopping to avoid non-deterministic infinite retry loop."
+        )
+        result_state = {
+            **state,
+            "last_command": "clippy_llm_think",
+            "last_output": error_msg,
+            "status": "error",
+        }
+        print(f"[cody-graph] clippy_agent: ERROR - {error_msg}", flush=True)
+        print("[cody-graph] clippy_agent: END (error)", flush=True)
+        return result_state
     model = _select_model(config)
     print(f"[cody-graph] [DIAG] Using model: {model} for phase '{phase}'", flush=True)
     client = OpenAI(api_key=api_key)
@@ -271,6 +294,7 @@ def clippy_agent(state: CodyState) -> CodyState:
             "last_command": "clippy_llm_think",
             "last_output": error_msg,
             "status": "error",
+            "phase_iteration": current_iteration + 1,
         }
         print(f"[cody-graph] clippy_agent: ERROR - {error_msg}", flush=True)
         print("[cody-graph] clippy_agent: END (error)", flush=True)
@@ -285,6 +309,7 @@ def clippy_agent(state: CodyState) -> CodyState:
         "last_command": "clippy_llm_think",
         "llm_response": reply,
         "status": "pending",
+        "phase_iteration": current_iteration + 1,
     }
     print("[cody-graph] [DIAG] LLM response contains '```diff': ", "```diff" in reply, flush=True)
     print("[cody-graph] clippy_agent: END (ok)", flush=True)

@@ -15,7 +15,8 @@ def _sanitize_diff(diff_content: str) -> str:
     - Missing --- +++ headers
     - Improper @@ markers
     """
-    lines = diff_content.strip().split('\n')
+    normalized = diff_content.replace("\r\n", "\n").replace("\r", "\n")
+    lines = normalized.strip().split("\n")
     
     # Remove *** Begin Patch and *** End Patch markers
     lines = [l for l in lines if not l.startswith('*** Begin') and not l.startswith('*** End')]
@@ -30,7 +31,8 @@ def _sanitize_diff(diff_content: str) -> str:
         else:
             cleaned.append(line)
     
-    return '\n'.join(cleaned)
+    sanitized = "\n".join(cleaned).rstrip("\n") + "\n"
+    return sanitized
 
 def _ensure_logs_dir(repo_path: str) -> str:
     """Ensure .cody_logs directory exists and return its path."""
@@ -146,6 +148,68 @@ def _parse_unified_diff(diff_content: str) -> list[dict]:
 
     return patches
 
+
+def _summarize_diff(patches: list[dict]) -> dict:
+    file_count = len(patches)
+    hunk_count = 0
+    additions = 0
+    removals = 0
+    touched_files: list[str] = []
+
+    for patch in patches:
+        touched_files.append(patch.get("new_path") or patch.get("old_path") or "unknown")
+        for hunk in patch.get("hunks", []):
+            hunk_count += 1
+            for hline in hunk.get("lines", []):
+                if not hline:
+                    continue
+                marker = hline[0]
+                if marker == "+":
+                    additions += 1
+                elif marker == "-":
+                    removals += 1
+
+    return {
+        "file_count": file_count,
+        "hunk_count": hunk_count,
+        "additions": additions,
+        "removals": removals,
+        "changed_lines": additions + removals,
+        "touched_files": touched_files,
+    }
+
+
+def _validate_diff_policy(diff_content: str, state: dict) -> tuple[bool, str, dict]:
+    try:
+        patches = _parse_unified_diff(diff_content)
+    except Exception as e:
+        return (False, f"Invalid unified diff: {e}", {})
+
+    summary = _summarize_diff(patches)
+    phase = state.get("current_phase", "clippy")
+
+    if phase == "clippy":
+        if summary["file_count"] != 1:
+            return (
+                False,
+                f"Rejected clippy diff: expected exactly 1 file, got {summary['file_count']}",
+                summary,
+            )
+        if summary["hunk_count"] > 2:
+            return (
+                False,
+                f"Rejected clippy diff: too many hunks ({summary['hunk_count']})",
+                summary,
+            )
+        if summary["changed_lines"] > 30:
+            return (
+                False,
+                f"Rejected clippy diff: too many changed lines ({summary['changed_lines']})",
+                summary,
+            )
+
+    return (True, "Diff policy check passed", summary)
+
 def _apply_patch_to_lines(path: str, original_text: str, hunks: list[dict]) -> str:
     original_lines = original_text.splitlines()
     has_trailing_newline = original_text.endswith("\n")
@@ -189,6 +253,25 @@ def _apply_patch_to_lines(path: str, original_text: str, hunks: list[dict]) -> s
         result_text += "\n"
     return result_text
 
+def _matches_subsequence(lines: list[str], start: int, expected: list[str]) -> bool:
+    if start < 0 or start + len(expected) > len(lines):
+        return False
+    return lines[start:start + len(expected)] == expected
+
+def _find_unique_subsequence(lines: list[str], start: int, expected: list[str]) -> int | None:
+    if not expected:
+        return start
+
+    matches: list[int] = []
+    max_start = len(lines) - len(expected)
+    for idx in range(max(0, start), max_start + 1):
+        if _matches_subsequence(lines, idx, expected):
+            matches.append(idx)
+            if len(matches) > 1:
+                return None
+
+    return matches[0] if matches else None
+
 def _apply_unified_diff_python(repo_path: str, diff_content: str) -> tuple[bool, str]:
     patches = _parse_unified_diff(diff_content)
     for patch in patches:
@@ -200,12 +283,67 @@ def _apply_unified_diff_python(repo_path: str, diff_content: str) -> tuple[bool,
         with open(abs_path, "r", encoding="utf-8") as f:
             original_text = f.read()
 
-        updated_text = _apply_patch_to_lines(target_path, original_text, patch["hunks"])
+        # Apply with line-number guidance, but tolerate stale hunk locations by
+        # searching for a unique old-content subsequence when needed.
+        updated_text = _apply_patch_to_lines_with_fallback(target_path, original_text, patch["hunks"])
 
         with open(abs_path, "w", encoding="utf-8", newline="") as f:
             f.write(updated_text)
 
     return (True, f"Applied {len(patches)} file patch(es) using Python fallback")
+
+def _apply_patch_to_lines_with_fallback(path: str, original_text: str, hunks: list[dict]) -> str:
+    original_lines = original_text.splitlines()
+    has_trailing_newline = original_text.endswith("\n")
+    out_lines: list[str] = []
+    src_idx = 0
+
+    for hunk in hunks:
+        expected_old_lines = [h[1:] for h in hunk["lines"] if h and h[0] in (" ", "-")]
+
+        target_idx = max(src_idx, hunk["old_start"] - 1)
+        if expected_old_lines and not _matches_subsequence(original_lines, target_idx, expected_old_lines):
+            relocated = _find_unique_subsequence(original_lines, src_idx, expected_old_lines)
+            if relocated is None:
+                raise ValueError(
+                    f"Could not uniquely relocate hunk in {path} near line {hunk['old_start']}"
+                )
+            target_idx = relocated
+
+        if target_idx < src_idx:
+            raise ValueError(f"Overlapping hunks in {path}")
+
+        out_lines.extend(original_lines[src_idx:target_idx])
+        src_idx = target_idx
+
+        for hline in hunk["lines"]:
+            if not hline:
+                raise ValueError(f"Malformed empty hunk line in {path}")
+
+            marker = hline[0]
+            content = hline[1:]
+
+            if marker == " ":
+                if src_idx >= len(original_lines) or original_lines[src_idx] != content:
+                    raise ValueError(f"Context mismatch in {path} at source line {src_idx + 1}")
+                out_lines.append(content)
+                src_idx += 1
+            elif marker == "-":
+                if src_idx >= len(original_lines) or original_lines[src_idx] != content:
+                    raise ValueError(f"Removal mismatch in {path} at source line {src_idx + 1}")
+                src_idx += 1
+            elif marker == "+":
+                out_lines.append(content)
+            elif hline.startswith("\\ No newline at end of file"):
+                continue
+            else:
+                raise ValueError(f"Unsupported hunk marker '{marker}' in {path}")
+
+    out_lines.extend(original_lines[src_idx:])
+    result_text = "\n".join(out_lines)
+    if has_trailing_newline:
+        result_text += "\n"
+    return result_text
 
 def apply_diff(state: dict) -> dict:
     """
@@ -254,8 +392,32 @@ def apply_diff(state: dict) -> dict:
     print("[cody-graph] [DIAG] Sanitizing diff format...", flush=True)
     diff_content = _sanitize_diff(diff_content)
     print(f"[cody-graph] [DIAG] After sanitization: {len(diff_content)} chars", flush=True)
-    
+
+    # Enforce conservative diff policy for orchestration reliability
+    is_safe, policy_msg, diff_summary = _validate_diff_policy(diff_content, state)
+    print(f"[cody-graph] [DIAG] Diff policy: {policy_msg}", flush=True)
+    if diff_summary:
+        print(
+            "[cody-graph] [DIAG] Diff summary: "
+            f"files={diff_summary.get('file_count')} "
+            f"hunks={diff_summary.get('hunk_count')} "
+            f"changed_lines={diff_summary.get('changed_lines')}",
+            flush=True,
+        )
+
     _save_diagnostic(logs_dir, "diff_extracted", diff_content)
+    _save_diagnostic(logs_dir, "diff_policy", f"{policy_msg}\nsummary={diff_summary}")
+
+    if not is_safe:
+        result_state = {
+            **state,
+            "status": "error",
+            "last_output": policy_msg,
+            "last_command": "apply_diff",
+        }
+        print(f"[cody-graph] apply_diff: ERROR - {policy_msg}", flush=True)
+        print("[cody-graph] apply_diff: END (error)", flush=True)
+        return result_state
 
     try:
         # Write the diff to a temporary file
@@ -325,7 +487,25 @@ def apply_diff(state: dict) -> dict:
             print("[cody-graph] apply_diff: END (ok)", flush=True)
             return result_state
         else:
-            error_details = f"Patch failed with exit code {result.returncode}: {result.stderr}"
+            print("[cody-graph] [DIAG] External patch tool failed; attempting Python fallback", flush=True)
+            ok, fallback_msg = _apply_unified_diff_python(repo_path, diff_content)
+            if ok:
+                success_msg = f"Patch applied via Python fallback after external tool failure: {fallback_msg}"
+                print(f"[cody-graph] apply_diff: SUCCESS - {success_msg}", flush=True)
+                result_state = {
+                    **state,
+                    "status": "pending",
+                    "last_output": success_msg,
+                    "last_diff": diff_content,
+                    "last_command": "apply_diff",
+                }
+                print("[cody-graph] apply_diff: END (ok)", flush=True)
+                return result_state
+
+            error_details = (
+                f"Patch failed with exit code {result.returncode}: {result.stderr}\n"
+                f"Python fallback also failed: {fallback_msg}"
+            )
             print(f"[cody-graph] apply_diff: ERROR - {error_details[:200]}", flush=True)
             result_state = {
                 **state,

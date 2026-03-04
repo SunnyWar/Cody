@@ -59,10 +59,15 @@ def run_clippy(state: CodyState) -> CodyState:
     }
     if status != "ok":
         print(f"[cody-graph] run_clippy: ERROR (exit code {result.returncode})", flush=True)
-        # Show first warning
-        first_warning_match = re.search(r"warning:.*?(?=warning:|error:|$)", output, re.DOTALL)
-        if first_warning_match:
-            warning_preview = first_warning_match.group(0)[:300]
-            print(f"[cody-graph] [DIAG] First warning:\n{warning_preview}...", flush=True)
+        # Show first actionable issue (error preferred, then warning)
+        first_error_match = re.search(r"error:.*?(?=error:|warning:|$)", output, re.DOTALL)
+        if first_error_match:
+            issue_preview = first_error_match.group(0)[:400]
+            print(f"[cody-graph] [DIAG] First error:\n{issue_preview}...", flush=True)
+        else:
+            first_warning_match = re.search(r"warning:.*?(?=warning:|error:|$)", output, re.DOTALL)
+            if first_warning_match:
+                issue_preview = first_warning_match.group(0)[:400]
+                print(f"[cody-graph] [DIAG] First warning:\n{issue_preview}...", flush=True)
     print(f"[cody-graph] run_clippy: END ({status})", flush=True)
     return result_state
