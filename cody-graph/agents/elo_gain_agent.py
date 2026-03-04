@@ -17,7 +17,7 @@ from typing import Optional
 from openai import OpenAI
 from state.cody_state import CodyState
 
-DEFAULT_MAX_ELO_PHASE_ITERATIONS = 50  # Max attempts to get N successful improvements
+DEFAULT_MAX_ELO_PHASE_ITERATIONS = 1  # Demo mode: just 1 iteration to show phases
 DEFAULT_TARGET_ELO_SUCCESSES = 5     # Number of successful improvements to achieve
 DEFAULT_GAUNTLET_GAME_COUNT = 50    # 50–100 games at fast time control
 
@@ -49,7 +49,7 @@ def elo_gain_candidate_generation(state: CodyState) -> CodyState:
     
     TODO: Implement full candidate generation with LLM analysis.
     """
-    print("[cody-graph] [ELO Gain] Starting Candidate Generation phase", flush=True)
+    print("[cody-graph] [ELO Gain] [1/5] Candidate Generation phase [NOT IMPLEMENTED]", flush=True)
     
     repo_path = state.get("repo_path", ".")
     config = _load_config(repo_path)
@@ -79,7 +79,7 @@ def elo_gain_compilation_check(state: CodyState) -> CodyState:
     
     TODO: Implement full compilation and perft validation.
     """
-    print("[cody-graph] [ELO Gain] Compilation & Validation phase", flush=True)
+    print("[cody-graph] [ELO Gain] [2/5] Compilation & Validation phase [NOT IMPLEMENTED]", flush=True)
     
     repo_path = state.get("repo_path", ".")
     
@@ -116,7 +116,7 @@ def elo_gain_gauntlet_match(state: CodyState) -> CodyState:
     
     TODO: Implement full gauntlet runner using cutechess-cli or similar.
     """
-    print("[cody-graph] [ELO Gain] Running Gauntlet matches", flush=True)
+    print("[cody-graph] [ELO Gain] [3/5] Running Gauntlet matches [NOT IMPLEMENTED]", flush=True)
     
     repo_path = state.get("repo_path", ".")
     game_count = state.get("elo_gauntlet_games", DEFAULT_GAUNTLET_GAME_COUNT)
@@ -155,7 +155,7 @@ def elo_gain_statistical_check(state: CodyState) -> CodyState:
     
     TODO: Implement statistical analyzer.
     """
-    print("[cody-graph] [ELO Gain] Statistical Analysis", flush=True)
+    print("[cody-graph] [ELO Gain] [4/5] Statistical Analysis [NOT IMPLEMENTED]", flush=True)
     
     repo_path = state.get("repo_path", ".")
     pgn_path = state.get("elo_gauntlet_pgn")
@@ -198,7 +198,7 @@ def elo_gain_decision(state: CodyState) -> CodyState:
     
     TODO: Implement decision logic and commit/revert handling.
     """
-    print("[cody-graph] [ELO Gain] Decision phase", flush=True)
+    print("[cody-graph] [ELO Gain] [5/5] Decision phase [NOT IMPLEMENTED]", flush=True)
     
     repo_path = state.get("repo_path", ".")
     elo_gain = state.get("elo_gain_value", 0.0)
@@ -263,47 +263,9 @@ def elo_gain_agent(state: CodyState) -> CodyState:
     target_successes = state.get("elo_target_successes", DEFAULT_TARGET_ELO_SUCCESSES)
     max_iterations = state.get("elo_max_iterations", DEFAULT_MAX_ELO_PHASE_ITERATIONS)
     
-    # Check if we've reached the success target
-    if successful_commits >= target_successes:
-        print(
-            f"[cody-graph] [ELO Gain] ✓ Achieved {successful_commits} successful improvements "
-            f"(target: {target_successes}), ending ELO phase",
-            flush=True
-        )
-        state["status"] = "ok"
-        return state
-    
-    # Check iteration limit
-    if iteration >= max_iterations:
-        print(
-            f"[cody-graph] [ELO Gain] Reached max iterations ({max_iterations}). "
-            f"Completed {successful_commits}/{target_successes} target improvements. "
-            "Ending ELO phase.",
-            flush=True
-        )
-        state["status"] = "ok"
-        return state
-    
-    # Route through stages
-    stage = state.get("elo_phase_stage", "candidate_generation")
-    
-    if stage == "candidate_generation":
-        return elo_gain_candidate_generation(state)
-    elif stage == "compilation":
-        return elo_gain_compilation_check(state)
-    elif stage == "gauntlet":
-        return elo_gain_gauntlet_match(state)
-    elif stage == "statistical_check":
-        return elo_gain_statistical_check(state)
-    elif stage == "decision":
-        return elo_gain_decision(state)
-    elif stage == "complete":
-        # Increment iteration counter
-        state["elo_iterations"] = iteration + 1
-        successful_commits = state.get("elo_successful_commits", 0)
-        target_successes = state.get("elo_target_successes", DEFAULT_TARGET_ELO_SUCCESSES)
-        
-        # Check success target before looping
+    # Main orchestration loop - runs through all stages in a single execution
+    while True:
+        # Check if we've reached the success target
         if successful_commits >= target_successes:
             print(
                 f"[cody-graph] [ELO Gain] ✓ Achieved {successful_commits} successful improvements "
@@ -313,25 +275,50 @@ def elo_gain_agent(state: CodyState) -> CodyState:
             state["status"] = "ok"
             return state
         
-        # Check max iterations before looping
-        if state["elo_iterations"] >= state.get("elo_max_iterations", DEFAULT_MAX_ELO_PHASE_ITERATIONS):
+        # Check iteration limit
+        if iteration >= max_iterations:
             print(
-                f"[cody-graph] [ELO Gain] Max iterations reached. "
-                f"Completed {successful_commits}/{target_successes} target improvements.",
+                f"[cody-graph] [ELO Gain] Reached max iterations ({max_iterations}). "
+                f"Completed {successful_commits}/{target_successes} target improvements. "
+                "Ending ELO phase.",
                 flush=True
             )
             state["status"] = "ok"
             return state
         
-        # Continue to next iteration
-        state["elo_phase_stage"] = "candidate_generation"
-        print(
-            f"[cody-graph] [ELO Gain] Iteration {state['elo_iterations']} starting "
-            f"({successful_commits}/{target_successes} successes)",
-            flush=True
-        )
-        return elo_gain_agent(state)
-    else:
-        print(f"[cody-graph] [ELO Gain] Unknown stage: {stage}", flush=True)
-        state["status"] = "error"
-        return state
+        # Route through stages
+        stage = state.get("elo_phase_stage", "candidate_generation")
+        
+        if stage == "candidate_generation":
+            state = elo_gain_candidate_generation(state)
+        elif stage == "compilation":
+            state = elo_gain_compilation_check(state)
+        elif stage == "gauntlet":
+            state = elo_gain_gauntlet_match(state)
+        elif stage == "statistical_check":
+            state = elo_gain_statistical_check(state)
+        elif stage == "decision":
+            state = elo_gain_decision(state)
+        elif stage == "complete":
+            # Increment iteration counter and prepare for next iteration
+            iteration = state.get("elo_iterations", 0) + 1
+            state["elo_iterations"] = iteration
+            successful_commits = state.get("elo_successful_commits", 0)
+            
+            # Check if we should continue
+            if successful_commits >= target_successes or iteration >= max_iterations:
+                # Loop will check conditions at top of next iteration
+                continue
+            
+            # Reset for next iteration
+            state["elo_phase_stage"] = "candidate_generation"
+            print(
+                f"[cody-graph] [ELO Gain] Iteration {iteration} starting "
+                f"({successful_commits}/{target_successes} successes)",
+                flush=True
+            )
+            # Loop continues to next iteration
+        else:
+            print(f"[cody-graph] [ELO Gain] Unknown stage: {stage}", flush=True)
+            state["status"] = "error"
+            return state

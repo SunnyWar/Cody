@@ -12,6 +12,8 @@ repo_root = Path(os.environ.get("CODY_REPO_PATH", Path(__file__).resolve().paren
 
 PHASE_CLI_ALIASES = {
     "unit_tests_docs": "tests",
+    "ELOGain": "elogain",
+    "UCIfeatures": "ucifeatures",
 }
 
 
