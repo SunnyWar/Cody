@@ -30,6 +30,12 @@ def _sanitize_diff(diff_content: str) -> str:
     
     return '\n'.join(cleaned)
 
+def _ensure_logs_dir(repo_path: str) -> str:
+    """Ensure .cody_logs directory exists and return its path."""
+    logs_dir = os.path.join(repo_path, ".cody_logs")
+    os.makedirs(logs_dir, exist_ok=True)
+    return logs_dir
+
 def _save_diagnostic(logs_dir: str, name: str, content: str) -> None:
     """Save a diagnostic file with timestamp."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
