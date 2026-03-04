@@ -99,12 +99,17 @@ CONTEXT PROVIDED:
 STRICT RULES:
 - Only suggest changes to existing files in the repo.
 - Respond with a short explanation of the fix.
-- Provide the fix in a UNIFIED DIFF format inside a ```diff code block.
-  * Format: --- a/path/to/file
-           +++ b/path/to/file
-           @@ line numbers @@
-  * Do NOT use *** markers or non-standard formats
-  * Do NOT use *** Begin Patch / *** End Patch
+- Provide the fix as a UNIFIED DIFF in a markdown diff block.
+- REQUIRED FORMAT EXAMPLE:
+    --- a/engine/src/search/core.rs
+    +++ b/engine/src/search/core.rs
+    @@ -157,1 +157,1 @@
+    -    let mut moves_vec = moves;
+    +    let moves_vec = moves;
+- The @@ hunk header MUST include actual line numbers like: @@ -157,1 +157,1 @@
+- NEVER use @@ @@ without numbers - this is INVALID
+- Do NOT use *** markers or *** Begin Patch / *** End Patch
+- Put your diff inside a markdown code block with 'diff' language tag
 - Do not suggest external dependencies.
 - Fix one warning/error at a time.
 """,
@@ -119,11 +124,17 @@ CONTEXT PROVIDED:
 STRICT RULES:
 - Only refactor without changing behavior.
 - Respond with a short explanation of the refactoring.
-- Provide changes in a UNIFIED DIFF format inside a ```diff code block.
-  * Format: --- a/path/to/file
-           +++ b/path/to/file
-           @@ line numbers @@
-  * Do NOT use *** markers or non-standard formats
+- Provide changes as a UNIFIED DIFF in a markdown diff block.
+- REQUIRED FORMAT EXAMPLE:
+    --- a/engine/src/search/core.rs
+    +++ b/engine/src/search/core.rs
+    @@ -157,1 +157,1 @@
+    -    let mut moves_vec = moves;
+    +    let moves_vec = moves;
+- The @@ hunk header MUST include actual line numbers like: @@ -157,1 +157,1 @@
+- NEVER use @@ @@ without numbers - this is INVALID
+- Do NOT use *** markers
+- Put your diff inside a markdown code block with 'diff' language tag
 - Maintain architecture constraints (allocation-free hot path, fixed-block arena).
 """,
         "performance": """
@@ -136,11 +147,17 @@ CONTEXT PROVIDED:
 
 STRICT RULES:
 - Only optimize, do not refactor unnecessarily.
-- Provide changes in a UNIFIED DIFF format inside a ```diff code block.
-  * Format: --- a/path/to/file
-           +++ b/path/to/file
-           @@ line numbers @@
-  * Do NOT use *** markers or non-standard formats
+- Provide changes as a UNIFIED DIFF in a markdown diff block.
+- REQUIRED FORMAT EXAMPLE:
+    --- a/engine/src/search/core.rs
+    +++ b/engine/src/search/core.rs
+    @@ -157,1 +157,1 @@
+    -    let mut moves_vec = moves;
+    +    let moves_vec = moves;
+- The @@ hunk header MUST include actual line numbers like: @@ -157,1 +157,1 @@
+- NEVER use @@ @@ without numbers - this is INVALID
+- Do NOT use *** markers
+- Put your diff inside a markdown code block with 'diff' language tag
 - Target ≥5% performance improvement.
 - Test for correctness with perft and benchmarks.
 """,
@@ -154,11 +171,17 @@ CONTEXT PROVIDED:
 
 STRICT RULES:
 - Follow the fixed-block arena allocation model.
-- Provide changes in a UNIFIED DIFF format inside a ```diff code block.
-  * Format: --- a/path/to/file
-           +++ b/path/to/file
-           @@ line numbers @@
-  * Do NOT use *** markers or non-standard formats
+- Provide changes as a UNIFIED DIFF in a markdown diff block.
+- REQUIRED FORMAT EXAMPLE:
+    --- a/engine/src/search/core.rs
+    +++ b/engine/src/search/core.rs
+    @@ -157,1 +157,1 @@
+    -    let mut moves_vec = moves;
+    +    let moves_vec = moves;
+- The @@ hunk header MUST include actual line numbers like: @@ -157,1 +157,1 @@
+- NEVER use @@ @@ without numbers - this is INVALID
+- Do NOT use *** markers
+- Put your diff inside a markdown code block with 'diff' language tag
 - Each feature should pass all tests.
 """,
     }
