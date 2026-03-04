@@ -122,7 +122,6 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     // Probe TT if provided (tt is always present in serial path; for parallel we
     // pass a local dummy). Exact entries with a non-null move are verified
     // against the current legal move list before being trusted.
-    let mut tt_entry_opt: Option<crate::core::tt::TTEntry> = None;
     let mut tt_exact_needs_verify: Option<crate::core::tt::TTEntry> = None;
     {
         let key = arena.get(ply).position.zobrist_hash();
@@ -132,8 +131,6 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
                     return e.value;
                 }
                 tt_exact_needs_verify = Some(e);
-            } else {
-                tt_entry_opt = Some(e);
             }
         }
     }
@@ -154,7 +151,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 
     let mut best_score = i32::MIN;
     // Work with a local mutable vector so we can reorder based on TT best move
-    let mut moves_vec = moves;
+    let moves_vec = moves;
     if let Some(e) = tt_exact_needs_verify {
         if !e.best_move.is_null() && moves_vec.contains(&e.best_move) {
             return e.value;
