@@ -42,6 +42,10 @@ cody-graph/tools/__pycache__/
 .orchestrator_logs/
 .cody_logs/
 TODO_CLIPPY.md
+*.log
+*_output.txt
+*_response.txt
+
 
 
 
