@@ -60,6 +60,8 @@ initial_state: CodyState = {
     "phases_todo": remaining_phases,
     "phases_completed": [],
     "phase_iteration": 0,
+    "attempted_warnings": [],
+    "current_warning_signature": None,
 }
 
 print("=" * 80)

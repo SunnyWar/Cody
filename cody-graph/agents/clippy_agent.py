@@ -42,6 +42,8 @@ def _extract_all_issues(output: str) -> Tuple[str, Optional[str], Optional[int]]
         if stripped.startswith("warning:") or stripped.startswith("error:"):
             issue_block: list[str] = []
             start_i = i
+            issue_file: Optional[str] = None
+            issue_line: Optional[int] = None
             
             # Collect this issue until we hit the next one
             while i < len(lines):
@@ -51,28 +53,56 @@ def _extract_all_issues(output: str) -> Tuple[str, Optional[str], Optional[int]]
                     break
                 issue_block.append(line)
                 
-                # Extract file/line from first issue only
-                if first_file is None and "-->" in line:
+                # Extract file/line for each issue
+                if "-->" in line:
                     arrow = line.split("-->", 1)[1].strip()
                     parts = arrow.rsplit(":", 2)
                     if len(parts) == 3:
-                        first_file = parts[0].strip()
+                        issue_file = parts[0].strip()
                         try:
-                            first_line = int(parts[1])
+                            issue_line = int(parts[1])
                         except ValueError:
                             pass
+                
+                # Set first_file/first_line from first issue
+                if first_file is None and issue_file:
+                    first_file = issue_file
+                    first_line = issue_line
+                
                 i += 1
             
-            issues.append("\n".join(issue_block).strip())
+            # Store issue with metadata for filtering
+            issues.append({
+                "text": "\n".join(issue_block).strip(),
+                "file": issue_file,
+                "line": issue_line,
+                "signature": f"{issue_file}:{issue_line}:{lines[start_i].strip()[:50]}" if issue_file and issue_line else None
+            })
         else:
             i += 1
     
     if not issues:
         return (output.strip(), None, None)
     
-    # Return all issues as context
-    all_text = "\n\n".join(f"ISSUE {idx + 1}:\n{issue}" for idx, issue in enumerate(issues))
-    return (all_text, first_file, first_line)
+    return (issues, first_file, first_line)
+
+def _filter_attempted_issues(issues: list[dict], attempted: list[str]) -> list[dict]:
+    """Filter out issues that have already been attempted."""
+    if not attempted:
+        return issues
+    
+    filtered = []
+    for issue in issues:
+        sig = issue.get("signature")
+        # Only include issues that have a valid signature and haven't been attempted
+        if sig and sig not in attempted:
+            filtered.append(issue)
+        elif not sig:
+            # Issue without signature - include it but log warning
+            print(f"[cody-graph] [DIAG] Warning: Issue without signature, including anyway", flush=True)
+            filtered.append(issue)
+    
+    return filtered
 
 def _read_context_snippet(repo_path: str, file_path: Optional[str], line_no: Optional[int], radius: int = 20) -> str:
     if not file_path or not line_no:
@@ -260,7 +290,49 @@ def clippy_agent(state: CodyState) -> CodyState:
     # We inject the last tool output (either code or clippy errors) 
     # as a "user" message so the LLM reacts to the current state.
     last_output = state.get("last_output", "") or ""
-    all_issues_text, file_path, line_no = _extract_all_issues(last_output)
+    all_issues_raw, first_file, first_line = _extract_all_issues(last_output)
+    
+    # Filter out already-attempted warnings
+    attempted = state.get("attempted_warnings", []) or []
+    current_warning_signature = None
+    
+    if isinstance(all_issues_raw, list):
+        # New format: list of dicts
+        all_issues = _filter_attempted_issues(all_issues_raw, attempted)
+        
+        if not all_issues and all_issues_raw:
+            # All warnings have been attempted - mark phase as complete
+            print(f"[cody-graph] [DIAG] All clippy warnings have been attempted. Moving to next phase.", flush=True)
+            result_state = {
+                **state,
+                "last_command": "clippy_llm_think",
+                "last_output": "All clippy warnings have been attempted.",
+                "status": "ok",
+                "phase_iteration": current_iteration + 1,
+            }
+            print("[cody-graph] clippy_agent: END (all warnings attempted)", flush=True)
+            return result_state
+        
+        print(f"[cody-graph] [DIAG] Filtered issues: {len(all_issues)}/{len(all_issues_raw)} (attempted: {len(attempted)})", flush=True)
+        
+        # Debug: show all filtered issues
+        for idx, issue in enumerate(all_issues):
+            sig = issue.get("signature") or "(no signature)"
+            print(f"[cody-graph] [DIAG] Issue {idx + 1}: file={issue.get('file')}, line={issue.get('line')}, sig={sig[:80]}", flush=True)
+        
+        # Format issues for LLM and store signature of current warning
+        all_issues_text = "\n\n".join(f"ISSUE {idx + 1}:\n{issue['text']}" for idx, issue in enumerate(all_issues))
+        file_path = all_issues[0]["file"] if all_issues else first_file
+        line_no = all_issues[0]["line"] if all_issues else first_line
+        current_warning_signature = all_issues[0].get("signature") if all_issues else None
+        
+        print(f"[cody-graph] [DIAG] Current warning signature: {current_warning_signature}", flush=True)
+    else:
+        # Old format or no issues
+        all_issues_text = all_issues_raw
+        file_path = first_file
+        line_no = first_line
+    
     snippet = _read_context_snippet(state.get("repo_path", ""), file_path, line_no)
 
     context_parts = []
@@ -338,6 +410,7 @@ def clippy_agent(state: CodyState) -> CodyState:
         "llm_response": reply,
         "status": "pending",
         "phase_iteration": current_iteration + 1,
+        "current_warning_signature": current_warning_signature,
     }
     print("[cody-graph] [DIAG] LLM response contains '```diff': ", "```diff" in reply, flush=True)
     print("[cody-graph] clippy_agent: END (ok)", flush=True)
