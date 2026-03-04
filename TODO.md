@@ -53,10 +53,11 @@
 - [ ] Evaluation optimization
 - [ ] Benchmark-driven enhancements
 
-**Phase 4: Features** (Ready to implement)
-- [ ] New capabilities and strategic improvements
-- [ ] Enhanced heuristics
-- [ ] Better move ordering
+**Phase 4: UCIfeatures** (Ready to implement)
+- [ ] Implement missing UCI commands (time management, search options)
+- [ ] Extend UCI info output (depth, seldepth, score, nodes, nps, pv, hashfull)
+- [ ] Add engine options support (Hash, Threads, MultiPV, Ponder)
+- [ ] Tournament-grade UCI protocol compliance
 
 **Phase 5: ELO Gain Loop** 🔴 HIGH PRIORITY (Scaffolding Complete)
 - [x] Orchestration agent created (`agents/elo_gain_agent.py`)
@@ -80,7 +81,7 @@
 #### Phase 2–4: Implement & Enable
 4. **[Auto] Refactoring phase** — Implement when clippy complete
 5. **[Auto] Performance optimization phase** — Benchmark-driven improvements
-6. **[Auto] Features phase** — Strategic enhancements
+6. **[Auto] UCIfeatures phase** — UCI protocol compliance and tournament readiness
 
 #### Phase 5: ELO Gain Loop 🎯 PRIORITY
 7. **[Implement] Compilation Validator** (`elo_tools/validate_compilation.py`)

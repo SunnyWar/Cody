@@ -1,6 +1,6 @@
 # Multi-Phase Orchestration Guide
 
-The cody-graph system now supports multi-phase orchestration. This allows the system to progress through multiple improvement phases (clippy fixes, refactoring, performance, features) automatically.
+The cody-graph system now supports multi-phase orchestration. This allows the system to progress through multiple improvement phases (clippy fixes, refactoring, performance, UCIfeatures) automatically.
 
 ## Current Architecture
 
@@ -30,7 +30,7 @@ In `cody-agent/config.json`, add a model assignment for your phase:
     "models": {
         "clippy": "gpt-5-mini",
         "refactoring": "gpt-5.1",
-        "features": "gpt-5.1",
+        "UCIfeatures": "gpt-5.1",
         "performance": "o3",        // Complex optimizations
         "ELOGain": "o3",            // Chess-specific improvements
         "unit_tests_docs": "gpt-5-nano"
@@ -143,10 +143,11 @@ If any step fails:
   - Move ordering improvements
   - Endgame knowledge
 
-### Features Phase
-- **Input**: Feature requirements
-- **Process**: Implement new chess engine capabilities
-- **Stop**: Requested features completed
+### UCIfeatures Phase
+- **Input**: UCI protocol requirements and missing commands
+- **Process**: Implement missing UCI commands or extend existing ones for full tournament-grade UCI support
+- **Priority**: Commands most used in tournaments (time management, search options, info output)
+- **Stop**: UCI protocol fully supported or requested commands completed
 
 ## Logging and Diagnostics
 
