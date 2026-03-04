@@ -207,27 +207,88 @@ def get_latest_champion_binary(engines_dir: str) -> Optional[str]:
 
 
 if __name__ == "__main__":
-    # Quick test
-    import sys
+    import argparse
     
-    if len(sys.argv) < 2:
-        print("Usage:")
-        print("  python version_manager.py read <cargo_toml_path>")
-        print("  python version_manager.py increment <cargo_toml_path>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description="Cody version management utility",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Increment patch version (for clippy, refactoring, performance, ucifeatures phases)
+  python version_manager.py --patch
+  
+  # Increment minor version (for elogain phase)
+  python version_manager.py --minor
+  
+  # Increment major version (manual only)
+  python version_manager.py --major
+  
+  # Show current version without changes
+  python version_manager.py --show
+  
+  # Use custom Cargo.toml path
+  python version_manager.py --show --cargo-path engine/Cargo.toml
+        """
+    )
     
-    command = sys.argv[1]
+    parser.add_argument(
+        "--patch",
+        action="store_true",
+        help="Increment patch version (Z in X.Y.Z)"
+    )
+    parser.add_argument(
+        "--minor",
+        action="store_true",
+        help="Increment minor version and reset patch (Y in X.Y.Z)"
+    )
+    parser.add_argument(
+        "--major",
+        action="store_true",
+        help="Increment major version and reset minor/patch (X in X.Y.Z)"
+    )
+    parser.add_argument(
+        "--show",
+        action="store_true",
+        help="Show current version without making changes"
+    )
+    parser.add_argument(
+        "--cargo-path",
+        default="engine/Cargo.toml",
+        help="Path to engine/Cargo.toml (default: engine/Cargo.toml)"
+    )
     
-    if command == "read":
-        cargo_path = sys.argv[2] if len(sys.argv) > 2 else "engine/Cargo.toml"
-        version = get_version_string(cargo_path)
-        print(f"Current version: {version}")
+    args = parser.parse_args()
+    cargo_path = args.cargo_path
     
-    elif command == "increment":
-        cargo_path = sys.argv[2] if len(sys.argv) > 2 else "engine/Cargo.toml"
+    # Show current version
+    if args.show:
+        current = get_version_string(cargo_path)
+        print(f"Current version: {current}")
+    
+    # Increment patch (Z++)
+    elif args.patch:
         major, minor, patch = increment_patch(cargo_path)
-        print(f"New version: {major}.{minor}.{patch}")
+        print(f"✓ Patch version bumped: {major}.{minor}.{patch}")
+    
+    # Increment minor (Y++, Z reset to 0)
+    elif args.minor:
+        major, minor, patch = increment_minor(cargo_path)
+        print(f"✓ Minor version bumped: {major}.{minor}.{patch}")
+    
+    # Increment major (X++, Y and Z reset to 0)
+    elif args.major:
+        major, minor, patch = read_version(cargo_path)
+        new_major = major + 1
+        new_minor = 0
+        new_patch = 0
+        write_version(cargo_path, new_major, new_minor, new_patch)
+        print(f"✓ Major version bumped: {new_major}.{new_minor}.{new_patch}")
     
     else:
-        print(f"Unknown command: {command}")
-        sys.exit(1)
+        # No action specified, show help
+        parser.print_help()
+    
+    # Exit successfully
+    import sys
+    sys.exit(0)
+
