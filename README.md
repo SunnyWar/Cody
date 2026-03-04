@@ -63,13 +63,20 @@ See [architecture.md](architecture.md) for detailed design.
 ### Setup
 
 Install dependencies:
-```powershell
+```bash
 pip install -U langgraph openai
 ```
 
 Authenticate with OpenAI:
-```powershell
+```bash
+# Linux/macOS
+export OPENAI_API_KEY="sk-..."
+
+# Windows (PowerShell)
 $env:OPENAI_API_KEY = "sk-..."
+
+# Windows (cmd)
+set OPENAI_API_KEY=sk-...
 ```
 
 Configure in `cody-agent/config.json`:
@@ -89,8 +96,8 @@ Configure in `cody-agent/config.json`:
 ### Run the Orchestrator
 
 From the repo root:
-```powershell
-python .\cody-graph\main.py
+```bash
+python cody-graph/main.py
 ```
 
 This will:
@@ -100,7 +107,12 @@ This will:
 4. Save progress to `orchestrator_state.json`
 
 Optional environment variables:
-```powershell
+```bash
+# Linux/macOS
+export CODY_REPO_PATH="/path/to/Cody"
+export OPENAI_API_KEY="sk-..."
+
+# Windows (PowerShell)
 $env:CODY_REPO_PATH = "D:\Cody"
 $env:OPENAI_API_KEY = "sk-..."
 ```
@@ -113,29 +125,29 @@ $env:OPENAI_API_KEY = "sk-..."
 ## 🔨 Building and Testing
 
 **Build:**
-```powershell
+```bash
 cargo build --release
 ```
 
 **Run tests:**
-```powershell
+```bash
 cargo test
 cargo test -p bitboard
 cargo test -p engine
 ```
 
 **Run benchmarks:**
-```powershell
+```bash
 cargo bench -p engine
 ```
 
 **Run UCI engine:**
-```powershell
+```bash
 cargo run -p engine
 ```
 
 **Validate move generation:**
-```powershell
+```bash
 cargo run --release -p engine -- perft 5
 ```
 
