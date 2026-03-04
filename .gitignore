@@ -40,6 +40,7 @@ cody-graph/graph/__pycache__/
 cody-graph/state/__pycache__/
 cody-graph/tools/__pycache__/
 .orchestrator_logs/
+.cody_logs/
 TODO_CLIPPY.md
 
 
