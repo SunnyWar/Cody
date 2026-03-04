@@ -31,8 +31,9 @@
 
 ## Current Work
 
-### 🔄 Automated Improvement Phase (In Progress)
-**Tool:** LangGraph-based multi-phase orchestration (`cody-graph/`)
+### 🔄 Automated Improvement Multi-Phase Orchestration (In Progress)
+**Tool:** LangGraph-based multi-phase orchestration (`cody-graph/`)  
+**Status:** Phase routing complete, sub-phase implementations in progress
 
 **Phase 1: Clippy Fixes** (Active)
 - [x] System detects compiler warnings
@@ -42,29 +43,86 @@
 - [x] Automatic rollback on failure
 - [ ] Continuous improvement until all warnings gone
 
-**Phase 2-4 Ready** (To be activated when Phase 1 complete)
-- [ ] Refactoring phase — Code quality improvements
-- [ ] Performance phase — Speed optimizations
-- [ ] Features phase — New capabilities
+**Phase 2: Refactoring** (Ready to implement)
+- [ ] Code quality improvements
+- [ ] Architecture optimization
+- [ ] API simplification
+
+**Phase 3: Performance Optimizations** (Ready to implement)
+- [ ] Search speed improvements
+- [ ] Evaluation optimization
+- [ ] Benchmark-driven enhancements
+
+**Phase 4: Features** (Ready to implement)
+- [ ] New capabilities and strategic improvements
+- [ ] Enhanced heuristics
+- [ ] Better move ordering
+
+**Phase 5: ELO Gain Loop** 🔴 HIGH PRIORITY (Scaffolding Complete)
+- [x] Orchestration agent created (`agents/elo_gain_agent.py`)
+- [x] 5-phase loop design: Candidate → Compile → Gauntlet → Stats → Decision
+- [x] Success tracking: Target N=5 successful improvements (configurable)
+- [x] Graph routing integrated
+- [ ] **Compilation validator** (`elo_tools/validate_compilation.py`) — ⏳ NEXT
+- [ ] **Gauntlet runner** (`elo_tools/gauntlet_runner.py`) — 🔴 CRITICAL PATH
+- [ ] **Statistical analyzer** (`elo_tools/analyze_statistics.py`) — ⏳ MEDIUM
+- [ ] **Commit/revert handler** (`elo_tools/commit_or_revert.py`) — ⏳ MEDIUM
 
 ## Next Steps (Order of Priority)
 
-### High Priority
-1. **[Auto] Complete Clippy fixes** — Run `python .\cody-graph\main.py` repeatedly until clean
-2. **[Auto] Refactoring phase** — Implement when clippy is clean
-3. **[Manual Review] Move ordering** — Killer heuristics, history tables
-4. **[Manual Review] Search improvements** — Null move pruning, aspiration windows
+### 🔴 CRITICAL: Complete Orchestration Phases (Including ELO Loop)
 
-### Medium Priority
+#### Phase 1: Finish & Polish
+1. **[Auto] Complete Clippy fixes** — Run `python .\cody-graph\main.py` until all warnings resolved
+2. Verify phase transitions work correctly
+3. Monitor `.cody_logs/` for any errors
+
+#### Phase 2–4: Implement & Enable
+4. **[Auto] Refactoring phase** — Implement when clippy complete
 5. **[Auto] Performance optimization phase** — Benchmark-driven improvements
-6. **[Manual] Opening book** — Integrate polyglot-format opening book
-7. **[Manual] Endgame tables** — Syzygy or similar EGT format
-8. **[Manual] Strength evaluation** — Test against known engines
+6. **[Auto] Features phase** — Strategic enhancements
+
+#### Phase 5: ELO Gain Loop 🎯 PRIORITY
+7. **[Implement] Compilation Validator** (`elo_tools/validate_compilation.py`)
+   - Run `cargo build --release`
+   - Run `cargo run --release -- perft 5`
+   - Validate output against known node counts
+   - Time: Low effort, 1-2 hours
+
+8. **[Implement] Gauntlet Runner** (`elo_tools/gauntlet_runner.py`) 🔴 BLOCKING
+   - Integrate cutechess-cli or build UCI orchestrator
+   - Configure 50 games at 10s + 0.1s increment
+   - Parse game results and generate statistics
+   - Time: Medium effort, 3-4 hours
+   - **BLOCKS:** All downstream analysis
+
+9. **[Implement] Statistical Analyzer** (`elo_tools/analyze_statistics.py`)
+   - Parse PGN files for game results
+   - Calculate Bayesian ELO difference
+   - Compute 95% credible intervals
+   - Time: Medium effort, 2-3 hours
+
+10. **[Implement] Commit/Revert Handler** (`elo_tools/commit_or_revert.py`)
+    - Git operations: add, commit, tag
+    - Loss analysis from PGN files
+    - State updates and persistence
+    - Time: Medium effort, 2-3 hours
+
+11. **[Test] Full ELO Loop** with manual candidate improvements
+    - Target: 5 successful improvements (N=5)
+    - Verify success tracking and exit conditions
+    - Monitor progress in console and logs
+
+### Medium Priority (After Orchestration Complete)
+12. **[Manual] Move ordering** — Killer heuristics, history tables
+13. **[Manual] Search improvements** — Null move pruning, aspiration windows
+14. **[Manual] Opening book** — Integrate polyglot-format opening book
+15. **[Manual] Endgame tables** — Syzygy or similar EGT format
 
 ### Low Priority (Future)
-9. **[Manual] NNUE evaluation** — Neural network-based scoring (if feasible)
-10. **[Manual] Distributed search** — Multi-machine analysis
-11. **[Manual] UCI extensions** — Custom protocol enhancements
+16. **[Manual] Strength evaluation** — Test against known engines
+17. **[Manual] NNUE evaluation** — Neural network-based scoring (if feasible)
+18. **[Manual] Distributed search** — Multi-machine analysis
 
 ## Architecture Notes
 
@@ -140,7 +198,19 @@ cargo bench -p engine
 
 ## Recent Changes
 
-### March 2026
+### March 2026 (ELO Gain Phase & Orchestration)
+- **ELO Gain Phase Scaffolding Complete**
+  - Created main orchestration agent: `agents/elo_gain_agent.py`
+  - Placeholder scripts for all 5 sub-phases in `elo_tools/`
+  - Integrated with main graph routing (START → route_phase → phase handler)
+  - State machine supports iteration loops with N=5 success target
+  - Success tracking: `elo_successful_commits` counter
+  - Exit conditions: 5 successes OR 50 max iterations
+- Enhanced multi-phase routing in `cody_graph.py`
+- Documentation: `ELO_GAIN_PHASE.md`, `ELOGAIN_QUICKSTART.md`, `ELOGAIN_DELIVERY.md`
+- Reorganized development priorities around orchestration completion
+
+### Earlier March 2026
 - Enhanced cody-graph with detailed diagnostics
 - Added multi-phase orchestration infrastructure
 - Implemented phase state persistence
@@ -157,6 +227,44 @@ cargo bench -p engine
 - Quiescence search implementation
 - PST integration
 - TT implementation with zobrist hashing
+
+## ELO Gain Loop — Implementation Details
+
+### How It Works
+The ELO Gain phase runs a sophisticated feedback loop to automatically improve engine strength:
+
+1. **Candidate Generation** — LLM proposes chess improvement (e.g., Null Move Pruning)
+2. **Compilation** — Validate: `cargo build --release` + `perft 5`
+3. **Gauntlet Match** — Run 50 games vs. stable version at 10s + 0.1s
+4. **Statistical Analysis** — Calculate ELO gain with Bayesian error bars
+5. **Decision** — Commit if ΔElo > 0, revert otherwise + analyze losses
+
+### Success Tracking
+- Each iteration completes the full 5-phase cycle
+- **Successful commits increment counter**: `elo_successful_commits++`
+- **Exit conditions** (whichever comes first):
+  - Reach **N=5 successful improvements** (primary)
+  - Exhaust **50 max iterations** (failsafe)
+- Progress logged: `"Iteration 3 starting (2/5 successes)"`
+
+### Configuration
+```bash
+# Default values (can override with env vars):
+CODY_ELO_TARGET_SUCCESSES = 5       # Target improvements to achieve
+CODY_ELO_MAX_ITERATIONS = 50        # Maximum attempts allowed
+CODY_ELO_GAUNTLET_GAMES = 50        # Games per match
+CODY_ELO_TIME_CONTROL = "10+0.1"    # Fast time control
+```
+
+### Implementation Status
+```
+✅ Scaffolding:    All placeholders created, graph routing integrated
+⏳ NEXT:           validate_compilation.py (quick win, 1-2 hours)
+🔴 BLOCKING:       gauntlet_runner.py (critical path, 3-4 hours)
+⏳ MEDIUM:        analyze_statistics.py + commit_or_revert.py (5-6 hours)
+```
+
+See `ELOGAIN_QUICKSTART.md` for testing and `ELO_GAIN_PHASE.md` for architecture.
 
 ## Contributing
 
