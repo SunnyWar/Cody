@@ -23,9 +23,11 @@ def _load_config(repo_path: str) -> dict:
     except Exception:
         return {}
 
-def _select_model(config: dict) -> str:
+def _select_model(config: dict, phase: str) -> str:
+    """Select the appropriate model for the given phase."""
     models = config.get("models", {}) if isinstance(config, dict) else {}
-    return models.get("clippy") or config.get("model") or "gpt-4o-mini"
+    # Try phase-specific model first, fall back to clippy, then config default, then hardcoded default
+    return models.get(phase) or models.get("clippy") or config.get("model") or "gpt-4o-mini"
 
 def _extract_all_issues(output: str) -> Tuple[str, Optional[str], Optional[int]]:
     """Extract all clippy warnings/errors for agent visibility.
@@ -259,6 +261,34 @@ STRICT RULES:
 - NEVER add #[allow(...)], #[warn(...)], or any suppression attributes.
 - Each feature should pass all tests.
 """,
+        "ELOGain": """
+You are Cody's ELOGainAgent.
+Goal: Find and implement improvements specifically to increase the chess engine's ELO rating.
+
+CONTEXT PROVIDED:
+1. Source Code: Current engine implementation.
+2. Architecture: Cody uses a fixed-block arena, pseudo-legal move generation, and allocation-free hot paths.
+3. Performance Data: Search depth, position evaluation metrics.
+
+STRICT RULES:
+- Focus ONLY on changes that will improve playing strength (ELO).
+- Target areas: evaluation improvements, search enhancements (pruning, extensions), move ordering.
+- Provide changes as a UNIFIED DIFF in a markdown diff block.
+- REQUIRED FORMAT EXAMPLE:
+    --- a/engine/src/search/evaluator.rs
+    +++ b/engine/src/search/evaluator.rs
+    @@ -42,1 +42,3 @@
+    -    score
+    +    let endgame_factor = calculate_endgame_factor(pos);
+    +    score * (1.0 + endgame_factor * 0.1)
+- The @@ hunk header MUST include actual line numbers like: @@ -42,1 +42,3 @@
+- NEVER use @@ @@ without numbers - this is INVALID
+- Do NOT use *** markers
+- Put your diff inside a markdown code block with 'diff' language tag
+- NEVER add #[allow(...)], #[warn(...)], or any suppression attributes.
+- Each change must maintain correctness (pass perft and tests).
+- Prioritize changes with measurable ELO impact (eval tuning, search improvements).
+""",
     }
     return phase_prompts.get(phase, phase_prompts["clippy"])
 
@@ -301,7 +331,7 @@ def clippy_agent(state: CodyState) -> CodyState:
         print(f"[cody-graph] clippy_agent: ERROR - {error_msg}", flush=True)
         print("[cody-graph] clippy_agent: END (error)", flush=True)
         return result_state
-    model = _select_model(config)
+    model = _select_model(config, phase)
     print(f"[cody-graph] [DIAG] Using model: {model} for phase '{phase}'", flush=True)
     client = OpenAI(api_key=api_key)
 
