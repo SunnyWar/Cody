@@ -13,6 +13,12 @@ fn main() {
     // Skip program name
     args.remove(0);
 
+    // Handle --version flag
+    if !args.is_empty() && (args[0] == "--version" || args[0] == "-V") {
+        println!("Cody Chess Engine {}", env!("CARGO_PKG_VERSION"));
+        return;
+    }
+
     // If first argument is "perft", run perft mode. Otherwise, run UCI mode
     // (default if no args).
     if !args.is_empty() && args[0] == "perft" {
