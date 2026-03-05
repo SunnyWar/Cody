@@ -302,7 +302,7 @@ def elo_gain_compilation_check(state: CodyState) -> CodyState:
             
             print("[cody-graph] [ELO Gain] [OK] Test code compiles successfully", flush=True)
             state["status"] = "ok"
-            state["elo_phase_stage"] = "unit_test"  # Go to unit test validation
+            state["elo_phase_stage"] = "gauntlet"  # Go to validation (handles both unit tests and improvements)
             state["last_command"] = "compilation_check_unitest"
             
         else:
@@ -352,7 +352,7 @@ def elo_gain_gauntlet_match(state: CodyState) -> CodyState:
         # UNIT TEST mode: Run cargo test to verify test passes
         print("[cody-graph] [ELO Gain] [] Running unit test to verify issue reproduction", flush=True)
         
-        test_function = candidate.get("function_name", "")
+        test_function = candidate.get("test_name", "")  # Use test_name field from candidate
         
         try:
             # Run the specific test
