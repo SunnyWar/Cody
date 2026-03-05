@@ -496,7 +496,7 @@ def elo_gain_statistical_check(state: CodyState) -> CodyState:
     
     elif sprt_decision == "H0":
         # Candidate failed: no significant improvement
-        print("[cody-graph] [ELO Gain] ✗ SPRT: H0 (candidate not better)", flush=True)
+        print("[cody-graph] [ELO Gain] [FAIL] SPRT: H0 (candidate not better)", flush=True)
         elo_estimate = 0.0
         state["elo_gain_value"] = elo_estimate
         state["elo_passed_sprt"] = False
@@ -528,39 +528,58 @@ def elo_gain_decision(state: CodyState) -> CodyState:
     """
     PHASE 5: Decision & Commit or Revert
     
-    Logic:
-    - If SPRT H1 (passed): 
-      * Increment patch version
-      * Copy binary to engines dir with version
-      * Commit changes with version bump
-      * Update baseline for next iteration
-    - If SPRT H0 or failed:
-      * Revert the candidate
-      * Feed loss PGNs back to LLM for analysis of failure modes
-      * Record in learning state for future iterations
+    Two modes:
+    A) IMPROVEMENT mode:
+       - If SPRT H1 (passed): Commit with version bump
+       - If SPRT H0 or failed: Revert
+    
+    B) UNIT TEST mode:
+       - If test passed: Commit test to repository as regression prevention
+       - If test failed/error: Revert and iterate
     """
     print("[cody-graph] [ELO Gain] [5/6] Decision phase", flush=True)
     
     repo_path = state.get("repo_path", ".")
+    candidate_type = state.get("elo_candidate_type", "improvement")
     passed_sprt = state.get("elo_passed_sprt", False)
+    test_result = state.get("elo_test_result", "")  # For unit tests: "PASS" or "FAIL"
     elo_gain = state.get("elo_gain_value", 0.0)
     engines_dir = state.get("elo_engines_dir", r"C:\chess\Engines")
     
-    if passed_sprt:
-        print(f"[cody-graph] [ELO Gain] [OK] SPRT passed — COMMITTING", flush=True)
+    # Determine success based on mode
+    should_commit = False
+    commit_reason = ""
+    
+    if candidate_type == "unit_test":
+        # For unit tests: success = test ran without error (reproduces issue)
+        if test_result == "PASS" or test_result == "pass":
+            should_commit = True
+            commit_reason = "Unit test successfully reproduces issue"
+    else:
+        # For improvements: success = SPRT passed (ELO gain achieved)
+        if passed_sprt:
+            should_commit = True
+            commit_reason = f"SPRT passed — ELO gain {elo_gain:.1f}"
+    
+    if should_commit:
+        print(f"[cody-graph] [ELO Gain] [OK] {commit_reason} — COMMITTING", flush=True)
         
         try:
-            # 1. Get current version before commit (commit_util will increment it)
+            # 1. Get current version before commit
             current_version = get_version_string(os.path.join(repo_path, "engine", "Cargo.toml"))
             print(f"[cody-graph] [ELO Gain] Current version: {current_version}", flush=True)
             
-            # 2. Commit changes with automatic version bump
-            commit_message = f"ELO gain (+{elo_gain:.1f} ELO estimated)"
+            # 2. Commit changes with automatic patch bump
+            if candidate_type == "unit_test":
+                commit_msg = "Add regression test for illegal move generation"
+            else:
+                commit_msg = f"ELO gain (+{elo_gain:.1f} ELO estimated)"
+            
             success, new_version, error = commit_with_version_bump(
                 repo_path=repo_path,
-                commit_message=commit_message,
+                commit_message=commit_msg,
                 phase="ELOGain",
-                files_to_add=None  # Will add all modified files + Cargo.toml
+                files_to_add=None
             )
             
             if not success:
@@ -583,7 +602,7 @@ def elo_gain_decision(state: CodyState) -> CodyState:
             
             state["status"] = "ok"
             state["elo_phase_outcome"] = "committed"
-            state["elo_improvement_committed"] = elo_gain
+            state["elo_improvement_committed"] = elo_gain if candidate_type != "unit_test" else "test_added"
             state["elo_committed_version"] = new_version
             
         except Exception as e:
@@ -594,7 +613,7 @@ def elo_gain_decision(state: CodyState) -> CodyState:
     
     else:
         print(
-            f"[cody-graph] [ELO Gain] ✗ SPRT failed or inconclusive — REVERTING",
+            f"[cody-graph] [ELO Gain] [INFO] No improvement criteria met — REVERTING",
             flush=True
         )
         
