@@ -164,13 +164,17 @@ def elo_gain_candidate_generation(state: CodyState) -> CodyState:
         
         # Check if we've already tried creating a test and should now fix the issue
         force_improvement = state.get("elo_force_improvement_mode", False)
+        test_already_attempted = state.get("elo_test_attempt_made", False)
         
-        if (has_critical or has_warnings or has_quick_losses) and not force_improvement:
+        if (has_critical or has_warnings or has_quick_losses) and not force_improvement and not test_already_attempted:
             # PRIORITY MODE: Generate unit test to reproduce issue
             print(
                 "[cody-graph] [ELO Gain] [] Issues detected - Generating unit test to reproduce",
                 flush=True
             )
+            
+            # Mark that we're attempting to create a test
+            state["elo_test_attempt_made"] = True
             
             candidate = generator.generate_unit_test_for_issue(sanity_result)
             candidate_type = "unit_test"
@@ -341,9 +345,14 @@ def elo_gain_compilation_check(state: CodyState) -> CodyState:
                 return state
             
             print("[cody-graph] [ELO Gain] [OK] Test code compiles successfully", flush=True)
+            print("[cody-graph] [ELO Gain] [INFO] Regression test added. Now generating improvement to fix the underlying issue.", flush=True)
+            
+            # Test has been added successfully. Now we need to FIX the issue.
+            # Set flag to skip test creation and go straight to improvement generation
             state["status"] = "ok"
-            state["elo_phase_stage"] = "gauntlet"  # Go to validation (handles both unit tests and improvements)
-            state["last_command"] = "compilation_check_unitest"
+            state["elo_force_improvement_mode"] = True
+            state["elo_phase_stage"] = "candidate_generation"  # Go back to generate improvement
+            state["last_command"] = "compilation_check_unittest"
             
         else:
             # IMPROVEMENT mode: Standard compilation + perft validation
@@ -654,6 +663,7 @@ def elo_gain_decision(state: CodyState) -> CodyState:
             state["elo_committed_version"] = new_version
             state["elo_phase_stage"] = "complete"  # Move to next iteration
             state["elo_force_improvement_mode"] = False  # Reset for next iteration
+            state["elo_test_attempt_made"] = False  # Reset for next iteration
             
         except Exception as e:
             print(f"[cody-graph] [ELO Gain] ERROR during commit: {e}", flush=True)
@@ -723,6 +733,7 @@ def elo_gain_agent(state: CodyState) -> CodyState:
         print("[cody-graph] [ELO Gain] Starting ELO Gain phase orchestration", flush=True)
         state["elo_tried_prompts"] = []  # Initialize prompt tracking
         state["elo_force_improvement_mode"] = False  # Initialize improvement mode flag
+        state["elo_test_attempt_made"] = False  # Initialize test attempt flag
     
     repo_path = state.get("repo_path", ".")
     iteration = state.get("elo_iterations", 0)
@@ -794,6 +805,7 @@ def elo_gain_agent(state: CodyState) -> CodyState:
             state["elo_phase_stage"] = "candidate_generation"
             state["elo_tried_prompts"] = []  # Reset prompt tracking for new iteration
             state["elo_force_improvement_mode"] = False  # Reset force improvement flag
+            state["elo_test_attempt_made"] = False  # Reset test attempt flag for new iteration
             print(
                 f"[cody-graph] [ELO Gain] Iteration {iteration} starting "
                 f"({successful_commits}/{target_successes} successes)",

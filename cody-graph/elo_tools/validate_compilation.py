@@ -39,19 +39,32 @@ def run_command(cmd: list[str], cwd: Optional[Path] = None) -> Tuple[int, str, s
 
 def validate_build(repo_path: Path) -> Tuple[bool, str]:
     """
-    Build the engine in release mode.
+    Build the engine in release mode AND compile all tests.
     
-    TODO: Implement full cargo build validation.
+    This validates that:
+    1. Engine binary compiles
+    2. All unit tests compile (catches test code errors)
     """
     print(f"[validator] Building release binary...")
     
+    # Build engine binary
     cmd = ["cargo", "build", "--release", "-p", "engine"]
     code, stdout, stderr = run_command(cmd, cwd=repo_path)
     
     if code != 0:
-        return False, f"Build failed:\n{stderr}"
+        return False, f"Engine build failed:\n{stderr}"
     
-    print(f"[validator] [OK] Build successful")
+    print(f"[validator] [OK] Engine build successful")
+    
+    # Compile tests (without running them) - this catches test code errors
+    print(f"[validator] Compiling unit tests...")
+    cmd = ["cargo", "test", "--no-run", "-p", "bitboard"]
+    code, stdout, stderr = run_command(cmd, cwd=repo_path)
+    
+    if code != 0:
+        return False, f"Test compilation failed (broken test code):\n{stderr}"
+    
+    print(f"[validator] [OK] Tests compile successfully")
     return True, ""
 
 def validate_perft(repo_path: Path, depth: int = 5) -> Tuple[bool, str]:
