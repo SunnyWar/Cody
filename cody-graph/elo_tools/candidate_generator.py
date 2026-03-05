@@ -150,7 +150,7 @@ class CandidateGenerator:
                         "content": prompt
                     }
                 ],
-                temperature=0.7,
+
                 max_completion_tokens=1000,
             )
             
@@ -283,7 +283,6 @@ class CandidateGenerator:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.5,
                 max_completion_tokens=1500,
             )
             
@@ -349,7 +348,6 @@ class CandidateGenerator:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.5,
                 max_completion_tokens=2000,
             )
             

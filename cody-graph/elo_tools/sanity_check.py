@@ -49,6 +49,7 @@ class SanityCheckResult:
         self.crashes: List[Dict] = []
         self.timeouts: List[Dict] = []
         self.pgn_file: Optional[str] = None
+        self.worst_fail_pgn: Optional[str] = None  # PGN with only problematic games
         self.critical_issues: List[str] = []
         self.warnings: List[str] = []
     
@@ -99,7 +100,44 @@ class SanityCheckResult:
             "warnings": self.warnings,
             "has_critical_issues": self.has_critical_issues(),
             "pgn_file": self.pgn_file,
+            "worst_fail_pgn": self.worst_fail_pgn,
         }
+
+
+
+def _extract_games_to_pgn(source_pgn: str, game_numbers: set, output_pgn: str):
+    """
+    Extract specific games from PGN file and save to new file.
+    
+    Args:
+        source_pgn: Path to source PGN file with all games
+        game_numbers: Set of game numbers to extract (1-indexed)
+        output_pgn: Path to write filtered PGN
+    """
+    if not os.path.exists(source_pgn):
+        return
+    
+    try:
+        with open(source_pgn, "r") as f:
+            content = f.read()
+        
+        # Split into individual games by looking for "[Event" tags
+        games = re.split(r'\n\n(?=\[Event)', content.strip())
+        
+        filtered_games = []
+        for game_num, game_text in enumerate(games, 1):
+            if not game_text.strip():
+                continue
+            if game_num in game_numbers:
+                filtered_games.append(game_text)
+                filtered_games.append("\n\n")  # Add spacing between games
+        
+        # Write filtered games
+        if filtered_games:
+            with open(output_pgn, "w") as f:
+                f.write("".join(filtered_games))
+    except Exception as e:
+        print(f"[sanity_check] Warning: Could not extract problem games: {e}")
 
 
 def parse_pgn_for_issues(pgn_file: str) -> Tuple[int, List[Dict], List[Dict]]:
@@ -281,6 +319,19 @@ def run_self_play_sanity_check(
             result.status = "fail"
         else:
             result.status = "pass"
+        
+        # Save problematic games to worst_fail.pgn for candidate generator to analyze
+        if illegal_moves or quick_losses:
+            problematic_game_numbers = set()
+            for im in illegal_moves:
+                problematic_game_numbers.add(im["game"])
+            for ql in quick_losses:
+                problematic_game_numbers.add(ql["game"])
+            
+            if problematic_game_numbers:
+                _extract_games_to_pgn(output_pgn, problematic_game_numbers,
+                                     str(Path(engines_dir) / "worst_fail.pgn"))
+                result.worst_fail_pgn = str(Path(engines_dir) / "worst_fail.pgn")
         
         print(f"\n[sanity_check] Self-play complete:")
         print(f"  Games played: {games_played}")
