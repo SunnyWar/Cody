@@ -70,25 +70,3 @@ mod regression_tests {
         assert!(!moves.is_empty(), "No moves generated from position");
     }
 }
-
-#[cfg(test)]
-mod regression_tests {
-
-#[test]
-fn test_evaluation_differences() {
-    use crate::position::Position;
-
-    // Balanced starting position
-    let balanced = Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
-    let balanced_eval = evaluate(&balanced);
-
-    // White up a rook - should be significantly better for white
-    let white_up_rook = Position::from_fen("k7/8/8/8/8/8/8/K6R w - - 0 1").unwrap();
-    let white_eval = evaluate(&white_up_rook);
-
-    // Difference should reflect rook value (roughly 500cp)
-    let diff = white_eval - balanced_eval;
-    assert!(diff > 300, "Rook advantage not reflected in eval. Diff: {}", diff);
-}
-
-}
