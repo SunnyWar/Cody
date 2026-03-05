@@ -94,6 +94,34 @@ impl SearchHeuristics {
     }
 }
 
+pub fn order_moves_with_heuristics(
+    pos: &bitboard::position::Position,
+    moves: &mut [ChessMove],
+    heuristics: &SearchHeuristics,
+    ply: usize,
+    pv_move: Option<ChessMove>,
+) {
+    if moves.len() <= 1 {
+        return;
+    }
+
+    if let Some(pv) = pv_move
+        && !pv.is_null()
+        && let Some(idx) = moves.iter().position(|m| *m == pv)
+        && idx != 0
+    {
+        moves.swap(0, idx);
+    }
+
+    let start = if pv_move.is_some_and(|m| !m.is_null() && moves.first().copied() == Some(m)) {
+        1
+    } else {
+        0
+    };
+
+    moves[start..].sort_unstable_by_key(|m| -heuristics.score_move(pos, m, ply));
+}
+
 fn piece_value(kind: PieceKind) -> i32 {
     match kind {
         PieceKind::Pawn => 100,
@@ -312,22 +340,8 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     }
 
     let pos = arena.get(ply).position;
-    // Lightweight move ordering: partition captures/promotions to front first.
-    // Then selectively score only the first 10 moves to avoid expensive per-move
-    // work.
-    let mut capture_boundary = 0;
-    for i in 0..moves.len() {
-        if matches!(
-            moves[i].move_type,
-            MoveType::Capture | MoveType::EnPassant | MoveType::Promotion(_)
-        ) {
-            moves.swap(i, capture_boundary);
-            capture_boundary += 1;
-        }
-    }
-    // Score and order only the top moves; the rest rely on insertion order + LMR.
-    let score_limit = 10.min(moves.len());
-    moves[..score_limit].sort_unstable_by_key(|m| -heuristics.score_move(&pos, m, ply));
+    // Full-list move ordering gives alpha-beta the best chance to cut early.
+    order_moves_with_heuristics(&pos, &mut moves, heuristics, ply, None);
 
     let moves_vec = moves;
     if let Some(e) = tt_exact_needs_verify
