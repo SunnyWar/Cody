@@ -52,7 +52,9 @@ pub fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
         bitboard::movegen::generate_pseudo_captures(pos)
             .into_iter()
             .filter(|m| {
-                let mut temp = Position::default();
+                // `apply_move_into` writes all state fields, so cloning the
+                // current position avoids expensive default FEN parsing.
+                let mut temp = *pos;
                 pos.apply_move_into(m, &mut temp);
                 !movegen.in_check(&temp)
             })

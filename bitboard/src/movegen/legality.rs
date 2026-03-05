@@ -14,7 +14,9 @@ use crate::position::Position;
 
 /// Return true if making `m` from `pos` leaves the side to move in check.
 pub fn is_legal(pos: &Position, m: &ChessMove) -> bool {
-    let mut new_pos = Position::default();
+    // `apply_move_into` overwrites all board/state fields, so start from a
+    // cheap stack copy instead of constructing the default position (FEN parse).
+    let mut new_pos = *pos;
     pos.apply_move_into(m, &mut new_pos);
 
     // Try to find the king square for the original side to move

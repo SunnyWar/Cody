@@ -91,8 +91,12 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                 generate_legal_moves(&parent.position)
             };
 
-            // Diagnostic: validate move generation for this position
-            bitboard::movegen::validate_legal_move_generation(&self.arena.get(0).position);
+            // Diagnostic movegen validation is expensive; keep it for debug
+            // sessions only when verbose logging is enabled.
+            #[cfg(debug_assertions)]
+            if crate::VERBOSE.load(Ordering::Relaxed) {
+                bitboard::movegen::validate_legal_move_generation(&self.arena.get(0).position);
+            }
 
             if moves.is_empty() {
                 let score = if self.movegen.in_check(root) {
@@ -162,8 +166,11 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                     }
                     searched_any = true;
 
-                    // Periodically print UCI info if a long move is being searched
-                    if now.duration_since(last_info_time).as_millis() >= 1000 {
+                    // Periodic progress info is useful for timed UCI searches,
+                    // but it is expensive noise for fixed-depth bench runs.
+                    if time_budget_ms.is_some()
+                        && now.duration_since(last_info_time).as_millis() >= 1000
+                    {
                         let pv_str = if best_move.is_null() {
                             "".to_string()
                         } else {

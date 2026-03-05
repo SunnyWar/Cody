@@ -9,7 +9,6 @@ use bitboard::movegen::MoveGenerator;
 use bitboard::movegen::generate_legal_moves;
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::io::{self};
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 
@@ -60,13 +59,13 @@ pub fn print_uci_info(
 
     // Write to stdout first
     println!("{}", info_line);
-    io::stdout().flush().ok();
 
-    // Append to cody_uci.log (best-effort)
-    if let Ok(mut f) = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("cody_uci.log")
+    // File logging is expensive in hot paths; keep it for verbose sessions.
+    if VERBOSE.load(Ordering::Relaxed)
+        && let Ok(mut f) = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("cody_uci.log")
     {
         let stamp = util::iso_stamp_ms();
         let _ = writeln!(f, "{} OUT: {}", stamp, info_line);
@@ -119,12 +118,14 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         return quiescence_with_arena(movegen, evaluator, arena, ply, alpha, beta);
     }
 
+    // Compute key once; full Zobrist recomputation is expensive.
+    let key = arena.get(ply).position.zobrist_hash();
+
     // Probe TT if provided (tt is always present in serial path; for parallel we
     // pass a local dummy). Exact entries with a non-null move are verified
     // against the current legal move list before being trusted.
     let mut tt_exact_needs_verify: Option<crate::core::tt::TTEntry> = None;
     {
-        let key = arena.get(ply).position.zobrist_hash();
         if let Some(e) = tt.probe(key, remaining as i8, alpha, beta)
             && e.flag == crate::core::tt::TTFlag::Exact as u8
         {
@@ -150,6 +151,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     }
 
     let mut best_score = i32::MIN;
+    let mut best_move = bitboard::mov::ChessMove::null();
     // Work with a local mutable vector so we can reorder based on TT best move
     let moves_vec = moves;
     if let Some(e) = tt_exact_needs_verify
@@ -182,6 +184,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 
         if score > best_score {
             best_score = score;
+            best_move = m;
         }
 
         if score > alpha {
@@ -190,26 +193,14 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 
         // Beta cutoff
         if alpha >= beta {
-            // store upper bound in TT if available
-            {
-                let key = arena.get(ply).position.zobrist_hash();
-                tt.store(key, alpha, remaining as i8, TTFlag::Upper, m);
-            }
+            // Fail-high at beta stores a lower bound.
+            tt.store(key, alpha, remaining as i8, TTFlag::Lower, m);
             break;
         }
     }
 
     // store final result in TT as exact
-    {
-        let key = arena.get(ply).position.zobrist_hash();
-        tt.store(
-            key,
-            best_score,
-            remaining as i8,
-            TTFlag::Exact,
-            bitboard::mov::ChessMove::null(),
-        );
-    }
+    tt.store(key, best_score, remaining as i8, TTFlag::Exact, best_move);
 
     best_score
 }
