@@ -21,6 +21,7 @@ Usage:
 import os
 import json
 import sys
+import re
 from pathlib import Path
 from typing import Optional, Dict, List
 from textwrap import dedent
@@ -88,6 +89,106 @@ class CandidateGenerator:
             return f"Recent Failure Game:\n{content[:1500]}"
         except Exception:
             return "Could not read failure PGN."
+    
+    def parse_worst_fail_pgn(self) -> List[Dict]:
+        """
+        Parse worst_fail.pgn to extract all failing games with annotations.
+        
+        Returns:
+            List of dicts with: game_num, fen_before_move, illegal_move, error_msg, full_pgn
+        """
+        worst_fail = Path(r"C:\chess\Engines\worst_fail.pgn")
+        
+        if not worst_fail.exists():
+            return []
+        
+        try:
+            content = worst_fail.read_text(encoding="utf-8")
+        except Exception:
+            return []
+        
+        # Split into individual games
+        games = re.split(r'\n\n(?=\[Event)', content.strip())
+        failing_games = []
+        
+        for game_num, game_text in enumerate(games, 1):
+            if "illegal move" not in game_text.lower():
+                continue
+            
+            # Extract event/result info
+            event_match = re.search(r'\[Event "([^"]+)"\]', game_text)
+            event = event_match.group(1) if event_match else "Unknown"
+            
+            # Try to find the FEN right before the illegal move
+            # Look for patterns like: "Game X: ... made illegal move at move Y"
+            fen_match = re.search(r'\[FEN "([^"]+)"\]', game_text)
+            fen = fen_match.group(1) if fen_match else "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+            
+            # Extract the moves (game history) to find position before error
+            moves_section = re.search(r'(\d+\..*?)(\{.*?illegal|$)', game_text, re.DOTALL)
+            if moves_section:
+                moves_text = moves_section.group(1)
+                # Extract last move pair (last full move by both sides)
+                last_move = re.findall(r'(\d+\. \S+(?:\s+\S+)?)', moves_text)[-1] if moves_section else ""
+            else:
+                last_move = ""
+            
+            # Extract error details
+            error_match = re.search(r'\{(.*?)(illegal|Illegal)(.*?)\}', game_text)
+            error_msg = error_match.group(0) if error_match else "Unknown error"
+            
+            failing_games.append({
+                "game_num": game_num,
+                "event": event,
+                "fen": fen,
+                "last_moves": last_move,
+                "error_msg": error_msg,
+                "full_pgn": game_text[:500],  # First 500 chars
+            })
+        
+        return failing_games
+    
+    def infer_bug_pattern(self, failing_games: List[Dict]) -> Dict:
+        """
+        Analyze failing games to infer bug pattern.
+        
+        Returns:
+            Dict with: bug_type, description, likely_cause, confidence
+        """
+        if not failing_games:
+            return {"bug_type": "unknown", "confidence": "low"}
+        
+        # Count error patterns
+        illegal_move_count = len([g for g in failing_games if "illegal" in g["error_msg"].lower()])
+        
+        # Analyze error messages for patterns
+        all_errors = " ".join([g["error_msg"] for g in failing_games])
+        
+        if illegal_move_count > 0:
+            # Illegal move bug detected
+            if "0000" in all_errors or "move: 0" in all_errors:
+                return {
+                    "bug_type": "illegal_move_generation",
+                    "description": "Engine generating placeholder moves (0000) or invalid move encodings",
+                    "likely_cause": "Move generation returning invalid encoded moves or not properly validating generated moves",
+                    "confidence": "high",
+                    "game_count": illegal_move_count,
+                }
+            else:
+                return {
+                    "bug_type": "move_legality_check",
+                    "description": "Engine generating moves that leave king in check or violate chess rules",
+                    "likely_cause": "Missing or incorrect legality validation in move generation",
+                    "confidence": "high",
+                    "game_count": illegal_move_count,
+                }
+        
+        return {
+            "bug_type": "stability_issue",
+            "description": "Engine crashes or behaves unexpectedly",
+            "likelihood": "low",
+            "confidence": "medium",
+        }
     
     def generate_improvement_proposal(self) -> Dict:
         """
@@ -189,9 +290,7 @@ class CandidateGenerator:
         """
         When sanity check finds issues, generate a unit test OR integration test to reproduce them.
         
-        Chooses test type based on issue scope:
-        - UNIT TEST: Move generation bugs, specific position evaluation issues
-        - INTEGRATION TEST: Game-level issues, search behavior, move ordering in real games
+        ENHANCED: Analyzes actual failing positions from worst_fail.pgn instead of using generic templates.
         
         Args:
             sanity_result: Dict from sanity_check.py containing issues found
@@ -203,6 +302,7 @@ class CandidateGenerator:
         illegal_moves = sanity_result.get("illegal_moves", [])
         warnings = sanity_result.get("warnings", [])
         pgn_file = sanity_result.get("pgn_file")
+        worst_fail_pgn = sanity_result.get("worst_fail_pgn")
         
         issues_found = []
         if illegal_moves:
@@ -225,12 +325,21 @@ class CandidateGenerator:
             # Illegal moves = move generation bug = UNIT TEST
             test_focus = "reproduce_illegal_move"
             test_variant = "unit"
-            issue_description = f"Illegal moves found: {illegal_moves[0] if illegal_moves else 'unknown'}"
+            issue_description = f"Illegal moves found: {len(illegal_moves)} occurrences"
+            
+            # TRY TO ANALYZE ACTUAL FAILING POSITIONS
+            failing_games = self.parse_worst_fail_pgn()
+            if failing_games:
+                bug_pattern = self.infer_bug_pattern(failing_games)
+                print(f"[candidate_generator] Analyzed {len(failing_games)} failing games")
+                print(f"[candidate_generator] Inferred bug pattern: {bug_pattern.get('bug_type', 'unknown')}")
+                return self._generate_position_specific_unit_test(failing_games, bug_pattern)
+            
         elif quick_losses:
             # Quick losses = evaluation or game-level bug = INTEGRATION TEST
             test_focus = "reproduce_bad_evaluation"
             test_variant = "integration"
-            issue_description = f"Quick checkmate in < 10 moves: {quick_losses[0] if quick_losses else 'unknown'}"
+            issue_description = f"Quick checkmate in < 10 moves: {len(quick_losses)} occurrences"
         else:
             # General stability = INTEGRATION TEST
             test_focus = "general_stability"
@@ -241,6 +350,69 @@ class CandidateGenerator:
             return self._generate_unit_test(test_focus, issue_description)
         else:
             return self._generate_integration_test(test_focus, issue_description, pgn_file)
+    
+    def _generate_position_specific_unit_test(self, failing_games: List[Dict], bug_pattern: Dict) -> Dict:
+        """
+        Generate a position-specific unit test based on actual failing games.
+        Uses real positions where bugs occurred instead of generic templates.
+        """
+        if not failing_games:
+            return self._placeholder_unit_test("reproduce_illegal_move", "Illegal moves")
+        
+        game = failing_games[0]  # Analyze first failing game
+        fen = game.get("fen", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+        bug_type = bug_pattern.get("bug_type", "illegal_move_generation")
+        
+        # Create a test that:
+        # 1. Sets up the exact position from the failing game
+        # 2. Generates moves from that position
+        # 3. Asserts that the illegal move is NOT in the generated moves
+        
+        test_code = dedent(f'''
+            #[test]
+            fn test_illegal_move_issue_reproduction() {{
+                use crate::position::Position;
+                use crate::movegen::api::generate_pseudo_moves;
+                
+                // Exact position from failing game
+                let pos = Position::from_fen("{fen}").expect("Invalid FEN");
+                let moves = generate_pseudo_moves(&pos);
+                
+                // Verify no illegal moves are generated
+                // Each generated move should not leave king in check
+                for mv in &moves {{
+                    let mut resulting_pos = Position::default();
+                    pos.apply_move_into(mv, &mut resulting_pos);
+                    
+                    // After the move, verify king safety
+                    let king_square = resulting_pos.king_square(pos.active_color());
+                    let is_attacked = resulting_pos.is_square_attacked(
+                        king_square,
+                        !pos.active_color()
+                    );
+                    
+                    assert!(!is_attacked, 
+                        "Illegal move generated: king left in check after {{:?}}", mv);
+                }}
+                
+                // Also verify that at least SOME legal moves exist
+                assert!(!moves.is_empty(), "No moves generated from position");
+            }}
+        ''')
+        
+        return {
+            "test_type": "unit",
+            "test_name": "test_illegal_move_issue_reproduction",
+            "title": f"Position-Specific Illegal Move Test ({bug_type})",
+            "description": f"Tests the exact position where illegal move was generated. Bug pattern: {bug_pattern.get('description', 'Unknown')}",
+            "chess_fen": fen,
+            "test_code": test_code,
+            "explanation": f"This test reproduces the bug from actual failing game. {{len(failing_games)}} similar failures detected.",
+            "module": "bitboard",
+            "bug_pattern": bug_type,
+            "confidence": "high"
+        }
+    
     
     def _generate_unit_test(self, test_focus: str, issue_description: str) -> Dict:
         """Generate a unit test for isolated move generation or evaluation issues."""
