@@ -106,16 +106,24 @@ class CandidateGenerator:
         if not text:
             return None
 
-        # Prefer fenced diff blocks.
-        fenced = re.search(r"```(?:diff)?\n(.*?)\n```", text, re.DOTALL)
-        if fenced:
-            candidate = fenced.group(1).strip()
-            if "--- " in candidate and "+++ " in candidate and "@@ " in candidate:
+        normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+
+        # Prefer fenced blocks and accept the first valid unified diff payload.
+        fenced_blocks = re.findall(r"```(?:diff|patch)?\n(.*?)\n```", normalized, re.DOTALL)
+        for block in fenced_blocks:
+            candidate = block.strip()
+            if "--- " in candidate and "+++ " in candidate and "@@" in candidate:
                 return candidate
 
-        # Fall back to raw diff content.
-        if "--- " in text and "+++ " in text and "@@ " in text:
-            return text.strip()
+        # Fall back to raw text and trim pre/post prose if possible.
+        if "--- " in normalized and "+++ " in normalized and "@@" in normalized:
+            lines = normalized.split("\n")
+            start_idx = 0
+            for i, line in enumerate(lines):
+                if line.startswith("--- ") or line.startswith("diff --git"):
+                    start_idx = i
+                    break
+            return "\n".join(lines[start_idx:]).strip()
 
         return None
     
@@ -377,14 +385,19 @@ class CandidateGenerator:
         files_hint = proposal.get("files_affected") or prompt_meta.get("files_to_check") or []
         files_hint_text = "\n".join([f"- {p}" for p in files_hint]) if files_hint else "- engine/src/search/core.rs"
 
-        impl_prompt = dedent(f"""
-        You are implementing a Rust chess engine fix. Return ONLY a unified git diff in a ```diff fenced block.
+        base_prompt = dedent(f"""
+        You are implementing a Rust chess engine fix. Return ONLY a unified git diff in a fenced ```diff block.
 
-        Requirements:
-        - Make real code edits in existing files under engine/src or bitboard/src
-        - Keep patch minimal and compilable
-        - Do not add explanations, JSON, or markdown outside the diff block
-        - Do not use suppression attributes like #[allow(...)]
+        HARD OUTPUT RULES:
+        1) Output EXACTLY one fenced diff block and nothing else.
+        2) Diff MUST contain real unified hunks with line numbers, like:
+           @@ -123,7 +123,12 @@
+        3) Diff MUST include both file headers:
+           --- a/<path>
+           +++ b/<path>
+        4) Touch only existing files in engine/src or bitboard/src.
+        5) Keep change small and compilable; no placeholders.
+        6) Do NOT add suppression attributes like #[allow(...)].
 
         Context:
         - Condition: {condition}
@@ -395,25 +408,42 @@ class CandidateGenerator:
 
         Candidate files:
         {files_hint_text}
-
-        Output format example:
-        ```diff
-        --- a/engine/src/search/core.rs
-        +++ b/engine/src/search/core.rs
-        @@ -10,6 +10,10 @@
-         ...
-        +...
-        ```
         """)
 
+        prompts = [base_prompt]
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": impl_prompt}],
-                max_completion_tokens=2200,
-            )
-            response_text = response.choices[0].message.content or ""
-            return self._extract_diff_from_text(response_text)
+            previous_output = ""
+            for attempt in range(1, 4):
+                current_prompt = prompts[-1]
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": current_prompt}],
+                    max_completion_tokens=2800,
+                )
+                response_text = response.choices[0].message.content or ""
+                diff = self._extract_diff_from_text(response_text)
+                if diff:
+                    print(f"[candidate_generator] Diff generation succeeded on attempt {attempt}")
+                    return diff
+
+                previous_output = response_text[:1200]
+                print(f"[candidate_generator] Diff generation attempt {attempt} produced no valid unified diff")
+                repair_prompt = dedent(f"""
+                Your previous response was invalid because it did not contain an applyable unified diff.
+
+                Invalid response excerpt:
+                {previous_output}
+
+                Return ONLY one fenced ```diff block with applyable unified diff hunks.
+                Mandatory markers:
+                - --- a/<path>
+                - +++ b/<path>
+                - @@ -old_start,old_len +new_start,new_len @@
+                No prose, no JSON, no explanation.
+                """)
+                prompts.append(repair_prompt)
+
+            return None
         except Exception as e:
             print(f"[candidate_generator] Diff generation error: {e}")
             return None
