@@ -168,20 +168,34 @@ def parse_pgn_for_issues(pgn_file: str) -> Tuple[int, List[Dict], List[Dict]]:
         
         games_count += 1
         
+        # Extract PlyCount from metadata (most reliable method)
+        ply_match = re.search(r'\[PlyCount "(\d+)"\]', game)
+        if ply_match:
+            ply_count = int(ply_match.group(1))
+            # Convert plies to full moves (2 plies = 1 full move, round up)
+            move_count = (ply_count + 1) // 2
+        else:
+            # Fallback: count move numbers in notation
+            moves = re.findall(r'(\d+)\.', game)
+            move_count = int(moves[-1]) if moves else None
+        
         # Check for illegal move termination
         if "illegal move" in game.lower():
             illegal_match = re.search(r'\{(.*?) makes an illegal move', game)
             if illegal_match:
                 player = illegal_match.group(1)
-                # Estimate move number from game text
-                moves = re.findall(r'(\d+)\.', game)
-                move_num = int(moves[-1]) if moves else 0
+                # Use move_count from metadata/notation, or unknown
+                if move_count is not None:
+                    display_num = move_count
+                else:
+                    display_num = 0  # Parsing failed, but still report as issue
+                
                 illegal_moves.append({
                     "game": game_num,
                     "player": player,
-                    "move_number": move_num,
+                    "move_number": display_num,
                 })
-                print(f"  [ILLEGAL] Game {game_num}: {player} made illegal move at move {move_num}")
+                print(f"  [ILLEGAL] Game {game_num}: {player} made illegal move at move {display_num}")
             continue
         
         # Check for result and move count
@@ -195,22 +209,22 @@ def parse_pgn_for_issues(pgn_file: str) -> Tuple[int, List[Dict], List[Dict]]:
         if result == "*" or result == "1/2-1/2":
             continue
         
-        # Count moves to detect quick losses
-        moves = re.findall(r'(\d+)\.', game)
-        move_num = int(moves[-1]) if moves else 999
-        
         # Check if game ended in checkmate (indicated by # in PGN)
         if "#" in game or "mate" in game.lower():
-            if move_num < 10:
+            # Only flag as quick loss if we have valid move count AND it's genuinely quick
+            if move_count is not None and move_count > 0 and move_count < 10:
                 # Quick checkmate is a sign of serious problems
                 loser = "White" if result == "0-1" else "Black"
                 quick_losses.append({
                     "game": game_num,
                     "loser": loser,
-                    "move_number": move_num,
+                    "move_number": move_count,
                     "result": result,
                 })
-                print(f"  [QUICK_LOSS] Game {game_num}: {loser} checkmated in {move_num} moves")
+                print(f"  [QUICK_LOSS] Game {game_num}: {loser} checkmated in {move_count} moves")
+            elif move_count is None:
+                # Could not parse move count - flag as warning but don't report exact move number
+                print(f"  [PARSE_ISSUE] Game {game_num}: Could not determine move count (possible format issue)")
     
     return games_count, illegal_moves, quick_losses
 
