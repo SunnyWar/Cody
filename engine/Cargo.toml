@@ -15,6 +15,7 @@ rayon = "1.11.0"
 time = "0.3.47"
 humantime = "2.3.0"
 rustc-hash = "2.1.1"
+smallvec = "1.13"
 
 [[bench]]
 name = "bench"
