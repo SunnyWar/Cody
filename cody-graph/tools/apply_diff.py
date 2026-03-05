@@ -35,6 +35,30 @@ def _extract_warning_signature(clippy_output: str) -> str:
     
     return ""
 
+def _validate_utf8_in_diff(diff_content: str) -> tuple[bool, str]:
+    """Check if diff content contains valid UTF-8 characters.
+    
+    Returns (is_valid, error_message).
+    This catches cases where LLM generates invalid UTF-8 bytes in comments/strings.
+    """
+    try:
+        # Try to encode as UTF-8 to confirm all characters are valid
+        diff_content.encode('utf-8')
+    except UnicodeEncodeError as e:
+        return (False, f"Diff contains invalid UTF-8: {str(e)}")
+    
+    # Additional check: scan for common signs of corrupted text
+    # (e.g., replacement characters, control characters)
+    suspicious_chars = [
+        '\ufffd',  # Unicode replacement character
+        '\x00',     # Null byte
+    ]
+    for char in suspicious_chars:
+        if char in diff_content:
+            return (False, f"Diff contains suspicious character: {repr(char)}")
+    
+    return (True, "UTF-8 validation passed")
+
 def _sanitize_diff(diff_content: str) -> str:
     """Clean up diff format if LLM generated non-standard formatting.
     
@@ -442,6 +466,17 @@ def apply_diff(state: dict) -> dict:
     print("[cody-graph] [DIAG] Sanitizing diff format...", flush=True)
     diff_content = _sanitize_diff(diff_content)
     print(f"[cody-graph] [DIAG] After sanitization: {len(diff_content)} chars", flush=True)
+
+    # Validate UTF-8 encoding in diff content
+    print("[cody-graph] [DIAG] Validating UTF-8 encoding in diff...", flush=True)
+    is_utf8_valid, utf8_msg = _validate_utf8_in_diff(diff_content)
+    if not is_utf8_valid:
+        error_msg = f"Diff validation failed: {utf8_msg}"
+        print(f"[cody-graph] [DIAG] ERROR - {error_msg}", flush=True)
+        _save_diagnostic(logs_dir, "diff_utf8_validation_failed", f"{error_msg}\n\nDiff content:\n{repr(diff_content[:500])}")
+        result = {**state, "status": "pending", "last_output": error_msg}
+        print("[cody-graph] apply_diff: END (UTF-8 validation failed)", flush=True)
+        return result
 
     # Enforce conservative diff policy for orchestration reliability
     is_safe, policy_msg, diff_summary = _validate_diff_policy(diff_content, state)
