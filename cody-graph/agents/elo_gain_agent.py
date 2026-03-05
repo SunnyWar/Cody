@@ -36,7 +36,7 @@ from candidate_generator import CandidateGenerator
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from commit_util import commit_with_version_bump
 
-DEFAULT_MAX_ELO_PHASE_ITERATIONS = 1  # Demo mode: just 1 iteration to show phases
+DEFAULT_MAX_ELO_PHASE_ITERATIONS = 10  # Allow multiple prompt retry attempts (8 prompts + buffer)
 DEFAULT_TARGET_ELO_SUCCESSES = 5     # Number of successful improvements to achieve
 DEFAULT_GAUNTLET_GAME_COUNT = 50    # 50–100 games at fast time control
 
@@ -204,8 +204,30 @@ def elo_gain_candidate_generation(state: CodyState) -> CodyState:
             # NORMAL MODE: Generate ELO improvement
             print("[cody-graph] [ELO Gain] [] No issues detected - Generating ELO improvement", flush=True)
             
-            candidate = generator.generate_improvement_proposal()
+            # Determine condition for targeted prompts
+            condition = "none"
+            if len(sanity_result.get("illegal_moves", [])) > 0:
+                condition = "illegal_moves"
+            elif len(sanity_result.get("quick_losses", [])) > 0:
+                condition = "quick_losses"
+            elif len(sanity_result.get("timeouts", [])) > 0:
+                condition = "timeouts"
+            
+            # Get list of already tried prompts for this iteration
+            tried_prompts = state.get("elo_tried_prompts", [])
+            
+            # Generate improvement proposal with targeted prompt
+            candidate, prompt_id = generator.generate_improvement_proposal(
+                condition=condition, 
+                exclude_prompts=tried_prompts
+            )
             candidate_type = "improvement"
+            
+            # Track which prompt was used
+            if prompt_id and prompt_id not in tried_prompts:
+                tried_prompts.append(prompt_id)
+                state["elo_tried_prompts"] = tried_prompts
+                print(f"[cody-graph] [ELO Gain] Using prompt: {prompt_id} (tried {len(tried_prompts)} so far)", flush=True)
             
             print(
                 f"[cody-graph] [ELO Gain] Proposed IMPROVEMENT: {candidate.get('title', 'Unknown')}",
@@ -612,12 +634,14 @@ def elo_gain_decision(state: CodyState) -> CodyState:
             state["elo_phase_outcome"] = "committed"
             state["elo_improvement_committed"] = elo_gain if candidate_type != "unit_test" else "test_added"
             state["elo_committed_version"] = new_version
+            state["elo_phase_stage"] = "complete"  # Move to next iteration
             
         except Exception as e:
             print(f"[cody-graph] [ELO Gain] ERROR during commit: {e}", flush=True)
             state["status"] = "error"
             state["elo_phase_outcome"] = "commit_failed"
             state["elo_error_message"] = str(e)
+            state["elo_phase_stage"] = "complete"  # End this iteration on error
     
     else:
         print(
@@ -641,9 +665,29 @@ def elo_gain_decision(state: CodyState) -> CodyState:
         state["status"] = "ok"
         state["elo_phase_outcome"] = "reverted"
         state["elo_failure_analysis"] = "TODO: Analyze failure games and feed to LLM"
+        
+        # Check if we should try another prompt
+        tried_prompts = state.get("elo_tried_prompts", [])
+        max_prompts = 8  # We have 8 prompts in the library
+        
+        if len(tried_prompts) < max_prompts:
+            # Try next prompt
+            print(
+                f"[cody-graph] [ELO Gain] Candidate failed validation. "
+                f"Trying next prompt ({len(tried_prompts)}/{max_prompts} tried)",
+                flush=True
+            )
+            state["elo_phase_stage"] = "candidate_generation"
+        else:
+            # No more prompts to try, move to complete
+            print(
+                f"[cody-graph] [ELO Gain] All prompts exhausted ({len(tried_prompts)} tried). "
+                "Moving to next iteration.",
+                flush=True
+            )
+            state["elo_phase_stage"] = "complete"
     
     state["last_command"] = "decision"
-    state["elo_phase_stage"] = "complete"
     
     return state
 
@@ -658,6 +702,7 @@ def elo_gain_agent(state: CodyState) -> CodyState:
     if state.get("elo_iterations", 0) == 0:
         # First call: initialize tracking
         print("[cody-graph] [ELO Gain] Starting ELO Gain phase orchestration", flush=True)
+        state["elo_tried_prompts"] = []  # Initialize prompt tracking
     
     repo_path = state.get("repo_path", ".")
     iteration = state.get("elo_iterations", 0)
@@ -727,6 +772,7 @@ def elo_gain_agent(state: CodyState) -> CodyState:
             
             # Reset for next iteration
             state["elo_phase_stage"] = "candidate_generation"
+            state["elo_tried_prompts"] = []  # Reset prompt tracking for new iteration
             print(
                 f"[cody-graph] [ELO Gain] Iteration {iteration} starting "
                 f"({successful_commits}/{target_successes} successes)",

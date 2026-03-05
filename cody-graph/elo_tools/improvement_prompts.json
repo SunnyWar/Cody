@@ -1,0 +1,96 @@
+{
+  "prompts": [
+    {
+      "id": "fix_move_generation",
+      "priority": 1,
+      "name": "Fix Move Generation Bugs",
+      "condition": "illegal_moves",
+      "prompt": "You are a chess engine debugging expert. The Cody chess engine is generating ILLEGAL MOVES during play.\n\nCRITICAL BUG: The engine generates the placeholder move '0000' or invalid move encodings.\n\nCONTEXT:\n- Move representation: ChessMove struct with from/to squares (u8)\n- Move generation: bitboard-based in bitboard/src/movegen/\n- Pseudo-legal generation followed by legality filtering\n- King must not be left in check after any move\n\nKNOWN ISSUES:\n- Placeholder moves (0000) being returned when no valid moves found\n- Possible off-by-one in move encoding\n- Missing legality checks in certain positions\n\nTASK:\nPropose a MINIMAL, TARGETED fix that:\n1. Prevents placeholder moves from being played\n2. Ensures all returned moves are valid ChessMove structs\n3. Adds safety checks before returning moves to UCI\n4. Does NOT rewrite the entire move generator\n\nFocus on the move selection/return path in the search or UCI handler.",
+      "files_to_check": [
+        "engine/src/search/core.rs",
+        "engine/src/api/uciapi.rs",
+        "bitboard/src/movegen/api.rs"
+      ]
+    },
+    {
+      "id": "fix_king_safety",
+      "priority": 2,
+      "name": "Fix King Safety Checks",
+      "condition": "illegal_moves",
+      "prompt": "You are a chess engine expert. The Cody engine is making moves that leave its own king in check (illegal).\n\nCONTEXT:\n- Pseudo-legal move generation creates candidate moves\n- Legality must be verified before playing moves\n- Function: is_square_attacked(square, by_color, board_state)\n- King position found via pieces.get(king_piece)\n\nPROBLEM: Move legality checks may be:\n- Missing in search leaf nodes\n- Incorrectly checking wrong king color\n- Not applied before UCI bestmove output\n\nTASK:\nAdd or fix king safety verification:\n1. After generating moves, filter out moves leaving king in check\n2. Before returning bestmove in UCI, validate it's legal\n3. Add assertion in apply_move that resulting position is valid\n\nPropose minimal changes to existing legality checks.",
+      "files_to_check": [
+        "bitboard/src/movegen/legality.rs",
+        "engine/src/search/core.rs",
+        "engine/src/api/uciapi.rs"
+      ]
+    },
+    {
+      "id": "improve_move_ordering",
+      "priority": 3,
+      "name": "Improve Move Ordering (MVV-LVA)",
+      "condition": "none",
+      "prompt": "You are a chess engine optimization expert. Improve move ordering to increase alpha-beta cutoffs.\n\nCURRENT STATE:\n- Moves generated in arbitrary order\n- No capture ordering (MVV-LVA)\n- No killer move heuristic\n- No history heuristic\n\nTASK:\nImplement MVV-LVA (Most Valuable Victim - Least Valuable Attacker) for capture ordering:\n1. Sort captures by victim value (Q > R > B > N > P)\n2. For same victim, prefer lower attacker value\n3. Search captures before quiet moves\n4. Expected ELO gain: +15-30\n\nImplementation:\n- Add capture scoring function\n- Sort moves after generation\n- Keep changes localized to move ordering logic\n\nProvide concrete Rust code changes.",
+      "files_to_check": [
+        "engine/src/search/core.rs",
+        "bitboard/src/mov.rs"
+      ]
+    },
+    {
+      "id": "add_null_move_pruning",
+      "priority": 4,
+      "name": "Add Null Move Pruning",
+      "condition": "none",
+      "prompt": "You are a chess engine search expert. Add null move pruning to reduce search depth.\n\nCONCEPT:\n- Give opponent a free move (null move)\n- If position is still good after free move, current position is very strong\n- Can safely reduce search depth (prune subtree)\n\nCONDITIONS:\n- Don't use in zugzwang positions (endgame with few pieces)\n- Don't use when in check\n- Reduction: R=2 or R=3 (search null move at depth-R-1)\n\nTASK:\nAdd null move pruning to search:\n1. Check if conditions allow null move\n2. Make null move (flip side_to_move, clear ep_square)\n3. Search at reduced depth\n4. If result >= beta, return beta (cutoff)\n5. Undo null move and continue normal search\n\nExpected ELO gain: +50-80\n\nProvide Rust implementation for search function.",
+      "files_to_check": [
+        "engine/src/search/core.rs",
+        "bitboard/src/position.rs"
+      ]
+    },
+    {
+      "id": "improve_evaluation",
+      "priority": 5,
+      "name": "Improve Position Evaluation",
+      "condition": "quick_losses",
+      "prompt": "You are a chess evaluation expert. The engine is losing games quickly due to poor position evaluation.\n\nCURRENT EVAL (likely):\n- Material counting only\n- No positional factors\n- No king safety\n- No piece mobility\n\nTASK:\nEnhance evaluation function with:\n1. Piece-square tables (PST) for positional bonuses\n2. King safety (pawn shield, open files near king)\n3. Passed pawns bonus\n4. Rook on open file bonus\n5. Bishop pair bonus\n\nExpected ELO gain: +30-60\n\nProvide concrete evaluation improvements with Rust code.\nFocus on simple, proven factors (avoid complex patterns).",
+      "files_to_check": [
+        "engine/src/search/eval.rs",
+        "engine/src/search/core.rs"
+      ]
+    },
+    {
+      "id": "fix_time_management",
+      "priority": 6,
+      "name": "Fix Time Management",
+      "condition": "timeouts",
+      "prompt": "You are a chess time management expert. The engine is losing games on time.\n\nPROBLEM:\n- Not managing time correctly\n- Searching too deep without time checks\n- Not allocating time properly across moves\n\nTASK:\nImplement basic time management:\n1. Calculate time budget per move: remaining_time / 40\n2. Check elapsed time during search\n3. Stop search if time budget exceeded\n4. Add emergency time (don't use last 1 second)\n5. Allocate more time for critical positions\n\nProvide time management logic for UCI go command.",
+      "files_to_check": [
+        "engine/src/search/core.rs",
+        "engine/src/api/uciapi.rs"
+      ]
+    },
+    {
+      "id": "add_transposition_table",
+      "priority": 7,
+      "name": "Add Simple Transposition Table",
+      "condition": "none",
+      "prompt": "You are a chess search optimization expert. Add a transposition table to avoid re-searching positions.\n\nCONCEPT:\n- Store previously searched positions with their evaluations\n- Use Zobrist hashing for position keys\n- Store: hash, depth, score, best_move, node_type (exact/upper/lower)\n- Check table before searching a position\n\nTASK:\nImplement basic transposition table:\n1. Create TT struct with fixed size (e.g., 16 MB)\n2. Add Zobrist hash to Position (if not present)\n3. Probe TT before search\n4. Store results after search\n5. Handle replacements (replace lower depth entries)\n\nExpected ELO gain: +100-150\n\nProvide implementation plan and key code snippets.",
+      "files_to_check": [
+        "engine/src/search/core.rs",
+        "bitboard/src/zobrist.rs",
+        "bitboard/src/position.rs"
+      ]
+    },
+    {
+      "id": "improve_quiescence",
+      "priority": 8,
+      "name": "Improve Quiescence Search",
+      "condition": "quick_losses",
+      "prompt": "You are a chess tactical search expert. Improve quiescence search to avoid horizon effect.\n\nCURRENT STATE:\n- May have basic qsearch or none at all\n- Needs to search all captures and checks\n- Needs stand-pat (can choose to not search further)\n\nTASK:\nEnhance quiescence search:\n1. Generate only captures (and possibly checks)\n2. Stand-pat: return static eval if >= beta\n3. Delta pruning: skip captures that can't improve alpha\n4. Search captures recursively until quiet\n5. Set max ply depth to prevent infinite loops\n\nExpected ELO gain: +40-70\n\nProvide Rust implementation for qsearch function.",
+      "files_to_check": [
+        "engine/src/search/core.rs",
+        "bitboard/src/movegen/captures.rs"
+      ]
+    }
+  ],
+  "fallback_prompt": "You are a chess engine improvement expert. Analyze the Cody chess engine and propose ANY incremental improvement that:\n1. Is safe and unlikely to break the engine\n2. Has <5% chance of regression\n3. Targets a proven chess programming technique\n4. Can be implemented in <100 lines of code\n\nSuggestions: aspiration windows, late move reductions, check extensions, static exchange evaluation, or any other standard technique.\n\nProvide a concrete, implementable change with expected ELO gain estimate."
+}
