@@ -2,6 +2,17 @@ use bitboard::movegen::generate_legal_moves;
 use bitboard::piece::Color;
 /// Test to check if generate_legal_moves returns moves for the correct side
 use bitboard::position::Position;
+use bitboard::square::Square;
+
+fn get_piece_at(pos: &Position, sq: Square) -> Option<bitboard::piece::Piece> {
+    let mask = bitboard::BitBoardMask::from_square(sq);
+    for (piece, bb) in pos.pieces.iter() {
+        if (bb & mask).is_nonempty() {
+            return Some(piece);
+        }
+    }
+    None
+}
 
 #[test]
 fn test_legal_moves_for_black_turn() {
@@ -45,7 +56,7 @@ fn test_legal_moves_for_black_turn() {
     println!("\nVerifying all moves are from Black pieces:");
     for m in moves.iter().take(10) {
         let from = m.from();
-        let piece = pos.pieces.find_piece(from);
+        let piece = get_piece_at(&pos, from);
         match piece {
             Some(p) => {
                 println!("  Move {} from {:?} - Piece: {:?}", m, from, p);
