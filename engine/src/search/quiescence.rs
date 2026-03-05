@@ -1,6 +1,5 @@
 use crate::VERBOSE;
 use crate::core::arena::Arena;
-use crate::search::engine::NODE_COUNT;
 use crate::search::evaluator::Evaluator;
 use crate::util;
 use bitboard::mov::ChessMove;
@@ -9,6 +8,7 @@ use bitboard::piece::Color;
 use bitboard::piece::Piece;
 use bitboard::piece::PieceKind;
 use bitboard::position::Position;
+use smallvec::SmallVec;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::atomic::Ordering;
@@ -42,57 +42,36 @@ pub fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
         alpha = stand_pat;
     }
 
-    let (parent, _) = arena.get_pair_mut(ply, ply + 1);
-    let pos = &parent.position;
+    let pos = arena.get(ply).position;
+
+    let in_check = movegen.in_check(&pos);
 
     // If we're in check, we must consider all evasions (not just captures)
-    let mut moves = if movegen.in_check(pos) {
-        bitboard::movegen::generate_legal_moves(pos)
+    // Use SmallVec to keep typical capture counts (<32) on the stack, avoiding heap
+    // allocation.
+    let mut moves: SmallVec<[ChessMove; 32]> = if in_check {
+        bitboard::movegen::generate_legal_moves(&pos)
+            .into_iter()
+            .collect()
     } else {
-        bitboard::movegen::generate_pseudo_captures(pos)
+        bitboard::movegen::generate_pseudo_captures(&pos)
             .into_iter()
             .filter(|m| {
                 // `apply_move_into` writes all state fields, so cloning the
                 // current position avoids expensive default FEN parsing.
-                let mut temp = *pos;
+                let mut temp = pos;
                 pos.apply_move_into(m, &mut temp);
                 !movegen.in_check(&temp)
             })
             .collect()
     };
 
-    let node_count = NODE_COUNT.load(Ordering::Relaxed);
-    if VERBOSE.load(Ordering::Relaxed) && (ply > 200 || moves.len() > 200 || node_count > 5_000_000)
-    {
-        eprintln!(
-            "[debug] quiescence ply={} captures={} nodes={}",
-            ply,
-            moves.len(),
-            node_count
-        );
-        if let Ok(mut f) = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("cody_uci.log")
-        {
-            let stamp = util::iso_stamp_ms();
-            let _ = writeln!(
-                f,
-                "{} OUT: [debug] quiescence ply={} captures={} nodes={}",
-                stamp,
-                ply,
-                moves.len(),
-                node_count
-            );
-        }
-    }
-
     if moves.is_empty() {
         return stand_pat;
     }
 
     // Order captures by MVV/LVA descending
-    moves.sort_by_key(|m| -mvv_lva_score(pos, m));
+    moves.sort_by_key(|m| -mvv_lva_score(&pos, m));
 
     let mut best = i32::MIN;
     for m in moves {
