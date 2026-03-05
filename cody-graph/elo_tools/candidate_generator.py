@@ -93,6 +93,31 @@ class CandidateGenerator:
                 return prompt
         
         return None
+
+    def _get_prompt_by_id(self, prompt_id: str) -> Optional[Dict]:
+        """Return prompt metadata by id, if present."""
+        for prompt in self.prompts.get("prompts", []):
+            if prompt.get("id") == prompt_id:
+                return prompt
+        return None
+
+    def _extract_diff_from_text(self, text: str) -> Optional[str]:
+        """Extract a unified diff from an LLM response."""
+        if not text:
+            return None
+
+        # Prefer fenced diff blocks.
+        fenced = re.search(r"```(?:diff)?\n(.*?)\n```", text, re.DOTALL)
+        if fenced:
+            candidate = fenced.group(1).strip()
+            if "--- " in candidate and "+++ " in candidate and "@@ " in candidate:
+                return candidate
+
+        # Fall back to raw diff content.
+        if "--- " in text and "+++ " in text and "@@ " in text:
+            return text.strip()
+
+        return None
     
     def read_repository_context(self) -> str:
         """Read key engine source files to understand architecture."""
@@ -272,10 +297,10 @@ class CandidateGenerator:
         {prompt_text}
         
         CURRENT ENGINE ARCHITECTURE:
-        {repo_context[:2000]}  # Truncate to avoid token limits
+        {repo_context[:1200]}  # Truncate to avoid token limits
         
         RECENT FAILURE ANALYSIS:
-        {recent_failures[:1000] if recent_failures else "No recent failures"}
+        {recent_failures[:700] if recent_failures else "No recent failures"}
         
         RESPONSE FORMAT (JSON):
         {{
@@ -304,7 +329,7 @@ class CandidateGenerator:
                         "content": full_prompt
                     }
                 ],
-                max_completion_tokens=1000,
+                max_completion_tokens=1600,
             )
             
             response_text = response.choices[0].message.content
@@ -337,6 +362,61 @@ class CandidateGenerator:
         except Exception as e:
             print(f"[candidate_generator] LLM Error: {e}")
             return self._placeholder_improvement(), prompt_id
+
+    def generate_implementation_diff(self, proposal: Dict, condition: str, prompt_id: str) -> Optional[str]:
+        """
+        Ask the LLM to convert a proposal into an APPLYABLE unified diff.
+
+        Returns:
+            Unified diff text, or None if no valid diff could be produced.
+        """
+        if not self.client:
+            return None
+
+        prompt_meta = self._get_prompt_by_id(prompt_id) or {}
+        files_hint = proposal.get("files_affected") or prompt_meta.get("files_to_check") or []
+        files_hint_text = "\n".join([f"- {p}" for p in files_hint]) if files_hint else "- engine/src/search/core.rs"
+
+        impl_prompt = dedent(f"""
+        You are implementing a Rust chess engine fix. Return ONLY a unified git diff in a ```diff fenced block.
+
+        Requirements:
+        - Make real code edits in existing files under engine/src or bitboard/src
+        - Keep patch minimal and compilable
+        - Do not add explanations, JSON, or markdown outside the diff block
+        - Do not use suppression attributes like #[allow(...)]
+
+        Context:
+        - Condition: {condition}
+        - Proposal title: {proposal.get('title', 'Unknown')}
+        - Proposal type: {proposal.get('improvement_type', 'unknown')}
+        - Description: {proposal.get('description', '')}
+        - Implementation approach: {proposal.get('implementation_approach', '')}
+
+        Candidate files:
+        {files_hint_text}
+
+        Output format example:
+        ```diff
+        --- a/engine/src/search/core.rs
+        +++ b/engine/src/search/core.rs
+        @@ -10,6 +10,10 @@
+         ...
+        +...
+        ```
+        """)
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": impl_prompt}],
+                max_completion_tokens=2200,
+            )
+            response_text = response.choices[0].message.content or ""
+            return self._extract_diff_from_text(response_text)
+        except Exception as e:
+            print(f"[candidate_generator] Diff generation error: {e}")
+            return None
     
     def generate_unit_test_for_issue(self, sanity_result: Dict) -> Dict:
         """
