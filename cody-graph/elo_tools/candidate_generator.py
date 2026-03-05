@@ -42,11 +42,57 @@ class CandidateGenerator:
         self.repo_path = Path(repo_path)
         self.model = model
         self.client = None
+        self.prompts = self._load_improvement_prompts()
         
         if HAS_OPENAI:
             api_key = api_key or os.environ.get("OPENAI_API_KEY")
             if api_key:
                 self.client = OpenAI(api_key=api_key)
+    
+    def _load_improvement_prompts(self) -> Dict:
+        """Load prioritized improvement prompts from JSON file."""
+        prompts_file = Path(__file__).parent / "improvement_prompts.json"
+        if not prompts_file.exists():
+            print(f"[candidate_generator] Warning: {prompts_file} not found, using defaults")
+            return {"prompts": [], "fallback_prompt": "Propose a chess engine improvement."}
+        
+        try:
+            with open(prompts_file, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"[candidate_generator] Error loading prompts: {e}")
+            return {"prompts": [], "fallback_prompt": "Propose a chess engine improvement."}
+    
+    def _select_prompt_for_condition(self, condition: str, exclude_prompts: List[str] = None) -> Optional[Dict]:
+        """
+        Select the highest priority prompt matching the given condition.
+        
+        Args:
+            condition: One of 'illegal_moves', 'quick_losses', 'timeouts', 'none'
+            exclude_prompts: List of prompt IDs to exclude (already tried)
+        
+        Returns:
+            Prompt dict or None
+        """
+        if exclude_prompts is None:
+            exclude_prompts = []
+        
+        prompts = self.prompts.get("prompts", [])
+        # Sort by priority (lower number = higher priority)
+        sorted_prompts = sorted(prompts, key=lambda p: p.get("priority", 999))
+        
+        for prompt in sorted_prompts:
+            prompt_id = prompt.get("id", "")
+            # Skip if already tried
+            if prompt_id in exclude_prompts:
+                continue
+            
+            prompt_condition = prompt.get("condition", "none")
+            # Match exact condition or "none" (applies to all)
+            if prompt_condition == condition or prompt_condition == "none":
+                return prompt
+        
+        return None
     
     def read_repository_context(self) -> str:
         """Read key engine source files to understand architecture."""
@@ -190,39 +236,46 @@ class CandidateGenerator:
             "confidence": "medium",
         }
     
-    def generate_improvement_proposal(self) -> Dict:
+    def generate_improvement_proposal(self, condition: str = "none", exclude_prompts: List[str] = None) -> tuple[Dict, str]:
         """
-        Generate chess-specific improvement proposal via LLM.
+        Generate chess-specific improvement proposal via LLM using targeted prompts.
+        
+        Args:
+            condition: Current engine condition ('illegal_moves', 'quick_losses', 'timeouts', 'none')
+            exclude_prompts: List of prompt IDs to exclude (already tried)
         
         Returns:
-            Dict with keys: improvement_type, description, reasoning, diff_snippet, implementation_notes
+            Tuple of (candidate_dict, prompt_id_used)
         """
+        if exclude_prompts is None:
+            exclude_prompts = []
+        
+        # Select appropriate prompt based on condition
+        selected_prompt = self._select_prompt_for_condition(condition, exclude_prompts)
+        
+        if selected_prompt:
+            prompt_text = selected_prompt.get("prompt", "")
+            prompt_id = selected_prompt.get("id", "unknown")
+            prompt_name = selected_prompt.get("name", "Unknown")
+            print(f"[candidate_generator] Using targeted prompt: {prompt_name} (id={prompt_id})")
+        else:
+            prompt_text = self.prompts.get("fallback_prompt", "Propose a chess engine improvement.")
+            prompt_id = "fallback"
+            print(f"[candidate_generator] Using fallback prompt")
+        
+        # Read repository context for additional info
         repo_context = self.read_repository_context()
         recent_failures = self.read_recent_failures()
         
-        prompt = dedent(f"""
-        You are a chess engine optimization expert. Analyze the following Cody chess engine structure
-        and propose ONE concrete, focused improvement to increase ELO strength.
+        # Build full prompt with context
+        full_prompt = dedent(f"""
+        {prompt_text}
         
         CURRENT ENGINE ARCHITECTURE:
-        {repo_context}
+        {repo_context[:2000]}  # Truncate to avoid token limits
         
         RECENT FAILURE ANALYSIS:
-        {recent_failures}
-        
-        TASK:
-        1. Identify ONE specific weakness or optimization opportunity
-        2. Propose a concrete fix (search enhancement, evaluation adjustment, or move ordering improvement)
-        3. Explain why this change would improve ELO
-        4. Describe the implementation approach
-        
-        Choose from these common improvements:
-        - Better move ordering (killer moves, history heuristic, MVV-LVA)
-        - Evaluation tweaks (piece-square table adjustment, king safety, mobility bonus)
-        - Search enhancements (late move pruning, null move pruning, LMR refinements)
-        - Time management (better remaining time allocation)
-        - Transposition table (larger size, replacement strategy)
-        - Position analysis (positional factors, pawn structure evaluation)
+        {recent_failures[:1000] if recent_failures else "No recent failures"}
         
         RESPONSE FORMAT (JSON):
         {{
@@ -240,7 +293,7 @@ class CandidateGenerator:
         
         if not self.client:
             # Placeholder mode: return a safe, simple improvement
-            return self._placeholder_improvement()
+            return self._placeholder_improvement(), prompt_id
         
         try:
             response = self.client.chat.completions.create(
@@ -248,10 +301,9 @@ class CandidateGenerator:
                 messages=[
                     {
                         "role": "user",
-                        "content": prompt
+                        "content": full_prompt
                     }
                 ],
-
                 max_completion_tokens=1000,
             )
             
@@ -280,11 +332,11 @@ class CandidateGenerator:
                     "confidence": "low"
                 }
             
-            return proposal
+            return proposal, prompt_id
             
         except Exception as e:
             print(f"[candidate_generator] LLM Error: {e}")
-            return self._placeholder_improvement()
+            return self._placeholder_improvement(), prompt_id
     
     def generate_unit_test_for_issue(self, sanity_result: Dict) -> Dict:
         """
