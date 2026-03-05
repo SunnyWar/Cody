@@ -4,6 +4,7 @@ use crate::core::arena::Arena;
 use crate::search::core::INF;
 use crate::search::core::MATE_SCORE;
 use crate::search::core::NODE_COUNT;
+use crate::search::core::SearchHeuristics;
 use crate::search::core::search_node_with_arena;
 use crate::search::evaluator::Evaluator;
 use bitboard::mov::ChessMove;
@@ -79,6 +80,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
 
         let mut last_completed_move = ChessMove::null();
         let mut last_completed_score = i32::MIN;
+        let mut heuristics = SearchHeuristics::new();
 
         // Iterative deepening loop
         for d in 1..=max_depth {
@@ -155,6 +157,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                         -INF,
                         INF,
                         tt_ref,
+                        &mut heuristics,
                         stop,
                         time_budget_ms,
                         Some(&start),
@@ -203,6 +206,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                             let mut local_arena = Arena::new(arena_cap);
                             local_arena.get_mut(0).position.copy_from(root);
                             let mut local_tt_thread = crate::core::tt::TranspositionTable::new(1);
+                            let mut local_heuristics = SearchHeuristics::new();
                             let score = -search_node_with_arena(
                                 &mg,
                                 &ev,
@@ -212,6 +216,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                                 -INF,
                                 INF,
                                 &mut local_tt_thread,
+                                &mut local_heuristics,
                                 stop,
                                 time_budget_ms,
                                 Some(&start),

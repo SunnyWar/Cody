@@ -5,8 +5,13 @@ use crate::core::tt::TranspositionTable;
 use crate::search::evaluator::Evaluator;
 use crate::search::quiescence::quiescence_with_arena;
 use crate::util;
+use bitboard::mov::ChessMove;
+use bitboard::mov::MoveType;
 use bitboard::movegen::MoveGenerator;
 use bitboard::movegen::generate_legal_moves;
+use bitboard::piece::Color;
+use bitboard::piece::Piece;
+use bitboard::piece::PieceKind;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::atomic::AtomicU64;
@@ -19,6 +24,115 @@ pub static NODE_COUNT: AtomicU64 = AtomicU64::new(0);
 pub const MATE_SCORE: i32 = 30_000;
 // Large infinity value for alpha-beta bounds
 pub const INF: i32 = 1_000_000_000;
+const MAX_SEARCH_PLY: usize = 128;
+
+pub struct SearchHeuristics {
+    killer_moves: [[ChessMove; 2]; MAX_SEARCH_PLY],
+    history: [[i32; 64]; 64],
+}
+
+impl SearchHeuristics {
+    pub fn new() -> Self {
+        Self {
+            killer_moves: [[ChessMove::null(); 2]; MAX_SEARCH_PLY],
+            history: [[0; 64]; 64],
+        }
+    }
+
+    fn score_move(&self, pos: &bitboard::position::Position, mv: &ChessMove, ply: usize) -> i32 {
+        let mut score = 0;
+
+        // Tactical moves first.
+        score += match mv.move_type {
+            MoveType::Capture | MoveType::EnPassant => 100_000 + mvv_lva_score(pos, mv),
+            MoveType::Promotion(kind) => {
+                90_000
+                    + match kind {
+                        PieceKind::Queen => 900,
+                        PieceKind::Rook => 500,
+                        PieceKind::Bishop => 330,
+                        PieceKind::Knight => 320,
+                        _ => 0,
+                    }
+            }
+            _ => 0,
+        };
+
+        // Then killer moves for quiet move ordering.
+        if ply < MAX_SEARCH_PLY {
+            if self.killer_moves[ply][0] == *mv {
+                score += 80_000;
+            } else if self.killer_moves[ply][1] == *mv {
+                score += 70_000;
+            }
+        }
+
+        // History heuristic for remaining quiet ordering.
+        score + self.history[mv.from.index()][mv.to.index()]
+    }
+
+    fn update_on_beta_cutoff(&mut self, ply: usize, mv: ChessMove, depth: usize) {
+        // Killer/history are most useful for quiet moves.
+        if matches!(
+            mv.move_type,
+            MoveType::Capture | MoveType::EnPassant | MoveType::Promotion(_)
+        ) {
+            return;
+        }
+
+        if ply < MAX_SEARCH_PLY {
+            if self.killer_moves[ply][0] != mv {
+                self.killer_moves[ply][1] = self.killer_moves[ply][0];
+                self.killer_moves[ply][0] = mv;
+            }
+        }
+
+        let bonus = (depth * depth) as i32;
+        let from = mv.from.index();
+        let to = mv.to.index();
+        self.history[from][to] = (self.history[from][to] + bonus).min(50_000);
+    }
+}
+
+fn piece_value(kind: PieceKind) -> i32 {
+    match kind {
+        PieceKind::Pawn => 100,
+        PieceKind::Knight => 320,
+        PieceKind::Bishop => 330,
+        PieceKind::Rook => 500,
+        PieceKind::Queen => 900,
+        PieceKind::King => 10_000,
+    }
+}
+
+fn get_piece_on_square(pos: &bitboard::position::Position, sq: bitboard::Square) -> Option<Piece> {
+    let mask = bitboard::BitBoardMask::from_square(sq);
+    for (piece, bb) in pos.pieces.iter() {
+        if (bb & mask).is_nonempty() {
+            return Some(piece);
+        }
+    }
+    None
+}
+
+fn mvv_lva_score(pos: &bitboard::position::Position, mv: &ChessMove) -> i32 {
+    let victim_piece = match mv.move_type {
+        MoveType::EnPassant => {
+            let us = pos.side_to_move;
+            let cap_sq = match us {
+                Color::White => mv.to.backward(1).unwrap(),
+                Color::Black => mv.to.forward(1).unwrap(),
+            };
+            get_piece_on_square(pos, cap_sq)
+        }
+        _ => get_piece_on_square(pos, mv.to),
+    };
+
+    let victim_value = victim_piece.map(|p| piece_value(p.kind())).unwrap_or(0);
+    let attacker_piece = get_piece_on_square(pos, mv.from);
+    let attacker_value = attacker_piece.map(|p| piece_value(p.kind())).unwrap_or(0);
+    victim_value * 100 - attacker_value
+}
 
 pub fn print_uci_info(
     depth: usize,
@@ -83,6 +197,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     mut alpha: i32,
     beta: i32,
     tt: &mut TranspositionTable,
+    heuristics: &mut SearchHeuristics,
     stop: Option<&std::sync::atomic::AtomicBool>,
     time_budget_ms: Option<u64>,
     start_time: Option<&std::time::Instant>,
@@ -136,7 +251,40 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         }
     }
 
-    let moves = {
+    // Null-move pruning: if we can pass and still fail-high, prune the whole subtree.
+    // Only try when: (a) not in check, (b) remaining > 2 (to avoid qsearch collision), (c) not root.
+    let pos_ref = arena.get(ply).position;
+    if ply > 0 && remaining > 2 && !movegen.in_check(&pos_ref) {
+        // Make a null move (pass)
+        let mut child_pos = pos_ref;
+        child_pos.side_to_move = pos_ref.side_to_move.opposite();
+        child_pos.ep_square = None;
+
+        // Store and restore for non-destructive probe
+        if ply + 1 < MAX_SEARCH_PLY {
+            arena.get_mut(ply + 1).position = child_pos;
+            let null_reduction = (remaining / 3).max(1);
+            let null_score = -search_node_with_arena(
+                movegen,
+                evaluator,
+                arena,
+                ply + 1,
+                remaining - null_reduction - 1,
+                -beta,
+                -beta + 1,
+                tt,
+                heuristics,
+                stop,
+                time_budget_ms,
+                start_time,
+            );
+            if null_score >= beta {
+                return null_score;
+            }
+        }
+    }
+
+    let mut moves = {
         let (parent, _) = arena.get_pair_mut(ply, ply + 1);
         generate_legal_moves(&parent.position)
     };
@@ -153,6 +301,18 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     let mut best_score = i32::MIN;
     let mut best_move = bitboard::mov::ChessMove::null();
     // Work with a local mutable vector so we can reorder based on TT best move
+    // Prioritize TT best move and then sort by tactical + killer/history score.
+    if let Some(e) = tt_exact_needs_verify
+        && !e.best_move.is_null()
+        && let Some(idx) = moves.iter().position(|m| *m == e.best_move)
+        && idx != 0
+    {
+        moves.swap(0, idx);
+    }
+
+    let pos = arena.get(ply).position;
+    moves.sort_unstable_by_key(|m| -heuristics.score_move(&pos, m, ply));
+
     let moves_vec = moves;
     if let Some(e) = tt_exact_needs_verify
         && !e.best_move.is_null()
@@ -161,26 +321,61 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         return e.value;
     }
 
+    let mut move_index = 0;
     for m in moves_vec.iter().cloned() {
         {
             let (parent, child) = arena.get_pair_mut(ply, ply + 1);
             parent.position.apply_move_into(&m, &mut child.position);
         }
 
-        // Recursive negamax with swapped alpha/beta and sign inversion
-        let score = -search_node_with_arena(
+        // Late Move Reduction (LMR): reduce depth for moves beyond the first 2 or 3
+        // if they don't look promising. Re-search at full depth if needed.
+        let mut depth_for_search = remaining - 1;
+        let mut do_full_depth_search = true;
+
+        if move_index > 2 && remaining >= 3 && !matches!(m.move_type, MoveType::Capture | MoveType::EnPassant | MoveType::Promotion(_)) {
+            // Conservative LMR: reduce by log-based formula
+            let reduction =
+                ((move_index as f64).ln() * (remaining as f64).ln() * 0.5) as usize;
+            if reduction > 0 {
+                depth_for_search = (remaining - 1).saturating_sub(reduction);
+                do_full_depth_search = false;
+            }
+        }
+
+        // Search with reduced (or normal) depth
+        let mut score = -search_node_with_arena(
             movegen,
             evaluator,
             arena,
             ply + 1,
-            remaining - 1,
+            depth_for_search,
             -beta,
             -alpha,
             tt,
+            heuristics,
             stop,
             time_budget_ms,
             start_time,
         );
+
+        // If LMR returned a value > alpha, re-search at full depth to verify
+        if !do_full_depth_search && score > alpha {
+            score = -search_node_with_arena(
+                movegen,
+                evaluator,
+                arena,
+                ply + 1,
+                remaining - 1,
+                -beta,
+                -alpha,
+                tt,
+                heuristics,
+                stop,
+                time_budget_ms,
+                start_time,
+            );
+        }
 
         if score > best_score {
             best_score = score;
@@ -195,8 +390,11 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         if alpha >= beta {
             // Fail-high at beta stores a lower bound.
             tt.store(key, alpha, remaining as i8, TTFlag::Lower, m);
+            heuristics.update_on_beta_cutoff(ply, m, remaining);
             break;
         }
+
+        move_index += 1;
     }
 
     // store final result in TT as exact
