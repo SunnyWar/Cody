@@ -58,6 +58,21 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         time_budget_ms: Option<u64>,
         stop: Option<&std::sync::atomic::AtomicBool>,
     ) -> (ChessMove, i32) {
+        if max_depth == 0 {
+            let moves = generate_legal_moves(root);
+            if moves.is_empty() {
+                let score = if self.movegen.in_check(root) {
+                    -MATE_SCORE
+                } else {
+                    0
+                };
+                return (ChessMove::null(), score);
+            }
+
+            // Even at depth 0, never emit 0000 from a non-terminal position.
+            return (moves[0], self.evaluator.evaluate(root));
+        }
+
         // Track the overall start time for nps calculations
         let start = Instant::now();
         let mut last_info_time = start;
@@ -85,8 +100,10 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                 return (ChessMove::null(), score);
             }
 
+            let fallback_move = moves[0];
             let mut best_score = i32::MIN;
-            let mut best_move = ChessMove::null();
+            let mut best_move = fallback_move;
+            let mut searched_any = false;
 
             // Probe TT and reorder instantly if match found
             self.probe_for_best_move(d, &mut moves);
@@ -136,10 +153,11 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                         Some(&start),
                     );
 
-                    if score > best_score {
+                    if !searched_any || score > best_score {
                         best_score = score;
                         best_move = m;
                     }
+                    searched_any = true;
 
                     // Periodically print UCI info if a long move is being searched
                     if now.duration_since(last_info_time).as_millis() >= 1000 {
@@ -194,11 +212,22 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                 });
 
                 for (m, score) in results {
-                    if score > best_score {
+                    if !searched_any || score > best_score {
                         best_score = score;
                         best_move = m;
                     }
+                    searched_any = true;
                 }
+            }
+
+            if !searched_any {
+                // Time/stop can cut this depth before any root move is searched.
+                // Do not overwrite the last completed move with 0000.
+                if last_completed_move.is_null() {
+                    last_completed_move = fallback_move;
+                    last_completed_score = self.evaluator.evaluate(root);
+                }
+                break;
             }
 
             // Completed this depth successfully; compute elapsed and print UCI info.

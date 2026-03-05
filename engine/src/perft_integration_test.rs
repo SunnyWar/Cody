@@ -2,9 +2,12 @@
 /// Run with: cargo test --lib test_perft_integration -- --nocapture
 #[cfg(test)]
 mod perft_integration_tests {
+    use crate::Engine;
+    use crate::MaterialEvaluator;
     use bitboard::Square;
     use bitboard::mov::ChessMove;
     use bitboard::mov::MoveType;
+    use bitboard::movegen::SimpleMoveGen;
     use bitboard::movegen::generate_legal_moves;
     use bitboard::occupancy::OccupancyKind;
     use bitboard::perft;
@@ -12,6 +15,7 @@ mod perft_integration_tests {
     use bitboard::piece::Piece;
     use bitboard::piece::PieceKind;
     use bitboard::position::Position;
+    use std::sync::atomic::AtomicBool;
 
     fn moving_piece_kind(pos: &Position, mv: &ChessMove) -> PieceKind {
         for kind in [
@@ -517,6 +521,57 @@ mod perft_integration_tests {
         assert_eq!(
             moves, expected,
             "Unexpected legal moves in complex piece position"
+        );
+    }
+
+    #[test]
+    fn test_search_bestmove_is_legal_in_reported_position() {
+        // Regression test for a game position that previously produced an illegal move.
+        let fen = "rnbqkb1r/1p2pppp/2p2n2/3p4/P7/P1PP2PP/4PP2/RNBQKBNR w KQkq - 1 8";
+        let pos = Position::from_fen(fen);
+
+        let legal_moves = generate_legal_moves(&pos);
+        assert!(
+            !legal_moves.is_empty(),
+            "Position should have at least one legal move"
+        );
+
+        let mut engine = Engine::new(65_536, SimpleMoveGen, MaterialEvaluator);
+        let (best_move, _score) = engine.search(&pos, 4, None, None);
+
+        assert!(
+            !best_move.is_null(),
+            "Engine returned null move (0000) from a non-terminal position"
+        );
+        assert!(
+            legal_moves.contains(&best_move),
+            "Engine returned illegal move {} for position {}",
+            best_move,
+            fen
+        );
+    }
+
+    #[test]
+    fn test_search_stop_before_root_keeps_legal_bestmove() {
+        let pos = Position::default();
+        let legal_moves = generate_legal_moves(&pos);
+        assert!(
+            !legal_moves.is_empty(),
+            "Expected legal moves in start position"
+        );
+
+        let stop = AtomicBool::new(true);
+        let mut engine = Engine::new(65_536, SimpleMoveGen, MaterialEvaluator);
+        let (best_move, _score) = engine.search(&pos, 6, None, Some(&stop));
+
+        assert!(
+            !best_move.is_null(),
+            "Stop-triggered pruning must not return null move (0000)"
+        );
+        assert!(
+            legal_moves.contains(&best_move),
+            "Stop-triggered pruning returned illegal move {}",
+            best_move
         );
     }
 
