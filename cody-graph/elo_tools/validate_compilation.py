@@ -51,7 +51,7 @@ def validate_build(repo_path: Path) -> Tuple[bool, str]:
     if code != 0:
         return False, f"Build failed:\n{stderr}"
     
-    print(f"[validator] ✓ Build successful")
+    print(f"[validator] [OK] Build successful")
     return True, ""
 
 def validate_perft(repo_path: Path, depth: int = 5) -> Tuple[bool, str]:
@@ -108,10 +108,10 @@ def validate_perft(repo_path: Path, depth: int = 5) -> Tuple[bool, str]:
                 f"  Move generation may be incorrect!"
             )
         
-        print(f"[validator] ✓ Perft {depth} passed: {node_count:,} nodes")
+        print(f"[validator] [OK] Perft {depth} passed: {node_count:,} nodes")
     else:
         # Unknown depth - just check that perft ran
-        print(f"[validator] ✓ Perft {depth} completed: {node_count:,} nodes (no validation)")
+        print(f"[validator] [OK] Perft {depth} completed: {node_count:,} nodes (no validation)")
     
     return True, ""
 
@@ -130,11 +130,11 @@ def validate_clippy(repo_path: Path) -> Tuple[bool, str]:
     
     if code != 0:
         # Log warnings but don't fail (for now)
-        print(f"[validator] ⚠ Clippy warnings found (non-fatal):")
+        print(f"[validator] [WARNING] Clippy warnings found (non-fatal):")
         print(stderr[:500])  # Print first 500 chars
         return True, ""  # Non-fatal
     
-    print(f"[validator] ✓ Clippy checks passed")
+    print(f"[validator] [OK] Clippy checks passed")
     return True, ""
 
 def validate_compilation(

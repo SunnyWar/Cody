@@ -90,23 +90,19 @@ def elo_gain_sanity_check(state: CodyState) -> CodyState:
         state["elo_sanity_pgn"] = sanity_result.pgn_file
         
         if sanity_result.has_critical_issues():
-            # BLOCK improvements - engine has serious bugs
+            # CRITICAL ISSUES: Generate unit test to reproduce and fix
             print(
-                "[cody-graph] [ELO Gain] [CRITICAL] Issues in self-play - BLOCKING improvements",
+                "[cody-graph] [ELO Gain] [CRITICAL] Issues in self-play - will generate unit test to reproduce",
                 flush=True
             )
             for issue in sanity_result.critical_issues:
                 print(f"  - {issue}", flush=True)
             print(
-                "[cody-graph] [ELO Gain] Fix these issues manually before attempting ELO improvements",
+                "[cody-graph] [ELO Gain] Proceeding to candidate generation to create test",
                 flush=True
             )
-            state["status"] = "sanity_check_failed"
-            state["elo_phase_stage"] = "complete"
-            state["elo_phase_outcome"] = "sanity_failed"
-            return state
-        
-        if sanity_result.has_issues():
+            state["elo_sanity_critical"] = sanity_result.critical_issues
+        elif sanity_result.has_issues():
             # Warnings only - allow proceeding but flag for attention
             print(
                 "[cody-graph] [ELO Gain] [WARNING] Warnings found in self-play:",
