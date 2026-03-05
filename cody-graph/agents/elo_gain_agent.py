@@ -361,6 +361,45 @@ def elo_gain_compilation_check(state: CodyState) -> CodyState:
                 flush=True
             )
             
+            # Check if any source code actually changed
+            import subprocess
+            result = subprocess.run(
+                ["git", "status", "--porcelain", "bitboard/src", "engine/src"],
+                cwd=repo_path,
+                capture_output=True,
+                text=True
+            )
+            
+            changed_files = result.stdout.strip()
+            if not changed_files:
+                print(
+                    "[cody-graph] [ELO Gain] [WARN] Improvement proposed but NO source code changes detected!",
+                    flush=True
+                )
+                print(
+                    "[cody-graph] [ELO Gain] [WARN] LLM provided suggestion only, nothing was actually applied.",
+                    flush=True
+                )
+                print(
+                    "[cody-graph] [ELO Gain] [WARN] Skipping gauntlet - moving to next prompt.",
+                    flush=True
+                )
+                
+                # Move to next prompt instead of reverting
+                tried_prompts = state.get("elo_tried_prompts", [])
+                max_prompts = 8
+                
+                if len(tried_prompts) < max_prompts:
+                    state["elo_phase_stage"] = "candidate_generation"
+                else:
+                    state["elo_phase_stage"] = "complete"
+                
+                state["status"] = "ok"
+                state["last_command"] = "compilation_check"
+                return state
+            
+            print(f"[cody-graph] [ELO Gain] Changed files detected:\n{changed_files}", flush=True)
+            
             compilation_ok = validate_compilation(Path(repo_path), perft_depth=perft_depth)
             
             if not compilation_ok:
