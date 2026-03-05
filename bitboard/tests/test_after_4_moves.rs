@@ -15,7 +15,7 @@ fn test_after_4_moves() {
     for mv_str in &moves {
         let m = pos
             .parse_uci_move(mv_str)
-            .expect(&format!("{} should be legal", mv_str));
+            .unwrap_or_else(|| panic!("{} should be legal", mv_str));
         println!("Applying: {}", mv_str);
         let mut new_pos = pos;
         pos.apply_move_into(&m, &mut new_pos);
