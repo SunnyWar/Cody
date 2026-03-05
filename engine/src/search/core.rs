@@ -251,8 +251,9 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         }
     }
 
-    // Null-move pruning: if we can pass and still fail-high, prune the whole subtree.
-    // Only try when: (a) not in check, (b) remaining > 2 (to avoid qsearch collision), (c) not root.
+    // Null-move pruning: if we can pass and still fail-high, prune the whole
+    // subtree. Only try when: (a) not in check, (b) remaining > 2 (to avoid
+    // qsearch collision), (c) not root.
     let pos_ref = arena.get(ply).position;
     if ply > 0 && remaining > 2 && !movegen.in_check(&pos_ref) {
         // Make a null move (pass)
@@ -333,10 +334,15 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         let mut depth_for_search = remaining - 1;
         let mut do_full_depth_search = true;
 
-        if move_index > 2 && remaining >= 3 && !matches!(m.move_type, MoveType::Capture | MoveType::EnPassant | MoveType::Promotion(_)) {
+        if move_index > 2
+            && remaining >= 3
+            && !matches!(
+                m.move_type,
+                MoveType::Capture | MoveType::EnPassant | MoveType::Promotion(_)
+            )
+        {
             // Conservative LMR: reduce by log-based formula
-            let reduction =
-                ((move_index as f64).ln() * (remaining as f64).ln() * 0.5) as usize;
+            let reduction = ((move_index as f64).ln() * (remaining as f64).ln() * 0.5) as usize;
             if reduction > 0 {
                 depth_for_search = (remaining - 1).saturating_sub(reduction);
                 do_full_depth_search = false;
