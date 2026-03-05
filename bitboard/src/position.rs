@@ -8,7 +8,7 @@ use crate::attack::is_square_attacked;
 use crate::castling::CastlingRights;
 use crate::mov::ChessMove;
 use crate::mov::MoveType;
-use crate::movegen::generate_pseudo_moves;
+use crate::movegen::generate_legal_moves;
 use crate::occupancy::OccupancyKind;
 use crate::occupancy::OccupancyMap;
 use crate::piece::Color;
@@ -478,30 +478,11 @@ impl Position {
             None
         };
 
-        let moves = generate_pseudo_moves(self);
-        eprintln!(
-            "DEBUG: parse_uci_move: looking for {}{}{}{} {:?} in moves:",
-            from_file, from_rank, to_file, to_rank, promo
-        );
-        for m in &moves {
-            eprintln!(
-                "  move: {}{} -> {}{} promo: {:?}",
-                (b'a' + m.from().file()) as char,
-                (b'1' + m.from().rank()) as char,
-                (b'a' + m.to().file()) as char,
-                (b'1' + m.to().rank()) as char,
-                m.promotion()
-            );
-        }
-        let found = moves
+        // Search through LEGAL moves only (not pseudo-legal) to ensure move is valid
+        let moves = generate_legal_moves(self);
+        moves
             .into_iter()
-            .find(|m| m.from() == from_sq && m.to() == to_sq && m.promotion() == promo);
-        if found.is_none() {
-            eprintln!("DEBUG: parse_uci_move: NOT FOUND");
-        } else {
-            eprintln!("DEBUG: parse_uci_move: FOUND");
-        }
-        found
+            .find(|m| m.from() == from_sq && m.to() == to_sq && m.promotion() == promo)
     }
 
     pub fn to_board_state(&self) -> BoardState {
