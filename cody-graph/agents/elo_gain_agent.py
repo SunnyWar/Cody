@@ -35,6 +35,7 @@ from candidate_generator import CandidateGenerator
 # Add tools to path for commit utility
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from commit_util import commit_with_version_bump
+from apply_diff import apply_diff
 
 DEFAULT_MAX_ELO_PHASE_ITERATIONS = 10  # Allow multiple prompt retry attempts (8 prompts + buffer)
 DEFAULT_TARGET_ELO_SUCCESSES = 5     # Number of successful improvements to achieve
@@ -260,6 +261,53 @@ def elo_gain_candidate_generation(state: CodyState) -> CodyState:
             state["elo_candidate_type"] = candidate_type
             state["elo_proposed_candidate"] = candidate
             state["elo_proposal"] = candidate
+
+            # OPTION 2 FLOW: ask LLM to implement the proposal as an actual patch,
+            # then apply it before moving to compilation.
+            diff_text = generator.generate_implementation_diff(
+                proposal=candidate,
+                condition=condition,
+                prompt_id=prompt_id,
+            )
+
+            if not diff_text:
+                print(
+                    "[cody-graph] [ELO Gain] [WARN] No unified diff produced for proposal. Trying next prompt.",
+                    flush=True,
+                )
+                max_prompts = 8
+                if len(tried_prompts) < max_prompts:
+                    state["status"] = "ok"
+                    state["elo_phase_stage"] = "candidate_generation"
+                else:
+                    state["status"] = "ok"
+                    state["elo_phase_stage"] = "complete"
+                state["last_command"] = "candidate_generation"
+                return state
+
+            patch_state = {
+                "repo_path": repo_path,
+                "current_phase": "ELOGain",
+                "messages": [{"role": "assistant", "content": f"```diff\n{diff_text}\n```"}],
+            }
+            patch_result = apply_diff(patch_state)
+
+            if patch_result.get("last_command") != "apply_diff":
+                print(
+                    "[cody-graph] [ELO Gain] [WARN] Patch apply failed/rejected. Trying next prompt.",
+                    flush=True,
+                )
+                max_prompts = 8
+                if len(tried_prompts) < max_prompts:
+                    state["status"] = "ok"
+                    state["elo_phase_stage"] = "candidate_generation"
+                else:
+                    state["status"] = "ok"
+                    state["elo_phase_stage"] = "complete"
+                state["last_command"] = "candidate_generation"
+                return state
+
+            print("[cody-graph] [ELO Gain] [OK] Applied improvement patch to source tree", flush=True)
         
         state["status"] = "ok"
         state["elo_phase_stage"] = "compilation"
