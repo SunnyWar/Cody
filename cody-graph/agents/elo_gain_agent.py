@@ -156,10 +156,13 @@ def elo_gain_candidate_generation(state: CodyState) -> CodyState:
         generator = CandidateGenerator(repo_path, model=model, api_key=api_key)
         
         # Check if sanity check found issues
+        # NOTE: Both critical issues AND warnings should trigger test generation
+        # because quick losses (checkmate in 0 moves) are also serious bugs
         has_critical = sanity_result.get("has_critical_issues", False)
         has_warnings = len(sanity_result.get("warnings", [])) > 0
+        has_quick_losses = len(sanity_result.get("quick_losses", [])) > 0
         
-        if has_critical or has_warnings:
+        if has_critical or has_warnings or has_quick_losses:
             # PRIORITY MODE: Generate unit test to reproduce issue
             print(
                 "[cody-graph] [ELO Gain] [] Issues detected - Generating unit test to reproduce",
@@ -257,17 +260,18 @@ def elo_gain_compilation_check(state: CodyState) -> CodyState:
     # Import validation module
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "elo_tools"))
     from validate_compilation import validate_compilation
+    from candidate_generator import CandidateGenerator
     
     try:
         if candidate_type == "unit_test":
             # UNIT TEST mode: Add test to codebase and verify it compiles
             print(
-                f"[cody-graph] [ELO Gain] [] Adding unit test: {candidate.get('function_name', 'unknown')}",
+                f"[cody-graph] [ELO Gain] [] Adding unit test: {candidate.get('test_name', 'unknown')}",
                 flush=True
             )
             
             test_code = state.get("elo_test_code", "")
-            test_files = state.get("elo_test_files", [])
+            test_name = candidate.get("test_name", "regression_test")
             
             if not test_code:
                 print("[cody-graph] [ELO Gain] [] No test code to add", flush=True)
@@ -275,26 +279,30 @@ def elo_gain_compilation_check(state: CodyState) -> CodyState:
                 state["elo_phase_stage"] = "revert"
                 return state
             
-            # TODO: Actually add test code to files
-            # For now, just verify that the main engine still builds with test code present
-            print(
-                "[cody-graph] [ELO Gain] [] [TODO] Test code would be added to: {}",
-                ", ".join(test_files),
-                flush=True
-            )
+            # ACTUALLY ADD TEST CODE TO SOURCE FILE
+            generator = CandidateGenerator(repo_path)
+            success, message = generator.save_test_to_source(test_code, test_name)
             
-            # Verify core engine still compiles
+            if not success:
+                print(f"[cody-graph] [ELO Gain] [FAIL] Could not add test: {message}", flush=True)
+                state["status"] = "compilation_failed"
+                state["elo_phase_stage"] = "revert"
+                return state
+            
+            print(f"[cody-graph] [ELO Gain] [OK] {message}", flush=True)
+            
+            # Verify core engine still compiles with new test
             compilation_ok = validate_compilation(Path(repo_path), perft_depth=perft_depth)
             
             if not compilation_ok:
-                print("[cody-graph] [ELO Gain] Compilation failed, reverting test", flush=True)
+                print("[cody-graph] [ELO Gain] Compilation failed after adding test, reverting", flush=True)
                 state["status"] = "compilation_failed"
                 state["elo_phase_stage"] = "revert"
                 return state
             
             print("[cody-graph] [ELO Gain] [OK] Test code compiles successfully", flush=True)
             state["status"] = "ok"
-            state["elo_phase_stage"] = "gauntlet"
+            state["elo_phase_stage"] = "unit_test"  # Go to unit test validation
             state["last_command"] = "compilation_check_unitest"
             
         else:

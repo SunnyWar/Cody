@@ -321,13 +321,19 @@ class CandidateGenerator:
             }
         
         # Determine test focus and type
-        if illegal_moves:
-            # Illegal moves = move generation bug = UNIT TEST
-            test_focus = "reproduce_illegal_move"
-            test_variant = "unit"
-            issue_description = f"Illegal moves found: {len(illegal_moves)} occurrences"
+        # NOTE: Both illegal moves AND quick losses should trigger detailed position analysis
+        if illegal_moves or quick_losses:
+            # Both illegal moves and quick losses indicate serious bugs
+            if illegal_moves:
+                test_focus = "reproduce_illegal_move"
+                test_variant = "unit"
+                issue_description = f"Illegal moves found: {len(illegal_moves)} occurrences"
+            else:
+                test_focus = "reproduce_bad_evaluation"
+                test_variant = "unit"  # Treat as unit test (specific position issue)
+                issue_description = f"Quick losses found: {len(quick_losses)} occurrences"
             
-            # TRY TO ANALYZE ACTUAL FAILING POSITIONS
+            # ALWAYS TRY TO ANALYZE ACTUAL FAILING POSITIONS
             failing_games = self.parse_worst_fail_pgn()
             if failing_games:
                 bug_pattern = self.infer_bug_pattern(failing_games)
@@ -335,7 +341,8 @@ class CandidateGenerator:
                 print(f"[candidate_generator] Inferred bug pattern: {bug_pattern.get('bug_type', 'unknown')}")
                 return self._generate_position_specific_unit_test(failing_games, bug_pattern)
             
-        elif quick_losses:
+        elif False:  # Dead code path - quick_losses already handled above
+            pass
             # Quick losses = evaluation or game-level bug = INTEGRATION TEST
             test_focus = "reproduce_bad_evaluation"
             test_variant = "integration"
@@ -740,6 +747,64 @@ class CandidateGenerator:
             ],
             "confidence": "high"
         }
+
+    def save_test_to_source(self, test_code: str, test_name: str) -> tuple[bool, str]:
+        """
+        Save generated test code to the appropriate source file.
+        Returns (success, message).
+        """
+        # Determine target file based on test type
+        test_target = self.repo_path / "bitboard" / "src" / "lib.rs"
+        
+        if not test_target.exists():
+            return False, f"Target file not found: {test_target}"
+        
+        try:
+            content = test_target.read_text(encoding='utf-8')
+            
+            # Check if test already exists (via test name/module)
+            if f"mod {test_name}" in content or f"fn {test_name}" in content:
+                return False, f"Test '{test_name}' already exists in {test_target}"
+            
+            # Find insertion point - add before the last few closing braces
+            # Look for the right place to insert (typically before the final closing brace or at EOF)
+            lines = content.split('\n')
+            
+            # If file ends with standard closing, insert before
+            insertion_line = len(lines) - 1
+            
+            # Try to find a test module section
+            for i in range(len(lines) - 1, max(len(lines) - 20, 0), -1):
+                if "#[cfg(test)]" in lines[i]:
+                    insertion_line = i + 1
+                    # Find the next blank line after test marker
+                    while insertion_line < len(lines) and lines[insertion_line].strip():
+                        insertion_line += 1
+                    break
+            
+            # If no test section exists, add one before final closing brace
+            if insertion_line == len(lines) - 1:
+                # Add test section at end
+                lines.insert(insertion_line, '')
+                lines.insert(insertion_line + 1, '#[cfg(test)]')
+                lines.insert(insertion_line + 2, 'mod regression_tests {')
+                insertion_line = insertion_line + 3
+            
+                # Insert the test code
+                lines.insert(insertion_line, test_code)
+                lines.insert(insertion_line + 1, '}')
+            else:
+                # Insert into existing test section (add before closing brace of test mod)
+                lines.insert(insertion_line, test_code)
+            
+            modified_content = '\n'.join(lines)
+            
+            # Write back
+            test_target.write_text(modified_content, encoding='utf-8')
+            return True, f"Test '{test_name}' added to {test_target}"
+            
+        except Exception as e:
+            return False, f"Failed to write test: {str(e)}"
 
 
 def main():
