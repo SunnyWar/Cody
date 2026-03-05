@@ -13,14 +13,35 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::atomic::Ordering;
 
+const MAX_QSEARCH_DEPTH: usize = 16;
+const DELTA_MARGIN: i32 = 200; // Queen value margin for delta pruning
+const MAX_CHECK_DEPTH: usize = 1; // Only generate checks at shallow qsearch depth
+
 pub fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
+    movegen: &M,
+    evaluator: &E,
+    arena: &mut Arena,
+    ply: usize,
+    alpha: i32,
+    beta: i32,
+) -> i32 {
+    quiescence_internal(movegen, evaluator, arena, ply, alpha, beta, 0)
+}
+
+fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
     movegen: &M,
     evaluator: &E,
     arena: &mut Arena,
     ply: usize,
     mut alpha: i32,
     beta: i32,
+    qsearch_depth: usize,
 ) -> i32 {
+    // Prevent infinite qsearch recursion
+    if qsearch_depth >= MAX_QSEARCH_DEPTH {
+        return evaluator.evaluate(&arena.get(ply).position);
+    }
+
     // Stand pat evaluation
     if VERBOSE.load(Ordering::Relaxed) {
         eprintln!("[debug] quiescence enter ply={}", ply);
@@ -34,39 +55,81 @@ pub fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
             let _ = writeln!(f, "{} OUT: [debug] quiescence enter ply={}", stamp, ply);
         }
     }
-    let stand_pat = evaluator.evaluate(&arena.get(ply).position);
-    if stand_pat >= beta {
+
+    let pos = arena.get(ply).position;
+    let in_check = movegen.in_check(&pos);
+
+    // When in check, we MUST search (can't stand pat), otherwise stand pat is valid
+    let stand_pat = if !in_check {
+        evaluator.evaluate(&pos)
+    } else {
+        i32::MIN + 1 // Placeholder, must search when in check
+    };
+
+    if !in_check && stand_pat >= beta {
         return stand_pat;
     }
-    if alpha < stand_pat {
+    if !in_check && alpha < stand_pat {
         alpha = stand_pat;
     }
 
-    let pos = arena.get(ply).position;
-
-    let in_check = movegen.in_check(&pos);
-
     // If we're in check, we must consider all evasions (not just captures)
+    // Otherwise, search captures and (at shallow depth) checking moves
     // Use SmallVec to keep typical capture counts (<32) on the stack, avoiding heap
     // allocation.
-    let mut moves: SmallVec<[ChessMove; 32]> = if in_check {
+    let mut moves: SmallVec<[ChessMove; 64]> = if in_check {
         bitboard::movegen::generate_legal_moves(&pos)
             .into_iter()
             .collect()
     } else {
-        bitboard::movegen::generate_pseudo_captures(&pos)
-            .into_iter()
-            .filter(|m| {
-                // `apply_move_into` writes all state fields, so cloning the
-                // current position avoids expensive default FEN parsing.
+        // Generate captures first
+        let mut move_list: SmallVec<[ChessMove; 64]> =
+            bitboard::movegen::generate_pseudo_captures(&pos)
+                .into_iter()
+                .filter(|m| {
+                    // Delta pruning: skip captures that can't possibly improve alpha
+                    // even if we capture the target piece
+                    if let Some(victim) = get_piece_on_square(&pos, m.to) {
+                        let victim_val = piece_value(victim.kind());
+                        // If stand_pat + captured piece value + margin is still below alpha, prune
+                        if stand_pat + victim_val + DELTA_MARGIN < alpha {
+                            return false;
+                        }
+                    }
+
+                    let mut temp = pos;
+                    pos.apply_move_into(m, &mut temp);
+                    !movegen.in_check(&temp)
+                })
+                .collect();
+
+        // At shallow qsearch depth, also generate checking moves
+        // to catch tactical shots that would otherwise be over the horizon
+        if qsearch_depth < MAX_CHECK_DEPTH {
+            let all_quiet = bitboard::movegen::generate_legal_moves(&pos);
+            for m in all_quiet {
+                // Skip if already in move list (captures/promotions)
+                if move_list.contains(&m) {
+                    continue;
+                }
+
+                // Check if this move gives check
                 let mut temp = pos;
-                pos.apply_move_into(m, &mut temp);
-                !movegen.in_check(&temp)
-            })
-            .collect()
+                pos.apply_move_into(&m, &mut temp);
+                if movegen.in_check(&temp) {
+                    move_list.push(m);
+                }
+            }
+        }
+
+        move_list
     };
 
     if moves.is_empty() {
+        if in_check {
+            // Checkmate: return a mate score adjusted by ply
+            return -30_000 + ply as i32;
+        }
         return stand_pat;
     }
 
@@ -80,7 +143,15 @@ pub fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
             parent.position.apply_move_into(&m, &mut child.position);
         }
 
-        let score = -quiescence_with_arena(movegen, evaluator, arena, ply + 1, -beta, -alpha);
+        let score = -quiescence_internal(
+            movegen,
+            evaluator,
+            arena,
+            ply + 1,
+            -beta,
+            -alpha,
+            qsearch_depth + 1,
+        );
 
         if score > best {
             best = score;
