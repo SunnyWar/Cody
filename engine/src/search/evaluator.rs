@@ -146,5 +146,8 @@ fn compute_phase(pos: &Position) -> i32 {
 }
 
 fn blend_tables(mid: i32, end: i32, phase: i32) -> i32 {
-    ((mid * phase) + (end * (MAX_PHASE - phase))) / MAX_PHASE
+    // phase = MAX_PHASE when full material (midgame)
+    // phase = 0 when minimal material (endgame)
+    // So weight MID when phase is high, END when phase is low
+    ((mid * (MAX_PHASE - phase)) + (end * phase)) / MAX_PHASE
 }
