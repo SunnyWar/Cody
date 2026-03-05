@@ -91,6 +91,9 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                 generate_legal_moves(&parent.position)
             };
 
+            // Diagnostic: validate move generation for this position
+            bitboard::movegen::validate_legal_move_generation(&self.arena.get(0).position);
+
             if moves.is_empty() {
                 let score = if self.movegen.in_check(root) {
                     -MATE_SCORE

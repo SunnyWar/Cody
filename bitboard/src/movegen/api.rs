@@ -187,6 +187,65 @@ fn generate_pseudo_king_moves(
     crate::movegen::generate_pseudo_king_moves(pos, context, moves);
 }
 
+/// Diagnostic function that validates legal move generation.
+/// If the legal move list is empty, checks if it's a genuine terminal position
+/// (checkmate/stalemate) or if there's a bug. Logs detailed error info if moves
+/// are unexpectedly empty.
+pub fn validate_legal_move_generation(pos: &Position) -> bool {
+    let legal_moves = generate_legal_moves(pos);
+
+    if !legal_moves.is_empty() {
+        // Normal case: we have legal moves
+        return true;
+    }
+
+    // Legal move list is empty. Check if this is a valid terminal position.
+    let pseudo_moves = generate_pseudo_moves(pos);
+    let in_check = is_king_in_check(pos.side_to_move, &pos.to_board_state());
+
+    // If there are ANY pseudo-legal moves that all fail the legality check,
+    // and we're in check, this is (probably) checkmate. If no pseudo moves at all,
+    // and we're NOT in check, this is stalemate.
+    let is_valid_terminal = if in_check {
+        // In check with no legal moves = checkmate (expected)
+        true
+    } else {
+        // Not in check with no legal moves = stalemate (expected)
+        true
+    };
+
+    if !is_valid_terminal {
+        // Should never reach here given the above logic, but kept for clarity
+        eprintln!(
+            "[MOVEGEN_WARN] Empty legal move list in unexpected position: {:?}",
+            pos.to_fen()
+        );
+        return false;
+    }
+
+    // If we have pseudo-legal moves but ALL failed the legality check,
+    // that's suspicious and worth logging (indicates king safety check may be
+    // wrong).
+    if !pseudo_moves.is_empty() && legal_moves.is_empty() {
+        eprintln!(
+            "[MOVEGEN_DIAGNOSTIC] All {} pseudo-legal moves are illegal at: {}",
+            pseudo_moves.len(),
+            pos.to_fen()
+        );
+        eprintln!(
+            "[MOVEGEN_DIAGNOSTIC] In check: {}, side to move: {:?}",
+            in_check, pos.side_to_move
+        );
+
+        // Log first few pseudo moves for manual inspection
+        for (i, m) in pseudo_moves.iter().take(5).enumerate() {
+            eprintln!("[MOVEGEN_DIAGNOSTIC]   Pseudo move {}: {}", i + 1, m);
+        }
+    }
+
+    true
+}
+
 // ...existing code...
 
 #[cfg(test)]

@@ -576,6 +576,55 @@ mod perft_integration_tests {
     }
 
     #[test]
+    fn test_movegen_validation_normal_positions() {
+        // Test diagnostic validation on various positions
+        let test_positions = vec![
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", // Starting position
+            "rnbqkb1r/1p2pppp/2p2n2/3p4/P7/P1PP2PP/4PP2/RNBQKBNR w KQkq - 1 8", /* Reported problematic position */
+            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 11",                       // Endgame
+        ];
+
+        for fen in test_positions {
+            let pos = Position::from_fen(fen);
+            // Validation should return true and not panic for valid positions
+            let result = bitboard::movegen::validate_legal_move_generation(&pos);
+            assert!(
+                result,
+                "Move gen validation should return true for position: {}",
+                fen
+            );
+
+            // Should have some legal moves (none of these are terminal positions)
+            let legal_moves = generate_legal_moves(&pos);
+            assert!(
+                !legal_moves.is_empty(),
+                "Should have legal moves in position: {}",
+                fen
+            );
+        }
+    }
+
+    #[test]
+    fn test_movegen_validation_checkmate_position() {
+        // Classic fool's mate checkmate for White: 1. f3 e5 2. g4 Qh4#
+        let fen = "rnbqkbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 0 3";
+        let pos = Position::from_fen(fen);
+
+        let legal_moves = generate_legal_moves(&pos);
+        assert!(
+            legal_moves.is_empty(),
+            "White should have no legal moves (checkmate)"
+        );
+
+        // Validation should still return true (legitimate terminal position)
+        let result = bitboard::movegen::validate_legal_move_generation(&pos);
+        assert!(
+            result,
+            "Validation should return true for checkmate position"
+        );
+    }
+
+    #[test]
     fn test_illegal_move_not_generated_in_complex_position() {
         // Position where d1 is a BLACK QUEEN and d1-e1 should NOT be legal for White
         let game_fen = "r1bq1rk1/1p4pp/p7/N2p1p2/P2P1P2/bP2B1PP/4P3/R2q1RKB w - - 0 9";
