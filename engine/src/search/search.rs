@@ -5,6 +5,7 @@ use crate::search::core::INF;
 use crate::search::core::MATE_SCORE;
 use crate::search::core::NODE_COUNT;
 use crate::search::core::SearchHeuristics;
+use crate::search::core::order_moves_with_heuristics;
 use crate::search::core::search_node_with_arena;
 use crate::search::evaluator::Evaluator;
 use bitboard::mov::ChessMove;
@@ -113,9 +114,18 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             let mut best_score = i32::MIN;
             let mut best_move = fallback_move;
             let mut searched_any = false;
+            let mut alpha = -INF;
+            let beta = INF;
 
             // Probe TT and reorder instantly if match found
             self.probe_for_best_move(d, &mut moves);
+            order_moves_with_heuristics(
+                root,
+                &mut moves,
+                &heuristics,
+                0,
+                (!last_completed_move.is_null()).then_some(last_completed_move),
+            );
 
             if self.num_threads <= 1 {
                 // Serial path: prepare a TT reference that points at our engine TT if present,
@@ -154,8 +164,8 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                         &mut self.arena,
                         1,
                         d - 1,
-                        -INF,
-                        INF,
+                        -beta,
+                        -alpha,
                         tt_ref,
                         &mut heuristics,
                         stop,
@@ -168,6 +178,13 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                         best_move = m;
                     }
                     searched_any = true;
+
+                    if score > alpha {
+                        alpha = score;
+                    }
+                    if alpha >= beta {
+                        break;
+                    }
 
                     // Periodic progress info is useful for timed UCI searches,
                     // but it is expensive noise for fixed-depth bench runs.
