@@ -302,7 +302,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     let mut best_score = i32::MIN;
     let mut best_move = bitboard::mov::ChessMove::null();
     // Work with a local mutable vector so we can reorder based on TT best move
-    // Prioritize TT best move and then sort by tactical + killer/history score.
+    // Prioritize TT best move first (already at 0 if found).
     if let Some(e) = tt_exact_needs_verify
         && !e.best_move.is_null()
         && let Some(idx) = moves.iter().position(|m| *m == e.best_move)
@@ -312,7 +312,22 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     }
 
     let pos = arena.get(ply).position;
-    moves.sort_unstable_by_key(|m| -heuristics.score_move(&pos, m, ply));
+    // Lightweight move ordering: partition captures/promotions to front first.
+    // Then selectively score only the first 10 moves to avoid expensive per-move
+    // work.
+    let mut capture_boundary = 0;
+    for i in 0..moves.len() {
+        if matches!(
+            moves[i].move_type,
+            MoveType::Capture | MoveType::EnPassant | MoveType::Promotion(_)
+        ) {
+            moves.swap(i, capture_boundary);
+            capture_boundary += 1;
+        }
+    }
+    // Score and order only the top moves; the rest rely on insertion order + LMR.
+    let score_limit = 10.min(moves.len());
+    moves[..score_limit].sort_unstable_by_key(|m| -heuristics.score_move(&pos, m, ply));
 
     let moves_vec = moves;
     if let Some(e) = tt_exact_needs_verify
