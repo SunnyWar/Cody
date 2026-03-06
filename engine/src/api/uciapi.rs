@@ -29,6 +29,12 @@ pub struct CodyApi {
     log: Option<File>,
 }
 
+impl Default for CodyApi {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CodyApi {
     pub fn new() -> Self {
         let engine = Engine::new(65_536, SimpleMoveGen, MaterialEvaluator);
@@ -110,13 +116,12 @@ impl CodyApi {
                 "stop" => {
                     self.stop.store(true, Ordering::Relaxed);
                 }
-                cmd if cmd.starts_with("register") => {
+                cmd if cmd.starts_with("register")
                     // UCI 'register' is used by some GUIs for license management.
                     // Cody does not require registration, so we acknowledge and ignore.
-                    if cmd.trim() == "register" || cmd.trim() == "register later" {
+                    && (cmd.trim() == "register" || cmd.trim() == "register later") => {
                         self.writeln_and_log(&mut stdout, "info string registration not required");
                     }
-                }
                 cmd if cmd.starts_with("bench") => self.handle_bench(cmd, &mut stdout),
                 "quit" => should_quit = true,
                 _ => {}
