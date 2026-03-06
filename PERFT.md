@@ -6,6 +6,26 @@ Perft is a performance testing tool for chess engines that counts the number of 
 
 ## Usage
 
+### From Command Line
+
+Run perft from the engine binary (default depth 5):
+
+```bash
+cargo run --release -- perft
+```
+
+Run with a custom depth:
+
+```bash
+cargo run --release -- perft 3
+```
+
+When no args are provided, the engine starts in UCI mode:
+
+```bash
+cargo run --release -p engine
+```
+
 ### From Rust Code
 
 The perft module is exported from `bitboard` and available in your code:
@@ -70,6 +90,14 @@ cargo test --lib perft
 # Run all tests
 cargo test
 ```
+
+## Implementation Notes
+
+- Core perft logic lives in `bitboard/src/perft.rs`.
+- Timing helpers are available in `engine/src/util.rs`:
+	- `run_perft_benchmark(pos, depth)`
+	- `run_perft_divide(pos, depth)`
+- The command-line entry point is handled by `engine/src/main.rs` (`perft` subcommand behavior).
 
 ## How Perft Works
 
