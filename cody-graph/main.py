@@ -127,6 +127,7 @@ initial_state: CodyState = {
     "phase_iteration": 0,
     "attempted_warnings": [],
     "current_warning_signature": None,
+    "repair_attempts": 0,
 }
 
 print("=" * 80)

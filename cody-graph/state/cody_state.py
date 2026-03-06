@@ -24,3 +24,4 @@ class CodyState(TypedDict):
     phase_iteration: int          # iteration count within current phase
     attempted_warnings: List[str] # warnings already attempted (to avoid retry loops)
     current_warning_signature: Optional[str]  # signature of warning being fixed
+    repair_attempts: int          # number of LLM repair attempts for current patch (resets per patch)

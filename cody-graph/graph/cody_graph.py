@@ -82,21 +82,77 @@ def after_apply_diff(state: CodyState):
 def after_build(state: CodyState):
     if state["status"] == "ok":
         return "run_tests"
+    
     # Build failed - determine context for routing
-    # If we were validating a patch post-apply_diff, rollback and retry clippy
-    if state.get("last_command") == "apply_diff":
-        print("[cody-graph] [DIAG] Build failed after patch application, rolling back", flush=True)
-        return "rollback_changes"
+    # If we were validating a patch post-apply_diff, check if we should attempt repair
+    if state.get("last_diff"):
+        # Check if build failed after a patch and we should attempt repair
+        from tools.retry_manager import create_retry_manager
+        retry_mgr = create_retry_manager(state)
+        
+        if retry_mgr.should_attempt_repair(state):
+            print(
+                "[cody-graph] [DIAG] Build failed after patch; attempting LLM repair",
+                flush=True,
+            )
+            return "build_repair_attempt"
+        else:
+            print("[cody-graph] [DIAG] Build failed; repair attempts exhausted, rolling back", flush=True)
+            return "rollback_changes"
+    
     # Otherwise (if validating after clippy phase), any build failure is critical
     return "rollback_changes"
 
+def after_build_repair_attempt(state: CodyState):
+    """After LLM generates a repair, apply it and try building again."""
+    if state["status"] == "error":
+        return END
+    if state["status"] == "ok":
+        # All warnings attempted, move on
+        return "run_build"
+    # Apply the repair patch
+    return "apply_diff"
+
 def after_rollback(state: CodyState):
-    """Route after rollback: either retry clippy or end phase."""
-    # If rollback happened after a failed patch validation, retry clippy
-    if state.get("last_command") == "apply_diff":
-        print("[cody-graph] [DIAG] Rollback complete, retrying clippy for next warning", flush=True)
+    """Route after rollback: handle failed repairs and continue with next warning."""
+    from tools.retry_manager import create_retry_manager
+    retry_mgr = create_retry_manager(state)
+    
+    # If rollback happened after a failed repair attempt:
+    # 1. Mark the warning as permanently failed
+    # 2. Reset repair counter for next attempt
+    # 3. Go back to clippy to try another warning
+    if state.get("last_command") == "cargo_build" and state.get("last_diff"):
+        phase = state.get("current_phase", "clippy")
+        warning_sig = state.get("current_warning_signature")
+        repair_attempts = int(state.get("repair_attempts", 0) or 0)
+        
+        if warning_sig:
+            retry_mgr.mark_warning_failed(
+                phase,
+                warning_sig,
+                f"Build failed after {repair_attempts} repair attempt(s)",
+                repair_attempts,
+            )
+            # Mark attempted so clippy agent won't try it again
+            attempted = state.get("attempted_warnings", []) or []
+            if warning_sig not in attempted:
+                attempted = attempted + [warning_sig]
+        
+        print(
+            "[cody-graph] [DIAG] Rollback after repair failure; "
+            "retrying clippy for next warning",
+            flush=True,
+        )
         return "run_clippy"
-    # Otherwise, end the phase (critical build failure)
+    
+    # If rollback happened after apply_diff (malformed patch, etc.):
+    # Mark the warning as attempted but keep retrying
+    if state.get("last_command") == "apply_diff":
+        print("[cody-graph] [DIAG] Rollback after failed patch application, retrying clippy", flush=True)
+        return "run_clippy"
+    
+    # Otherwise, end the phase (critical build failure during validation)
     return END
 
 def after_tests(state: CodyState):
@@ -152,6 +208,7 @@ def phase_complete(state: CodyState) -> CodyState:
             "best_clippy_error_count": None,
             "clippy_has_syntax_error": None,
             "attempted_warnings": [],  # Reset for new phase
+            "repair_attempts": 0,  # Reset repair attempts for new phase
             "last_output": f"Phase '{current}' complete. Starting phase '{next_phase}'.",
             "status": "pending",
         }
@@ -191,6 +248,27 @@ builder.add_node("run_fmt", run_fmt)
 builder.add_node("rollback_changes", rollback_changes)
 builder.add_node("phase_complete", phase_complete)
 
+# Build Repair Node: Increment repair counter and call clippy_agent to fix build errors
+def build_repair_attempt(state: CodyState) -> CodyState:
+    """Attempt to repair a build failure with LLM."""
+    from tools.retry_manager import create_retry_manager
+    retry_mgr = create_retry_manager(state)
+    
+    # Increment repair attempt counter
+    state = retry_mgr.increment_repair_attempts(state)
+    
+    # Mark this as a repair attempt so clippy_agent knows context
+    repair_attempt_num = int(state.get("repair_attempts", 1) or 1)
+    print(
+        f"[cody-graph] [DIAG] Build Repair Attempt #{repair_attempt_num}",
+        flush=True,
+    )
+    
+    # Call clippy_agent with build error context - it will generate a repair
+    return clippy_agent(state)
+
+builder.add_node("build_repair_attempt", build_repair_attempt)
+
 # Define Flow
 builder.add_edge(START, "route_phase")
 
@@ -221,10 +299,16 @@ builder.add_conditional_edges(
     after_clippy,
 )
 
-# 5. Build -> Tests or Rollback
+# 5. Build -> Tests, Repair Attempt, or Rollback
 builder.add_conditional_edges(
     "run_build",
     after_build,
+)
+
+# 5b. Build Repair Attempt -> Apply Diff or End
+builder.add_conditional_edges(
+    "build_repair_attempt",
+    after_build_repair_attempt,
 )
 
 # 6. Tests -> Format or Rollback

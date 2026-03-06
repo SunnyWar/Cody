@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 from state.cody_state import CodyState
+from retry_manager import create_retry_manager
 
 
 def run_build(state: CodyState) -> CodyState:
@@ -57,6 +58,16 @@ def run_build(state: CodyState) -> CodyState:
         "last_command": "cargo_build",
         "status": status,
     }
+    
+    # Security gate: If build failed after a patch, mark for repair routing
+    if status != "ok" and state.get("last_diff"):
+        retry_mgr = create_retry_manager(state)
+        if retry_mgr.should_attempt_repair(result_state):
+            print("[cody-graph] [DIAG] Build failed after patch - marking for LLM repair attempt", flush=True)
+            result_state["build_failed_needs_repair"] = True
+        else:
+            print("[cody-graph] [DIAG] Build failed - repair attempts exhausted, will rollback", flush=True)
+    
     if status != "ok":
         print(f"[cody-graph] run_build: ERROR (exit code {result.returncode})", flush=True)
     print(f"[cody-graph] run_build: END ({status})", flush=True)
