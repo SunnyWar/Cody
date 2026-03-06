@@ -15,9 +15,23 @@ use bitboard::piece::PieceKind;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::atomic::AtomicU64;
+use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
 pub static NODE_COUNT: AtomicU64 = AtomicU64::new(0);
+pub static SELDEPTH_MAX: AtomicUsize = AtomicUsize::new(0);
+
+pub fn reset_seldepth(initial_ply: usize) {
+    SELDEPTH_MAX.store(initial_ply, Ordering::Relaxed);
+}
+
+pub fn update_seldepth(ply: usize) {
+    SELDEPTH_MAX.fetch_max(ply, Ordering::Relaxed);
+}
+
+pub fn current_seldepth() -> usize {
+    SELDEPTH_MAX.load(Ordering::Relaxed)
+}
 
 // Positive large value used to detect mate scores. Keep consistent with UCI
 // API's MATE_SCORE.
@@ -168,9 +182,11 @@ fn mvv_lva_score(pos: &bitboard::position::Position, mv: &ChessMove) -> i32 {
 
 pub fn print_uci_info(
     depth: usize,
+    seldepth: usize,
     score: i32,
     pv: &str, // principal variation as a space-separated string
     elapsed_ms: u64,
+    hashfull: u16,
 ) {
     let nodes = NODE_COUNT.load(Ordering::Relaxed);
     let nps = elapsed_ms
@@ -193,13 +209,15 @@ pub fn print_uci_info(
             -(MATE_SCORE + score) / 2
         };
         format!(
-            "info depth {} score mate {} nodes {} time {} nps {} pv {}",
-            depth, mate_in, nodes, elapsed_ms, nps, pv
+            "info depth {} seldepth {} multipv 1 score mate {} nodes {} nps {} hashfull {} tbhits \
+             0 time {} pv {}",
+            depth, seldepth, mate_in, nodes, nps, hashfull, elapsed_ms, pv
         )
     } else {
         format!(
-            "info depth {} score cp {} nodes {} time {} nps {} pv {}",
-            depth, score, nodes, elapsed_ms, nps, pv
+            "info depth {} seldepth {} multipv 1 score cp {} nodes {} nps {} hashfull {} tbhits 0 \
+             time {} pv {}",
+            depth, seldepth, score, nodes, nps, hashfull, elapsed_ms, pv
         )
     };
 
@@ -235,6 +253,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     start_time: Option<&std::time::Instant>,
 ) -> i32 {
     NODE_COUNT.fetch_add(1, Ordering::Relaxed);
+    update_seldepth(ply);
     // Check stop flag and time budget at each node
     if let Some(stopflag) = stop
         && stopflag.load(Ordering::Relaxed)
