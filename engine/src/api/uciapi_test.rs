@@ -1,6 +1,26 @@
 use crate::api::uciapi::CodyApi;
 use bitboard::Square;
 
+#[test]
+fn test_parse_go_limits_ponder_is_infinite_without_time_or_depth() {
+    let api = CodyApi::new();
+    let limits = api.parse_go_limits("go ponder");
+
+    assert!(limits.ponder);
+    assert!(limits.infinite);
+    assert!(limits.movetime_ms.is_none());
+    assert!(limits.depth.is_none());
+}
+
+#[test]
+fn test_parse_go_limits_bare_go_keeps_default_movetime() {
+    let api = CodyApi::new();
+    let limits = api.parse_go_limits("go");
+
+    assert_eq!(limits.movetime_ms, Some(1000));
+    assert!(!limits.ponder);
+}
+
 #[allow(clippy::collapsible_if)]
 #[test]
 fn test_uci_position_moves_c3d5_state_consistency() {
