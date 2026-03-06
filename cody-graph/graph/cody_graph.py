@@ -15,15 +15,20 @@ def route_phase(state: CodyState) -> str:
     Route to the appropriate phase agent based on current_phase.
     
     Different phases have fundamentally different workflows:
-    - Clippy, Refactoring, UCIfeatures, Performance, Tests: Use clippy_agent (iterative LLM fixes)
+    - Clippy: Detect and fix pedantic clippy warnings (run_clippy)
+    - Refactoring, UCIfeatures, Performance, Tests: Use clippy_agent (iterative LLM fixes, no clippy checks)
     - ELOGain: Use elo_gain_agent (complex multi-step chess improvement loop)
     """
     phase = state.get("current_phase", "clippy")
     
     if phase == "ELOGain":
         return "elo_gain_agent"
-    else:
+    elif phase == "clippy":
+        # Clippy phase: run clippy to detect warnings
         return "run_clippy"
+    else:
+        # All other phases (refactoring, performance, etc.): skip clippy, go directly to LLM agent
+        return "clippy_agent"
 
 def after_elo_gain(state: CodyState) -> str:
     """Route after ELO Gain phase completes."""

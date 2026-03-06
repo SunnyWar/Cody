@@ -126,27 +126,41 @@ The system loads all configured models and executes them as phases sequentially.
 ```
 START
   ↓
-run_clippy (detect warnings)
+route_phase
   ↓
-[Warning found?]
-  ├─→ clippy_agent (LLM proposes fix)
+[Phase == clippy?]
+  ├─→ run_clippy (detect pedantic warnings)
   │     ↓
-  │   apply_diff (patch code)
+  │   [Warning found?]
+  │     ├─→ clippy_agent (LLM proposes fix)
+  │     │     ↓
+  │     │   apply_diff (patch code)
+  │     │     ↓
+  │     │   run_clippy (verify fix)
+  │     │     ↓
+  │     │   [Loop back if more warnings]
+  │     │
+  │   run_build (compile)
   │     ↓
-  │   run_clippy (verify fix)
+  │   run_tests (validate)
   │     ↓
-  │   [Loop back if more warnings]
+  │   phase_complete → next phase or END
   │
-  └─→ run_build (compile)
+  └─→ [Other phases: refactor, performance, etc.]
+        ↓
+      clippy_agent (LLM improvements, no clippy check)
+        ↓
+      apply_diff (patch code)
+        ↓
+      run_build (compile)
         ↓
       run_tests (validate)
         ↓
-      phase_complete (more phases?)
-        ├─→ run_clippy (next phase)
-        │     ↓ ...
-        │
-        └─→ END
+      phase_complete → next phase or END
 ```
+
+**Note:** Only the **clippy phase** runs `cargo clippy --W clippy::pedantic`. 
+Other phases (refactoring, performance, etc.) skip clippy checks and use the LLM agent directly.
 
 ## Phase System (Multi-Phase Ready)
 

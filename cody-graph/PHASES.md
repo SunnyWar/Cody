@@ -15,11 +15,12 @@ The `CodyState` now tracks:
 
 ### Graph Flow
 ```
-START → run_clippy → [fix loop] → run_build → run_tests → phase_complete
-                                                              ↓
-                                              [more phases?] → run_clippy (next phase)
-                                                              ↓
-                                              [no more] → END
+START → route_phase → [clippy: run_clippy] → [fix loop] → run_build → run_tests → phase_complete
+                    └─[other phases] → clippy_agent → [fix loop] → run_build → run_tests → phase_complete
+                                                                                              ↓
+                                                              [more phases?] → route_phase (next phase)
+                                                                              ↓
+                                                              [no more] → END
 ```
 
 ## Adding a New Phase
@@ -130,9 +131,10 @@ If any step fails:
 ## Phase Examples
 
 ### Clippy Phase (Current)
-- **Input**: Clippy warnings
-- **Process**: Fix one warning at a time
-- **Output**: All clippy warnings eliminated
+- **Input**: Clippy pedantic warnings (via `cargo clippy -- -W clippy::pedantic -D warnings`)
+- **Process**: Fix one warning at a time using run_clippy + LLM fixes
+- **Output**: All clippy pedantic warnings eliminated
+- **Note**: Only the clippy phase runs clippy checks. Other phases skip clippy and use the LLM agent directly.
 
 ### Refactoring Phase (Planned)
 - **Input**: Code quality metrics

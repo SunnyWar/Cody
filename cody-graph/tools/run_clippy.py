@@ -15,9 +15,9 @@ def run_clippy(state: CodyState) -> CodyState:
     state["logs_dir"] = logs_dir
     
     try:
-        print("[cody-graph] [DIAG] Running 'cargo clippy --'...", flush=True)
+        print("[cody-graph] [DIAG] Running 'cargo clippy -- -W clippy::pedantic -D warnings'...", flush=True)
         result = subprocess.run(
-            ["cargo", "clippy", "--", "-D", "warnings"],
+            ["cargo", "clippy", "--", "-W", "clippy::pedantic", "-D", "warnings"],
             cwd=repo,
             capture_output=True,
             text=True,
