@@ -1,13 +1,13 @@
+use crate::VERBOSE;
 use crate::api::golimits::GoLimits;
+use crate::search::engine::Engine;
+use crate::search::engine::NODE_COUNT;
+use crate::search::evaluator::MaterialEvaluator;
+use crate::test_data::TEST_CASES;
+use crate::test_data::TestCase;
 use bitboard::movegen::SimpleMoveGen;
 use bitboard::piece::Color;
 use bitboard::position::Position;
-use engine::Engine;
-use engine::MaterialEvaluator;
-use engine::NODE_COUNT;
-use engine::TEST_CASES;
-use engine::TestCase;
-use engine::VERBOSE;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::BufRead;
@@ -48,7 +48,7 @@ impl CodyApi {
 
     // Use crate util for consistent millisecond-precision ISO timestamps.
     fn iso_stamp() -> String {
-        engine::util::iso_stamp_ms()
+        crate::util::iso_stamp_ms()
     }
 
     pub fn run(self) {
@@ -133,25 +133,35 @@ impl CodyApi {
         }
     }
 
-    fn handle_uci(&mut self, out: &mut impl Write) {
+    pub fn handle_uci(&mut self, out: &mut impl Write) {
         self.writeln_and_log(out, "id name Cody");
         self.writeln_and_log(out, "id author Strong Noodle");
-        // Advertise a Threads option so UIs can control parallelism.
+        self.writeln_and_log(out, "");
+
+        // Advertise options
         let max_threads = std::thread::available_parallelism()
             .map(|n| n.get())
             .unwrap_or(1);
-        let opt = format!(
-            "option name Threads type spin default 1 min 1 max {}",
-            max_threads
+
+        self.writeln_and_log(
+            out,
+            &format!("option name Hash type spin default 16 min 1 max 1024"),
         );
-        self.writeln_and_log(out, &opt);
-        // Advertise Verbose option so UIs can toggle runtime verbose logging via
-        // setoption
+        self.writeln_and_log(out, "option name Clear Hash type button");
+        self.writeln_and_log(
+            out,
+            &format!(
+                "option name Threads type spin default 1 min 1 max {}",
+                max_threads
+            ),
+        );
+        self.writeln_and_log(out, "option name Ponder type check default false");
         self.writeln_and_log(out, "option name Verbose type check default false");
+
         self.writeln_and_log(out, "uciok");
     }
 
-    fn handle_setoption(&mut self, cmd: &str) {
+    pub fn handle_setoption(&mut self, cmd: &str) {
         // Parse: setoption name <name...> value <value>
         let parts: Vec<&str> = cmd.split_whitespace().skip(1).collect();
         let mut name_idx: Option<usize> = None;
@@ -169,23 +179,31 @@ impl CodyApi {
         {
             let name = parts[ni + 1..vi].join(" ");
             let value = parts.get(vi + 1).copied().unwrap_or("");
-            if name.eq_ignore_ascii_case("threads") {
+            if name.eq_ignore_ascii_case("hash") {
+                if let Ok(n) = value.parse::<usize>() {
+                    self.engine.set_hash_size_mb(n);
+                }
+            } else if name.eq_ignore_ascii_case("threads") {
                 if let Ok(n) = value.parse::<usize>() {
                     self.engine.set_num_threads(n.max(1));
                 }
-            } else if name.eq_ignore_ascii_case("verbose") || name.eq_ignore_ascii_case("verbosE") {
-                // Accept "true"/"false" (case-insensitive) to toggle runtime verbose logging.
+            } else if name.eq_ignore_ascii_case("ponder") {
                 let enable = value.eq_ignore_ascii_case("true");
-                VERBOSE.store(enable, Ordering::Relaxed);
+                self.limits.ponder = enable;
             } else if name.eq_ignore_ascii_case("verbose") {
-                // Fallback for oddly cased names
                 let enable = value.eq_ignore_ascii_case("true");
                 VERBOSE.store(enable, Ordering::Relaxed);
+            }
+        } else if let Some(ni) = name_idx {
+            // Handle buttons (no value field)
+            let name = parts[ni + 1..].join(" ");
+            if name.eq_ignore_ascii_case("clear hash") {
+                self.engine.clear_state();
             }
         }
     }
 
-    fn handle_isready(&mut self, out: &mut impl Write) {
+    pub fn handle_isready(&mut self, out: &mut impl Write) {
         self.writeln_and_log(out, "readyok");
     }
 
@@ -248,7 +266,7 @@ impl CodyApi {
         self.current_pos = pos;
     }
 
-    fn handle_go(&mut self, cmd: &str, out: &mut impl Write) {
+    pub fn handle_go(&mut self, cmd: &str, out: &mut impl Write) {
         self.stop.store(false, Ordering::Relaxed);
         self.limits = self.parse_go_limits(cmd);
         // Debug trace: announce parsed limits so UIs / logs can see we've started
@@ -277,7 +295,7 @@ impl CodyApi {
         self.writeln_and_log(out, &format!("bestmove {}", bm_str));
     }
 
-    fn parse_go_limits(&self, cmd: &str) -> GoLimits {
+    pub(crate) fn parse_go_limits(&self, cmd: &str) -> GoLimits {
         let mut limits = GoLimits::default();
         let mut it = cmd.split_whitespace().skip(1).peekable();
 
@@ -321,7 +339,7 @@ impl CodyApi {
         limits
     }
 
-    fn handle_bench(&mut self, _cmd: &str, out: &mut impl Write) {
+    pub fn handle_bench(&mut self, _cmd: &str, out: &mut impl Write) {
         let depth = 4;
 
         // Clone into a Vec so we can sort
@@ -372,7 +390,7 @@ impl CodyApi {
         out.flush().unwrap();
     }
 
-    fn handle_newgame(&mut self, _out: &mut impl Write) {
+    pub fn handle_newgame(&mut self, _out: &mut impl Write) {
         self.current_pos = Position::default();
         self.limits = GoLimits::default();
         self.stop.store(false, Ordering::Relaxed);

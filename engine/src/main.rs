@@ -1,10 +1,9 @@
 // src/main.rs
 #![allow(non_snake_case)]
 
-mod api;
-
 use bitboard::position::Position;
 use engine::VERBOSE;
+use engine::api::uciapi::CodyApi;
 use engine::util;
 use std::env;
 
@@ -39,7 +38,7 @@ fn main() {
             }
         }
 
-        let api = api::uciapi::CodyApi::new();
+        let api = CodyApi::new();
         api.run();
     }
 }
