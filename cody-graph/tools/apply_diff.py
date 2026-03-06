@@ -504,7 +504,12 @@ def apply_diff(state: dict) -> dict:
             error_msg = "No unified diff found in LLM response."
             print(f"[cody-graph] [DIAG] ERROR - {error_msg}", flush=True)
             _save_diagnostic(logs_dir, "diff_extraction_failed", last_reply)
-            result = {**state, "status": "pending", "last_output": error_msg}
+            result = {
+                **state,
+                "status": "pending",
+                "last_output": error_msg,
+                "last_command": "apply_diff_no_diff",
+            }
             print("[cody-graph] apply_diff: END (no diff)", flush=True)
             return result
 
