@@ -19,7 +19,7 @@ class CodyState(TypedDict):
     clippy_has_syntax_error: Optional[bool]  # critical syntax error flag
     # Multi-phase orchestration
     current_phase: str            # "clippy", "refactoring", "performance", "UCIfeatures"
-    phases_todo: List[str]        # remaining phases to execute
+    phase_pool: dict              # available phases with weights {phase_name: weight}
     phases_completed: List[str]   # completed phases
     phase_iteration: int          # iteration count within current phase
     attempted_warnings: List[str] # warnings already attempted (to avoid retry loops)

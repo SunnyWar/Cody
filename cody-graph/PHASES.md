@@ -1,6 +1,6 @@
 # Multi-Phase Orchestration Guide
 
-The cody-graph system now supports multi-phase orchestration. This allows the system to progress through multiple improvement phases (clippy, refactor, performance, features) automatically.
+The cody-graph system now supports multi-phase orchestration with **weighted random phase selection**. This allows the system to progress through multiple improvement phases (clippy, refactor, performance, features) using a probabilistic approach that favors high-value phases.
 
 > **Note:** CLI phase names (e.g., `python main.py refactor`) are aliases for internal phase names used in configuration files (e.g., `"refactoring"` in config.json). See [Running Multi-Phase Orchestration](#running-multi-phase-orchestration) for the complete CLI command reference.
 
@@ -9,16 +9,24 @@ The cody-graph system now supports multi-phase orchestration. This allows the sy
 ### State Management
 The `CodyState` now tracks:
 - `current_phase` - Which phase is executing
-- `phases_todo` - Remaining phases to execute
+- `phase_pool` - Available phases with their weights (dict mapping phase_name -> weight)
 - `phases_completed` - Phases that have successfully completed
 - `phase_iteration` - Iteration counter within current phase
+
+### Phase Selection Strategy
+Phases are selected using **weighted random selection**:
+- Each phase has a weight determining its selection probability
+- Higher weights = more likely to be selected
+- `performance` and `ELOGain` phases have 5x higher weights (5.0) than default phases (1.0)
+- When a phase completes, it's removed from the pool and a new phase is randomly selected
+- If a phase fails with nothing to do, it can be selected again later (randomly)
 
 ### Graph Flow
 ```
 START → route_phase → [clippy: run_clippy] → [fix loop] → run_build → run_tests → phase_complete
                     └─[other phases] → clippy_agent → [fix loop] → run_build → run_tests → phase_complete
                                                                                               ↓
-                                                              [more phases?] → route_phase (next phase)
+                                                              [more phases?] → route_phase (randomly selected next phase)
                                                                               ↓
                                                               [no more] → END
 ```
@@ -207,9 +215,12 @@ After orchestration completes, the final state is saved to `orchestrator_state.j
 
 ```json
 {
-  "current_phase": "clippy",
+  "current_phase": "performance",
   "phases_completed": ["clippy"],
-  "phases_todo": ["refactoring", "performance"],
+  "phase_pool": {
+    "refactoring": 1.0,
+    "ELOGain": 5.0
+  },
   "phase_iteration": 3,
   "status": "ok",
   "last_update": "2026-03-03T12:34:56.789012"
@@ -218,6 +229,7 @@ After orchestration completes, the final state is saved to `orchestrator_state.j
 
 This allows:
 - Tracking which phases have completed
+- Viewing remaining phases in the pool with their weights
 - Resuming from interruption points
 - Analyzing orchestration progress
 
