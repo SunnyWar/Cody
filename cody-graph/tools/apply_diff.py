@@ -549,6 +549,7 @@ def apply_diff(state: dict) -> dict:
                     "last_diff": diff_content,
                     "last_command": "apply_diff",
                     "current_warning_signature": None,  # Clear after successful apply
+                    "repair_attempts": 0,  # Reset for new patch
                 }
                 print("[cody-graph] apply_diff: END (ok)", flush=True)
                 return result_state
@@ -583,6 +584,7 @@ def apply_diff(state: dict) -> dict:
                 "last_diff": diff_content,
                 "last_command": "apply_diff",
                 "current_warning_signature": None,  # Clear after successful apply
+                "repair_attempts": 0,  # Reset for new patch
             }
             print("[cody-graph] apply_diff: END (ok)", flush=True)
             return result_state

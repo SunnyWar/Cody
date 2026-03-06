@@ -398,6 +398,20 @@ def clippy_agent(state: CodyState) -> CodyState:
     snippet = _read_context_snippet(repo_path, file_path, line_no)
 
     context_parts = []
+    
+    # Check if we're in a build repair attempt
+    repair_attempt_num = int(state.get("repair_attempts", 0) or 0)
+    is_build_repair = state.get("last_command") == "cargo_build" and repair_attempt_num > 0
+    
+    if is_build_repair:
+        context_parts.append(
+            f"BUILD REPAIR MODE (Attempt #{repair_attempt_num}):\n"
+            f"The previous code change caused the build to fail. "
+            f"The build error is shown below. "
+            f"Generate a minimal fix that resolves the build error while keeping the intended change. "
+            f"Do NOT revert the entire change - instead, fix the compiler error."
+        )
+    
     if is_test_repair:
         changed_files = state.get("changed_files", []) or []
         context_parts.append(
