@@ -22,6 +22,8 @@ pub struct CodyApi {
     engine: Engine<SimpleMoveGen, MaterialEvaluator>,
     pub current_pos: Position,
     limits: GoLimits,
+    ponder_enabled: bool,
+    pondering_active: Arc<AtomicBool>,
     stop: Arc<AtomicBool>, // for future: stop support
     // Optional log file for UCI diagnostics (IN/OUT)
     log: Option<File>,
@@ -41,6 +43,8 @@ impl CodyApi {
             engine,
             current_pos: Position::default(),
             limits: GoLimits::default(),
+            ponder_enabled: false,
+            pondering_active: Arc::new(AtomicBool::new(false)),
             stop: Arc::new(AtomicBool::new(false)),
             log,
         }
@@ -54,6 +58,7 @@ impl CodyApi {
     pub fn run(self) {
         let stdin = io::stdin();
         let stop_flag = self.stop.clone();
+        let pondering_active = self.pondering_active.clone();
         let (tx, rx) = mpsc::channel::<String>();
         let worker = std::thread::spawn(move || {
             self.run_worker(rx);
@@ -64,6 +69,9 @@ impl CodyApi {
                 Err(_) => break,
             };
             if cmd == "stop" || cmd == "quit" {
+                stop_flag.store(true, Ordering::Relaxed);
+            }
+            if cmd == "ponderhit" && pondering_active.load(Ordering::Relaxed) {
                 stop_flag.store(true, Ordering::Relaxed);
             }
             if tx.send(cmd.clone()).is_err() {
@@ -143,10 +151,7 @@ impl CodyApi {
             .map(|n| n.get())
             .unwrap_or(1);
 
-        self.writeln_and_log(
-            out,
-            &format!("option name Hash type spin default 16 min 1 max 1024"),
-        );
+        self.writeln_and_log(out, "option name Hash type spin default 16 min 1 max 1024");
         self.writeln_and_log(out, "option name Clear Hash type button");
         self.writeln_and_log(
             out,
@@ -189,7 +194,7 @@ impl CodyApi {
                 }
             } else if name.eq_ignore_ascii_case("ponder") {
                 let enable = value.eq_ignore_ascii_case("true");
-                self.limits.ponder = enable;
+                self.ponder_enabled = enable;
             } else if name.eq_ignore_ascii_case("verbose") {
                 let enable = value.eq_ignore_ascii_case("true");
                 VERBOSE.store(enable, Ordering::Relaxed);
@@ -269,6 +274,12 @@ impl CodyApi {
     pub fn handle_go(&mut self, cmd: &str, out: &mut impl Write) {
         self.stop.store(false, Ordering::Relaxed);
         self.limits = self.parse_go_limits(cmd);
+        // Respect runtime ponder option for "go ponder" handling.
+        if !self.ponder_enabled {
+            self.limits.ponder = false;
+        }
+        self.pondering_active
+            .store(self.limits.ponder, Ordering::Relaxed);
         // Debug trace: announce parsed limits so UIs / logs can see we've started
         // handling go
         if VERBOSE.load(Ordering::Relaxed) {
@@ -281,11 +292,16 @@ impl CodyApi {
         let max_depth = self.limits.depth.unwrap_or(64);
         NODE_COUNT.store(0, Ordering::Relaxed);
 
-        let time_budget = self.limits.movetime_ms;
+        let time_budget = if self.limits.ponder {
+            None
+        } else {
+            self.limits.movetime_ms
+        };
 
         let (bm, _sc) =
             self.engine
                 .search(&self.current_pos, max_depth, time_budget, Some(&*self.stop));
+        self.pondering_active.store(false, Ordering::Relaxed);
 
         let bm_str = if bm.is_null() {
             "0000".to_string()
@@ -331,8 +347,17 @@ impl CodyApi {
             limits.movetime_ms = Some(budget);
         }
 
-        // Fallback: if still no limits and not infinite, use a sensible default
-        if limits.depth.is_none() && limits.movetime_ms.is_none() && !limits.infinite {
+        // In ponder mode with no explicit depth/movetime, think until stop/ponderhit.
+        if limits.ponder && limits.depth.is_none() && limits.movetime_ms.is_none() {
+            limits.infinite = true;
+        }
+
+        // Fallback: if still no limits and not infinite/ponder, use a sensible default
+        if limits.depth.is_none()
+            && limits.movetime_ms.is_none()
+            && !limits.infinite
+            && !limits.ponder
+        {
             limits.movetime_ms = Some(1000); // 1 second default for bare "go" command
         }
 
@@ -393,6 +418,7 @@ impl CodyApi {
     pub fn handle_newgame(&mut self, _out: &mut impl Write) {
         self.current_pos = Position::default();
         self.limits = GoLimits::default();
+        self.pondering_active.store(false, Ordering::Relaxed);
         self.stop.store(false, Ordering::Relaxed);
         // If your engine has a TT/history, clear them:
         self.engine.clear_state();
