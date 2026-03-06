@@ -48,7 +48,7 @@ impl Position {
     /// because `Position: Copy`), this helper sits on the hottest path of the
     /// search.  Forcing cross-crate inlining removes the call overhead when it
     /// is executed millions of times per second.
-    #[inline(always)]
+    
     pub fn copy_from(&mut self, other: &Position) {
         *self = *other;
     }
