@@ -213,7 +213,7 @@ CODY_ELO_TIME_CONTROL = "10+0.1"    # Fast time control
 ⏳ MEDIUM:        analyze_statistics.py + commit_or_revert.py (5-6 hours)
 ```
 
-See `ELOGAIN_QUICKSTART.md` for testing and `ELO_GAIN_PHASE.md` for architecture.
+See `cody-graph/PHASES.md` for execution details and `cody-graph/ELO_GAIN_PHASE.md` for architecture.
 
 ## Contributing
 
