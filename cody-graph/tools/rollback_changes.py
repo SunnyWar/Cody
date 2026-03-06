@@ -29,42 +29,62 @@ def rollback_changes(state: CodyState) -> CodyState:
 
     print("[cody-graph] [DIAG] Attempting to rollback previous changes...", flush=True)
     patch_path = os.path.join(repo, "rollback.patch")
+    
     try:
-        with open(patch_path, "w") as f:
-            f.write(diff_content)
-        print("[cody-graph] [DIAG] Wrote patch file for rollback", flush=True)
-
-        if shutil.which("git"):
-            print("[cody-graph] [DIAG] Using 'git apply -R'", flush=True)
+        # Try to extract which files were modified from the patch
+        modified_files = []
+        if diff_content:
+            for line in diff_content.splitlines():
+                if line.startswith("--- a/") or line.startswith("+++ b/"):
+                    # Extract file path
+                    file_part = line[6:]  # Skip "--- a/" or "+++ b/"
+                    if file_part and file_part not in modified_files:
+                        modified_files.append(file_part)
+        
+        print(f"[cody-graph] [DIAG] Files to restore: {modified_files}", flush=True)
+        
+        # Use git checkout to restore files to HEAD state (more reliable than reverse patch)
+        if shutil.which("git") and modified_files:
+            print("[cody-graph] [DIAG] Using 'git checkout HEAD' to restore files", flush=True)
+            # Checkout each file individually to HEAD
             result = subprocess.run(
-                ["git", "apply", "-R", "--whitespace=nowarn", "rollback.patch"],
+                ["git", "checkout", "HEAD"] + modified_files,
                 cwd=repo,
                 capture_output=True,
                 text=True,
             )
-        elif shutil.which("patch"):
-            print("[cody-graph] [DIAG] Using 'patch -R'", flush=True)
+        elif shutil.which("git"):
+            # Fallback: restore all modified files
+            print("[cody-graph] [DIAG] Using 'git checkout HEAD' for all modified files", flush=True)
             result = subprocess.run(
-                ["patch", "-R", "-p1", "-i", "rollback.patch"],
+                ["git", "checkout", "HEAD"],
                 cwd=repo,
                 capture_output=True,
                 text=True,
             )
         else:
-            print("[cody-graph] [DIAG] ERROR: No patching tool found", flush=True)
-            return {
-                **state,
-                "last_output": "No patching tool found (git or patch).",
-                "last_command": original_command,  # Preserve original context
-                "status": "error",
-            }
-
+            # Last resort: try reverse patch
+            print("[cody-graph] [DIAG] git not available, trying patch -R", flush=True)
+            with open(patch_path, "w", encoding="utf-8") as f:
+                f.write(diff_content)
+            if shutil.which("patch"):
+                result = subprocess.run(
+                    ["patch", "-R", "-p1", "-i", "rollback.patch"],
+                    cwd=repo,
+                    capture_output=True,
+                    text=True,
+                )
+            else:
+                result = subprocess.CompletedProcess(
+                    args=[], returncode=1, stdout="", stderr="No tools available for rollback"
+                )
+        
         print(f"[cody-graph] [DIAG] Rollback exit code: {result.returncode}", flush=True)
         
         # Save rollback output
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         rollback_log = os.path.join(logs_dir, f"{timestamp}_rollback_output.txt")
-        with open(rollback_log, "w") as f:
+        with open(rollback_log, "w", encoding="utf-8") as f:
             f.write(f"Exit code: {result.returncode}\n")
             f.write(f"Stdout: {result.stdout}\n")
             f.write(f"Stderr: {result.stderr}\n")

@@ -383,9 +383,22 @@ def clippy_agent(state: CodyState) -> CodyState:
         
         # Format issues for LLM and store signature of current warning
         all_issues_text = "\n\n".join(f"ISSUE {idx + 1}:\n{issue['text']}" for idx, issue in enumerate(all_issues))
-        file_path = all_issues[0]["file"] if all_issues else first_file
-        line_no = all_issues[0]["line"] if all_issues else first_line
-        current_warning_signature = all_issues[0].get("signature") if all_issues else None
+        
+        # Find first issue with valid signature (not None)
+        first_issue_with_sig = None
+        for issue in all_issues:
+            if issue.get("signature"):
+                first_issue_with_sig = issue
+                break
+        
+        if first_issue_with_sig:
+            file_path = first_issue_with_sig["file"]
+            line_no = first_issue_with_sig["line"]
+            current_warning_signature = first_issue_with_sig.get("signature")
+        else:
+            file_path = all_issues[0]["file"] if all_issues else first_file
+            line_no = all_issues[0]["line"] if all_issues else first_line
+            current_warning_signature = None
         
         print(f"[cody-graph] [DIAG] Current warning signature: {current_warning_signature}", flush=True)
     else:
@@ -472,7 +485,7 @@ def clippy_agent(state: CodyState) -> CodyState:
         os.makedirs(logs_dir, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         response_file = os.path.join(logs_dir, f"{timestamp}_llm_response.txt")
-        with open(response_file, "w") as f:
+        with open(response_file, "w", encoding="utf-8") as f:
             f.write("=== SYSTEM PROMPT ===\n")
             f.write(system_prompt + "\n\n")
             f.write("=== INPUT CONTEXT ===\n")
@@ -482,15 +495,21 @@ def clippy_agent(state: CodyState) -> CodyState:
         print(f"[cody-graph] [DIAG] Saved LLM response: {response_file}", flush=True)
         
     except Exception as e:
-        error_msg = f"Clippy agent API error: {e}"
+        # Safely encode error message to avoid charmap issues on Windows
+        try:
+            error_msg = f"Clippy agent API error: {e}"
+            error_msg_safe = error_msg.encode('ascii', 'replace').decode('ascii')
+        except Exception:
+            error_msg_safe = "Clippy agent API error: (encoding error in exception)"
+        
         result_state = {
             **state,
             "last_command": "clippy_llm_think",
-            "last_output": error_msg,
+            "last_output": error_msg_safe,
             "status": "error",
             "phase_iteration": current_iteration + 1,
         }
-        print(f"[cody-graph] clippy_agent: ERROR - {error_msg}", flush=True)
+        print(f"[cody-graph] clippy_agent: ERROR - {error_msg_safe}", flush=True)
         print("[cody-graph] clippy_agent: END (error)", flush=True)
         return result_state
 
