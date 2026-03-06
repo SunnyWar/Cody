@@ -46,6 +46,24 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         self.num_threads = n.max(1);
     }
 
+    /// Set the hash table size in megabytes. The actual size will be
+    /// rounded to the nearest power of 2 for efficient indexing.
+    /// Size is clamped between 1 MB and 1024 MB.
+    pub fn set_hash_size_mb(&mut self, size_mb: usize) {
+        let size_mb = size_mb.clamp(1, 1024);
+        // Each TTEntry is approximately 24 bytes
+        let entry_size = std::mem::size_of::<crate::core::tt::TTEntry>();
+        let target_entries = (size_mb * 1024 * 1024) / entry_size;
+
+        // Find nearest power of 2
+        let mut size_pow2 = 1;
+        while (1usize << size_pow2) < target_entries && size_pow2 < 30 {
+            size_pow2 += 1;
+        }
+
+        self.tt = Some(crate::core::tt::TranspositionTable::new(size_pow2));
+    }
+
     /// Iterative deepening search. max_depth is the maximum search depth to
     /// perform. Optionally accepts a time budget in milliseconds and a stop
     /// flag reference. If the time budget is provided the search will stop

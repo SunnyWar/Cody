@@ -1,4 +1,5 @@
 // src/lib.rs
+pub mod api;
 pub mod core;
 pub mod search;
 pub mod test_data;
