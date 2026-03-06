@@ -24,12 +24,21 @@ impl Arena {
         Some(idx)
     }
 
+    /// Returns an immutable reference to the node at `idx`.
+    /// Bounds‐check is removed in release builds for maximum speed.
+    #[inline(always)]
     pub fn get(&self, idx: usize) -> &Node {
-        &self.nodes[idx]
+        debug_assert!(idx < self.nodes.len());
+        // SAFETY: caller guarantees `idx` is in-bounds.
+        unsafe { self.nodes.get_unchecked(idx) }
     }
 
+    /// Mutable counterpart of `get`.
+    #[inline(always)]
     pub fn get_mut(&mut self, idx: usize) -> &mut Node {
-        &mut self.nodes[idx]
+        debug_assert!(idx < self.nodes.len());
+        // SAFETY: caller guarantees `idx` is in-bounds and we have &mut self.
+        unsafe { self.nodes.get_unchecked_mut(idx) }
     }
 
     pub fn reset(&mut self) {
@@ -37,8 +46,9 @@ impl Arena {
     }
 
     pub fn get_pair_mut(&mut self, idx1: usize, idx2: usize) -> (&Node, &mut Node) {
-        assert!(idx1 != idx2);
+        debug_assert!(idx1 != idx2);
         let ptr = self.nodes.as_mut_ptr();
+        // SAFETY: indices are distinct and in-bounds by caller contract.
         unsafe { (&*ptr.add(idx1), &mut *ptr.add(idx2)) }
     }
 }

@@ -76,10 +76,24 @@ def _sanitize_diff(diff_content: str) -> str:
     cleaned = []
     numbered_hunk_line = re.compile(r"^([ +\-])\s*\d+\s\|\s?(.*)$")
     for line in lines:
+        # Some model outputs include a bare "@@" separator between hunks; drop it.
+        if line.strip() == "@@":
+            continue
+
+        # Convert "diff --git a/x b/x" to unified diff headers expected by parser.
+        if line.startswith("diff --git "):
+            parts = line.split()
+            if len(parts) >= 4:
+                left = parts[2]
+                right = parts[3]
+                old_file = left[2:] if left.startswith("a/") else left
+                new_file = right[2:] if right.startswith("b/") else right
+                cleaned.append(f"--- a/{old_file}")
+                cleaned.append(f"+++ b/{new_file}")
+            continue
         # Strip common git diff metadata lines that break strict unified parsing.
         if (
-            line.startswith("diff --git ")
-            or line.startswith("index ")
+            line.startswith("index ")
             or line.startswith("new file mode ")
             or line.startswith("deleted file mode ")
             or line.startswith("similarity index ")
@@ -509,15 +523,27 @@ def apply_diff(state: dict) -> dict:
     state["logs_dir"] = logs_dir
     
     messages = state.get("messages", [])
-    if not messages:
-        error_msg = "No messages found."
+    last_output = state.get("last_output", "")
+
+    # Performance/UCIfeatures agents place LLM output in state.last_output,
+    # while clippy flow uses state.messages.
+    if last_output and len(last_output) > 100:
+        last_reply = last_output
+        reply_source = "last_output"
+    elif messages:
+        last_reply = messages[-1]["content"]
+        reply_source = "messages"
+    else:
+        error_msg = "No messages or LLM output found."
         result = {**state, "status": "error", "last_output": error_msg}
         print(f"[cody-graph] apply_diff: ERROR - {error_msg}", flush=True)
         print("[cody-graph] apply_diff: END (error)", flush=True)
         return result
 
-    last_reply = messages[-1]["content"]
-    print(f"[cody-graph] [DIAG] LLM response length: {len(last_reply)} chars", flush=True)
+    print(
+        f"[cody-graph] [DIAG] LLM response length: {len(last_reply)} chars (source={reply_source})",
+        flush=True,
+    )
     _save_diagnostic(logs_dir, "llm_response_raw", last_reply)
 
     # Extract the diff block (looking for ```diff ... ``` or raw diff headers)

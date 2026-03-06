@@ -50,28 +50,14 @@ impl Position {
         self.pieces.all()
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn our_pieces(&self, us: Color) -> BitBoardMask {
-        let mut acc = BitBoardMask::empty();
-        acc |= self
-            .pieces
-            .get(Piece::from_parts(us, Some(PieceKind::Pawn)));
-        acc |= self
-            .pieces
-            .get(Piece::from_parts(us, Some(PieceKind::Knight)));
-        acc |= self
-            .pieces
-            .get(Piece::from_parts(us, Some(PieceKind::Bishop)));
-        acc |= self
-            .pieces
-            .get(Piece::from_parts(us, Some(PieceKind::Rook)));
-        acc |= self
-            .pieces
-            .get(Piece::from_parts(us, Some(PieceKind::Queen)));
-        acc |= self
-            .pieces
-            .get(Piece::from_parts(us, Some(PieceKind::King)));
-        acc
+        // Branch-free lookup: map `Color` → `OccupancyKind` via a tiny table.
+        // The discriminants of `Color::{White, Black}` are guaranteed to be
+        // 0 and 1 respectively, so `us as usize` is always in-bounds.
+        const OCC_KIND_BY_COLOR: [OccupancyKind; 2] = [OccupancyKind::White, OccupancyKind::Black];
+
+        self.occupancy[OCC_KIND_BY_COLOR[us as usize]]
     }
 
     pub fn can_castle_kingside(&self, color: Color) -> bool {

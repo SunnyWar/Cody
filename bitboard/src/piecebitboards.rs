@@ -16,14 +16,31 @@ impl PieceBitboards {
     }
 
     #[inline]
+    /// Hot-path accessor: force inlining, strip runtime checks and
+    /// bounds-checks.
+    #[inline(always)]
     pub fn get(&self, piece: Piece) -> BitBoardMask {
-        assert!(piece != Piece::None, "Tried to get() a None piece");
-        self.inner[piece.index()]
+        // Keep the correctness guard in debug builds without polluting release code.
+        debug_assert!(piece != Piece::None, "Tried to get() a None piece");
+
+        // Safety: `piece.index()` is guaranteed to be within the bounds of `inner`
+        // for all valid `Piece` discriminants.
+        unsafe { *self.inner.get_unchecked(piece.index()) }
     }
 
-    #[inline]
+    /// Fast union of every piece bitboard.
+    ///
+    /// A manual `for` loop avoids the iterator/closure machinery used by
+    /// `fold`, giving the compiler freedom to unroll/vectorise this fixed
+    /// 12-element scan.  This shaves a few instructions off a call that is
+    /// executed millions of times per search.
+    #[inline(always)]
     pub fn all(&self) -> BitBoardMask {
-        BitBoardMask(self.inner.iter().fold(0u64, |acc, bb| acc | bb.0))
+        let mut acc = 0u64;
+        for bb in &self.inner {
+            acc |= bb.0;
+        }
+        BitBoardMask(acc)
     }
 
     pub fn get_mut(&mut self, piece: Piece) -> &mut BitBoardMask {
