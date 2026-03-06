@@ -254,6 +254,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 ) -> i32 {
     NODE_COUNT.fetch_add(1, Ordering::Relaxed);
     update_seldepth(ply);
+    let original_alpha = alpha;
     // Check stop flag and time budget at each node
     if let Some(stopflag) = stop
         && stopflag.load(Ordering::Relaxed)
@@ -288,17 +289,22 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     let key = arena.get(ply).position.zobrist_hash();
 
     // Probe TT if provided (tt is always present in serial path; for parallel we
-    // pass a local dummy). Exact entries with a non-null move are verified
-    // against the current legal move list before being trusted.
+    // pass a local dummy).
+    // - Exact entries with a non-null move are verified against the generated legal
+    //   move list before being trusted.
+    // - Lower/Upper entries returned by `probe` are already window-validated and
+    //   can be used as immediate cutoffs.
     let mut tt_exact_needs_verify: Option<crate::core::tt::TTEntry> = None;
     {
-        if let Some(e) = tt.probe(key, remaining as i8, alpha, beta)
-            && e.flag == crate::core::tt::TTFlag::Exact as u8
-        {
-            if e.best_move.is_null() {
+        if let Some(e) = tt.probe(key, remaining as i8, alpha, beta) {
+            if e.flag == crate::core::tt::TTFlag::Exact as u8 {
+                if e.best_move.is_null() {
+                    return e.value;
+                }
+                tt_exact_needs_verify = Some(e);
+            } else {
                 return e.value;
             }
-            tt_exact_needs_verify = Some(e);
         }
     }
 
@@ -445,15 +451,20 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 
         // Beta cutoff
         if alpha >= beta {
-            // Fail-high at beta stores a lower bound.
-            tt.store(key, alpha, remaining as i8, TTFlag::Lower, m);
             heuristics.update_on_beta_cutoff(ply, m, remaining);
             break;
         }
     }
 
-    // store final result in TT as exact
-    tt.store(key, best_score, remaining as i8, TTFlag::Exact, best_move);
+    // Store TT result with correct bound semantics from the original window.
+    let tt_flag = if best_score <= original_alpha {
+        TTFlag::Upper
+    } else if best_score >= beta {
+        TTFlag::Lower
+    } else {
+        TTFlag::Exact
+    };
+    tt.store(key, best_score, remaining as i8, tt_flag, best_move);
 
     best_score
 }

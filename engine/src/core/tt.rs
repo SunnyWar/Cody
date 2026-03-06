@@ -118,3 +118,56 @@ impl TranspositionTable {
         ((used * 1000) / sample_size) as u16
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::TTFlag;
+    use super::TranspositionTable;
+    use bitboard::mov::ChessMove;
+
+    #[test]
+    fn test_probe_exact_returns_entry() {
+        let mut tt = TranspositionTable::new(4);
+        let key = 0x1234_5678_9abc_def0;
+        let bm = ChessMove::null();
+        tt.store(key, 42, 6, TTFlag::Exact, bm);
+
+        let hit = tt.probe(key, 4, -100, 100).expect("expected exact hit");
+        assert_eq!(hit.value, 42);
+        assert_eq!(hit.flag, TTFlag::Exact as u8);
+    }
+
+    #[test]
+    fn test_probe_lower_respects_beta_cutoff() {
+        let mut tt = TranspositionTable::new(4);
+        let key = 0x1111_2222_3333_4444;
+        tt.store(key, 250, 5, TTFlag::Lower, ChessMove::null());
+
+        assert!(tt.probe(key, 5, -100, 200).is_some());
+        assert!(tt.probe(key, 5, -100, 300).is_none());
+    }
+
+    #[test]
+    fn test_probe_upper_respects_alpha_cutoff() {
+        let mut tt = TranspositionTable::new(4);
+        let key = 0x9999_aaaa_bbbb_cccc;
+        tt.store(key, -180, 5, TTFlag::Upper, ChessMove::null());
+
+        assert!(tt.probe(key, 5, -100, 100).is_some());
+        assert!(tt.probe(key, 5, -250, 100).is_none());
+    }
+
+    #[test]
+    fn test_store_keeps_deeper_entry() {
+        let mut tt = TranspositionTable::new(2);
+        let key = 0x55aa_55aa_55aa_55aa;
+        tt.store(key, 10, 8, TTFlag::Exact, ChessMove::null());
+        tt.store(key, 99, 4, TTFlag::Exact, ChessMove::null());
+
+        let hit = tt
+            .probe(key, 8, -1_000, 1_000)
+            .expect("expected stored entry");
+        assert_eq!(hit.value, 10);
+        assert_eq!(hit.depth, 8);
+    }
+}
