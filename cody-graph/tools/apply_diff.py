@@ -590,6 +590,14 @@ def apply_diff(state: dict) -> dict:
             os.remove(patch_path)
             if ok:
                 print(f"[cody-graph] apply_diff: SUCCESS - {message}", flush=True)
+                
+                # Mark warning as attempted since we successfully fixed it
+                warning_signature = state.get("current_warning_signature")
+                attempted = state.get("attempted_warnings", []) or []
+                if warning_signature and warning_signature not in attempted:
+                    attempted = attempted + [warning_signature]
+                    print(f"[cody-graph] [DIAG] Marking successfully-applied warning as attempted: {warning_signature[:80]}", flush=True)
+                
                 result_state = {
                     **state,
                     "status": "pending",
@@ -598,6 +606,7 @@ def apply_diff(state: dict) -> dict:
                     "last_command": "apply_diff",
                     "current_warning_signature": None,  # Clear after successful apply
                     "repair_attempts": 0,  # Reset for new patch
+                    "attempted_warnings": attempted,  # Mark as attempted!
                 }
                 print("[cody-graph] apply_diff: END (ok)", flush=True)
                 return result_state
@@ -625,6 +634,14 @@ def apply_diff(state: dict) -> dict:
         if result.returncode == 0:
             success_msg = "Patch applied successfully."
             print(f"[cody-graph] apply_diff: SUCCESS - {success_msg}", flush=True)
+            
+            # Mark warning as attempted since we successfully fixed it
+            warning_signature = state.get("current_warning_signature")
+            attempted = state.get("attempted_warnings", []) or []
+            if warning_signature and warning_signature not in attempted:
+                attempted = attempted + [warning_signature]
+                print(f"[cody-graph] [DIAG] Marking successfully-applied warning as attempted: {warning_signature[:80]}", flush=True)
+            
             result_state = {
                 **state,
                 "status": "pending",
@@ -633,6 +650,7 @@ def apply_diff(state: dict) -> dict:
                 "last_command": "apply_diff",
                 "current_warning_signature": None,  # Clear after successful apply
                 "repair_attempts": 0,  # Reset for new patch
+                "attempted_warnings": attempted,  # Mark as attempted!
             }
             print("[cody-graph] apply_diff: END (ok)", flush=True)
             return result_state
@@ -642,6 +660,14 @@ def apply_diff(state: dict) -> dict:
             if ok:
                 success_msg = f"Patch applied via Python fallback after external tool failure: {fallback_msg}"
                 print(f"[cody-graph] apply_diff: SUCCESS - {success_msg}", flush=True)
+                
+                # Mark warning as attempted since we successfully fixed it
+                warning_signature = state.get("current_warning_signature")
+                attempted = state.get("attempted_warnings", []) or []
+                if warning_signature and warning_signature not in attempted:
+                    attempted = attempted + [warning_signature]
+                    print(f"[cody-graph] [DIAG] Marking successfully-applied warning as attempted: {warning_signature[:80]}", flush=True)
+                
                 result_state = {
                     **state,
                     "status": "pending",
@@ -649,6 +675,8 @@ def apply_diff(state: dict) -> dict:
                     "last_diff": diff_content,
                     "last_command": "apply_diff",
                     "current_warning_signature": None,  # Clear after successful apply
+                    "repair_attempts": 0,  # Reset for new patch
+                    "attempted_warnings": attempted,  # Mark as attempted!
                 }
                 print("[cody-graph] apply_diff: END (ok)", flush=True)
                 return result_state
@@ -664,6 +692,14 @@ def apply_diff(state: dict) -> dict:
                 patches = _parse_unified_diff(diff_content)
                 if _is_patch_already_applied(repo_path, patches):
                     print("[cody-graph] [DIAG] Patch appears to be already applied - treating as success", flush=True)
+                    
+                    # IMPORTANT: Mark the warning as attempted since the fix is already in place
+                    warning_signature = state.get("current_warning_signature")
+                    attempted = state.get("attempted_warnings", []) or []
+                    if warning_signature and warning_signature not in attempted:
+                        attempted = attempted + [warning_signature]
+                        print(f"[cody-graph] [DIAG] Marking already-applied warning as attempted: {warning_signature[:80]}", flush=True)
+                    
                     result_state = {
                         **state,
                         "status": "pending",
@@ -672,6 +708,7 @@ def apply_diff(state: dict) -> dict:
                         "last_command": "apply_diff",
                         "current_warning_signature": None,
                         "repair_attempts": 0,
+                        "attempted_warnings": attempted,  # Mark as attempted!
                     }
                     print("[cody-graph] apply_diff: END (already applied)", flush=True)
                     return result_state

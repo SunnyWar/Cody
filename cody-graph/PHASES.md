@@ -1,6 +1,8 @@
 # Multi-Phase Orchestration Guide
 
-The cody-graph system now supports multi-phase orchestration. This allows the system to progress through multiple improvement phases (clippy fixes, refactoring, performance, UCIfeatures) automatically.
+The cody-graph system now supports multi-phase orchestration. This allows the system to progress through multiple improvement phases (clippy, refactor, performance, features) automatically.
+
+> **Note:** CLI phase names (e.g., `python main.py refactor`) are aliases for internal phase names used in configuration files (e.g., `"refactoring"` in config.json). See [Running Multi-Phase Orchestration](#running-multi-phase-orchestration) for the complete CLI command reference.
 
 ## Current Architecture
 
@@ -82,11 +84,22 @@ def after_phase_complete(state: CodyState):
 
 ## Running Multi-Phase Orchestration
 
-### Run with Default Phases
+### Run All Configured Phases
 ```powershell
-python .\cody-graph\main.py
+python .\cody-graph\main.py all
 ```
 This loads phases from `cody-agent/config.json` and executes them in order.
+
+### Run a Single Phase
+```powershell
+# CLI phase names (aliases for internal phase names)
+python .\cody-graph\main.py clippy      # Fix compiler warnings
+python .\cody-graph\main.py refactor    # Code quality improvements  
+python .\cody-graph\main.py features    # New features/UCI commands
+python .\cody-graph\main.py performance # Speed optimization
+python .\cody-graph\main.py elogain     # Chess ELO improvements
+python .\cody-graph\main.py tests       # Test coverage & docs
+```
 
 ### Check Phase Progress
 Monitor console output for phase transitions:

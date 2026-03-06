@@ -17,13 +17,21 @@ Diagnostics:     .cody_logs/ (generated)
 ### Run the Automated Improvement Agent
 
 ```powershell
-# From repo root
-python .\cody-graph\main.py
+# From repo root - run all configured phases
+python .\cody-graph\main.py all
+
+# Or run a single phase
+python .\cody-graph\main.py clippy      # Fix compiler warnings
+python .\cody-graph\main.py refactor    # Code quality improvements
+python .\cody-graph\main.py features    # New features/UCI commands
+python .\cody-graph\main.py performance # Speed optimization
+python .\cody-graph\main.py elogain     # Chess ELO improvements
+python .\cody-graph\main.py tests       # Test coverage & docs
 ```
 
 This will:
 1. Load configured phases from `cody-agent/config.json`
-2. Execute improvements sequentially (currently: clippy fixes)
+2. Execute improvements sequentially (or run a single phase)
 3. Generate diagnostic logs in `.cody_logs/`
 4. Save progress to `orchestrator_state.json`
 
@@ -143,11 +151,22 @@ run_clippy (detect warnings)
 ## Phase System (Multi-Phase Ready)
 
 ### Available Phases
-- **clippy** - Fixes compiler warnings (always runs first)
-- **refactoring** - Code quality improvements
-- **features** - New capabilities  
-- **performance** - Speed optimizations on critical paths (uses o3)
-- **ELOGain** - Chess-specific improvements for playing strength (uses o3)
+
+**CLI Phase Names** (use these in commands):
+- `clippy` - Fixes compiler warnings (always runs first)
+- `refactor` - Code quality improvements
+- `features` - New capabilities / UCI commands
+- `performance` - Speed optimizations on critical paths (uses o3)
+- `elogain` - Chess-specific improvements for playing strength (uses o3)
+- `tests` - Unit test coverage & documentation
+
+**Internal Phase Names** (in config files and code):
+- `clippy` → CLI: `clippy`
+- `refactoring` → CLI: `refactor`
+- `UCIfeatures` → CLI: `features`
+- `performance` → CLI: `performance`
+- `ELOGain` → CLI: `elogain`
+- `unit_tests_docs` → CLI: `tests`
 - **unit_tests_docs** - Test coverage and documentation
 
 ### Run Specific Phases
