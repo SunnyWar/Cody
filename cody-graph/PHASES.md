@@ -142,10 +142,31 @@ If any step fails:
 - **Stop**: No more quality improvements found
 
 ### Performance Phase
-- **Input**: Benchmark results, profiling data
-- **Process**: Optimize hot paths, reduce allocations, improve critical algorithms
-- **Model**: o3 (complex optimization reasoning)
-- **Stop**: Diminishing returns (<5% improvement)
+**Goal:** Maximize chess engine speed while maintaining correctness.
+
+**Strategy Suite:** 8 targeted optimization techniques, each iteration applies one:
+1. Single-function optimization (eliminate clones, redundant computation, cache misses)
+2. Bitboard operation optimization (hot path microoptimizations for move generation)
+3. File-level analysis with recommendations (strategic multi-point analysis)
+4. Cache locality improvement (optimize memory access patterns and struct layout)
+5. Hot path allocation reduction (eliminate heap allocations from critical paths)
+6. Branching and prediction optimization (reduce CPU pipeline stalls)
+7. Inline hot functions (mark functions for inlining to reduce call overhead)
+8. Loop optimization and iteration (hoist invariants, combine passes, unroll)
+
+**Target Files** (in priority order):
+- `bitboard/src/movegen.rs` - Move generation (1M+ calls/search)
+- `bitboard/src/position.rs` - Apply move operation (1M+ calls/search)
+- `bitboard/src/attack.rs` - Attack detection (500K+ calls/search)
+- `engine/src/search/engine.rs` - Search loop
+- `engine/src/core/arena.rs` - Arena allocation patterns
+- `bitboard/src/piecebitboards.rs` - Piece bitboard operations
+
+**Process**: Iterate through all 8 strategies, applying one at a time. Each change is validated with build+test.
+**Expected Range**: 1-15% gain per successful strategy; 10-20% combined improvement typical.
+**Model**: o3 (requires complex optimization reasoning)
+
+For detailed information, see [PERFORMANCE_STRATEGIES.md](../PERFORMANCE_STRATEGIES.md).
 
 ### ELOGain Phase
 - **Input**: Engine playing strength metrics, evaluation scores
