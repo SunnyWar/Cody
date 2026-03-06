@@ -10,6 +10,12 @@ A design for a cache-friendly, allocation-free search that scales from single-th
 
 ---
 
+> ⚠️ **FUTURE DESIGN — Not Yet Implemented**
+> 
+> This document describes the **planned multi-threaded architecture**. The current implementation is single-threaded. Features described here (work-stealing queues, per-thread arenas, concurrent expansion) do not yet exist in the codebase. This is aspirational design for performance scaling. When implementing, refer to the current [engine/src/core/arena.rs](engine/src/core/arena.rs) and [engine/src/search/engine.rs](engine/src/search/engine.rs) for baseline APIs.
+
+---
+
 ## Goals and Constraints
 
 - **Primary goal:** Max throughput on move generation and child expansion with excellent cache locality and zero heap allocation in the hot path.

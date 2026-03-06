@@ -102,6 +102,8 @@ python .\cody-graph\main.py elogain     # Chess ELO improvements
 python .\cody-graph\main.py tests       # Test coverage & docs
 ```
 
+> **Note**: CLI aliases (`features`, `refactor`, `elogain`, `tests`) map to internal phase names in `cody-agent/config.json` (`UCIfeatures`, `refactoring`, `ELOGain`, `unit_tests_docs`). Both forms are interchangeable.
+
 ### Check Phase Progress
 Monitor console output for phase transitions:
 ```
@@ -136,7 +138,10 @@ If any step fails:
 - **Output**: All clippy pedantic warnings eliminated
 - **Note**: Only the clippy phase runs clippy checks. Other phases skip clippy and use the LLM agent directly.
 
-### Refactoring Phase (Planned)
+### Refactoring Phase (Planned — Not Yet Fully Implemented)
+
+⚠️ **Status**: Infrastructure exists, but system prompts and decision criteria not finalized.
+
 - **Input**: Code quality metrics
 - **Process**: Improve structure, readability, maintainability
 - **Stop**: No more quality improvements found
@@ -179,7 +184,10 @@ For detailed information, see [PERFORMANCE_STRATEGIES.md](../PERFORMANCE_STRATEG
   - Move ordering improvements
   - Endgame knowledge
 
-### UCIfeatures Phase
+### UCIfeatures Phase (Planned — Infrastructure Ready)
+
+⚠️ **Status**: Phase scaffolding complete, feature prioritization pending.
+
 - **Input**: UCI protocol requirements and missing commands
 - **Process**: Implement missing UCI commands or extend existing ones for full tournament-grade UCI support
 - **Priority**: Commands most used in tournaments (time management, search options, info output)

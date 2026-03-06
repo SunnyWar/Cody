@@ -18,7 +18,18 @@ Unlike traditional engines (like Stockfish) or NNUE-based engines tuned by human
 - **Debugging:** Human intervention is limited to providing error logs back to the AI for self-correction.
 - **Goal:** Achieve a competitive ELO rating with a codebase birthed from prompt engineering.
 
-## 🛠 Features (Current Status)
+## � Getting Started
+
+**First time here?** Start with these resources:
+1. **[README.md](README.md)** ← You are here (project overview)
+2. **[START_HERE.md](START_HERE.md)** — Recent fixes and how to verify them
+3. **[QUICKREF.md](QUICKREF.md)** — Command cheatsheet while working
+4. **[cody-graph/PHASES.md](cody-graph/PHASES.md)** — Details on each orchestration phase
+5. **[architecture.md](architecture.md)** — Deep dive into design and implementation
+
+For running the improvement orchestrator, see **"Automated Improvement System"** section below.
+
+## �🛠 Features (Current Status)
 
 - **Bitboard representation:** High-performance board state management with `PieceBitboards` and occupancy maps.
 - **UCI protocol support:** Works with standard chess GUIs like Arena, Cute Chess, or Scid vs. PC.
@@ -56,8 +67,14 @@ Additional phases can be enabled in `cody-agent/config.json`:
 
 The codebase is organized as a **Cargo workspace** with two crates:
 
-- **`bitboard/`** — Pure bitboard logic, move generation, position manipulation (no external deps)
-- **`engine/`** — Search, evaluation, UCI API, benchmarks (uses `criterion`, `rayon`)
+- **`bitboard/`** — Pure bitboard logic, move generation, position manipulation
+  - No external dependencies (self-contained, safe to reuse)
+  - Exports: `Position`, `Move`, `MoveGen`, bitboard utilities
+  
+- **`engine/`** — Search engine, evaluation, UCI API, benchmarks
+  - Depends on: `bitboard` (path dependency in `Cargo.toml`)
+  - External dependencies: `criterion` (benchmarking), `once_cell`, `rayon`, `crossbeam`
+  - Exports: UCI API, search algorithms, benchmark harness
 
 Key constraints:
 - **Fixed-block allocator**: Search nodes are preallocated in an arena, no heap allocations in hot path
@@ -90,18 +107,32 @@ set OPENAI_API_KEY=sk-...
 Configure in `cody-agent/config.json`:
 ```json
 {
-   "model": "gpt-5.1",
+   "model": "gpt-4-turbo",
    "models": {
-      "clippy": "gpt-5-mini",
-      "refactoring": "gpt-5.1",
-      "features": "gpt-5.1",
-      "performance": "o3",
-      "ELOGain": "o3",
-      "unit_tests_docs": "gpt-5-nano"
+      "clippy": "gpt-4-mini",
+      "refactoring": "gpt-4-turbo",
+      "features": "gpt-4-turbo",
+      "performance": "gpt-4-turbo",
+      "ELOGain": "gpt-4-turbo",
+      "unit_tests_docs": "gpt-4-mini"
    },
    "use_local": false
 }
 ```
+
+> **Note on Model Names**: The model names above are current defaults. Adjust them to match your OpenAI API availability. For complex optimization tasks (performance, ELOGain), use your most capable model. For simpler tasks (clippy), faster/cheaper models work well.
+
+### Configuration Fields Explained
+
+- **`model`**: Default model (kept for future compatibility)
+- **`models.<phase>`**: Per-phase model override
+  - `clippy`: Fastest/cheapest model (fixing obvious warnings)
+  - `refactoring`: General-purpose model (code quality improvements)
+  - `features`: General-purpose model (new capabilities)
+  - `performance`: Capable model (deep optimization analysis)
+  - `ELOGain`: Capable model (chess-specific improvements)
+  - `unit_tests_docs`: Faster/cheaper model (straightforward test generation)
+- **`use_local`**: If `true`, use local Ollama instead of OpenAI API
 
 ### Run the Orchestrator
 
@@ -118,6 +149,16 @@ python cody-graph/main.py performance # Speed optimization
 python cody-graph/main.py elogain     # Chess ELO improvements
 python cody-graph/main.py tests       # Test coverage & docs
 ```
+
+### Monitoring Orchestration Progress
+
+The orchestrator logs diagnostic information to `.cody_logs/` with timestamped files:
+- `*_clippy_output.txt` — Compiler warnings detected
+- `*_llm_response.txt` — LLM reasoning and proposed fixes
+- `*_diff_extracted.log` — Applied patches
+- `*_build_output.txt` — Build/test results
+
+Check progress in real-time or review diagnostics afterward. See [DIAGNOSTICS.md](cody-graph/DIAGNOSTICS.md) for detailed log reference.
 
 This will:
 1. Load configured phases from `cody-agent/config.json`
@@ -195,14 +236,21 @@ v1.0.0 - Too weak to measure
 - ✅ Time management
 - ✅ Automated clippy warning fixes
 
-**In Progress:**
+**In Progress / Recently Completed:**
 - 🔄 Improving move ordering heuristics
 - 🔄 Optimizing search performance
+- ✅ **Automated ELO improvement loop** with SPRT testing and version management
+- ✅ **Multi-phase orchestration system** for diverse improvement strategies
+- ✅ **Diagnostic logging** with detailed LLM interaction tracking
 
-**Planned:**
-- [ ] Refactoring phase (code quality)
-- [ ] Performance optimization phase
-- [ ] Additional feature implementations
+**Not Yet Implemented (Infrastructure Ready):**
+- ⏳ Refactoring phase (code quality — agent ready, decision criteria not finalized)
+- ⏳ Additional UCI feature expansion (infrastructure ready, feature backlog pending)
+
+**Completed Phases:**
+- ✅ Clippy fixes — Automated compiler warning elimination
+- ✅ ELO gain — Systematic chess engine strength improvements
+- ✅ Unit test generation — Position-specific regression test creation
 
 ## 📝 License
 
