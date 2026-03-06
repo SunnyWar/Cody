@@ -97,4 +97,24 @@ impl TranspositionTable {
         e.best_move = best_move;
         self.entries[idx] = e;
     }
+
+    /// Approximate hash occupancy in per-mille, similar to UCI `hashfull`.
+    ///
+    /// We sample up to the first 1000 entries to keep this cheap enough for
+    /// periodic info reporting.
+    pub fn hashfull_per_mille(&self) -> u16 {
+        let sample_size = self.entries.len().min(1000);
+        if sample_size == 0 {
+            return 0;
+        }
+
+        let used = self
+            .entries
+            .iter()
+            .take(sample_size)
+            .filter(|e| e.key != 0)
+            .count();
+
+        ((used * 1000) / sample_size) as u16
+    }
 }

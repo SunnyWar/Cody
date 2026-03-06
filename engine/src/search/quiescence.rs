@@ -37,6 +37,8 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
     beta: i32,
     qsearch_depth: usize,
 ) -> i32 {
+    crate::search::core::update_seldepth(ply);
+
     // Prevent infinite qsearch recursion
     if qsearch_depth >= MAX_QSEARCH_DEPTH {
         return evaluator.evaluate(&arena.get(ply).position);

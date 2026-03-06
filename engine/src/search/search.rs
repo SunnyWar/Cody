@@ -5,7 +5,9 @@ use crate::search::core::INF;
 use crate::search::core::MATE_SCORE;
 use crate::search::core::NODE_COUNT;
 use crate::search::core::SearchHeuristics;
+use crate::search::core::current_seldepth;
 use crate::search::core::order_moves_with_heuristics;
+use crate::search::core::reset_seldepth;
 use crate::search::core::search_node_with_arena;
 use crate::search::evaluator::Evaluator;
 use bitboard::mov::ChessMove;
@@ -103,6 +105,8 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
 
         // Iterative deepening loop
         for d in 1..=max_depth {
+            reset_seldepth(0);
+
             // Prepare arena and root position for this depth
             self.arena.reset();
             self.arena.get_mut(0).position.copy_from(root);
@@ -214,7 +218,11 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                         } else {
                             best_move.to_string()
                         };
-                        crate::search::core::print_uci_info(d, best_score, &pv_str, elapsed);
+                        let seldepth = current_seldepth().max(d);
+                        let hashfull = tt_ref.hashfull_per_mille();
+                        crate::search::core::print_uci_info(
+                            d, seldepth, best_score, &pv_str, elapsed, hashfull,
+                        );
                         last_info_time = now;
                     }
                 }
@@ -289,8 +297,21 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             } else {
                 last_completed_move.to_string()
             };
+            let seldepth = current_seldepth().max(d);
+            let hashfull = self
+                .tt
+                .as_ref()
+                .map(|tt| tt.hashfull_per_mille())
+                .unwrap_or(0);
             // Always print info at the end of each depth
-            crate::search::core::print_uci_info(d, last_completed_score, &pv_str, elapsed);
+            crate::search::core::print_uci_info(
+                d,
+                seldepth,
+                last_completed_score,
+                &pv_str,
+                elapsed,
+                hashfull,
+            );
 
             // Stop if time budget exceeded or external stop requested
             if let Some(mt) = time_budget_ms

@@ -409,44 +409,45 @@ impl CodyApi {
         // Clone into a Vec so we can sort
         let mut cases: Vec<&TestCase> = TEST_CASES.iter().collect();
         cases.sort_by(|a, b| a.name.cmp(b.name)); // alphabetical by name
+        let total_cases = cases.len();
 
         let mut total_nodes = 0u64;
         let start_all = std::time::Instant::now();
 
-        // Precompute width for alignment
-        let name_width = cases.iter().map(|tc| tc.name.len()).max().unwrap_or(0);
+        for (idx, pos) in cases.into_iter().enumerate() {
+            if idx > 0 {
+                self.writeln_and_log(out, "");
+            }
 
-        for pos in cases {
-            NODE_COUNT.store(0, Ordering::Relaxed);
-
-            let start = std::time::Instant::now();
-            let _score = self.engine.search(&pos.position(), depth, None, None);
-            let elapsed = start.elapsed().as_secs_f64();
-            let nodes = NODE_COUNT.load(Ordering::Relaxed);
-            total_nodes += nodes;
-            let nps = (nodes as f64 / elapsed) as u64;
-
-            self.writeln_and_log(out, "-----------------------------------------------");
-            self.writeln_and_log(out, pos.fen);
-            self.writeln_and_log(out, &format!("Best move: {}", _score.0));
             self.writeln_and_log(
                 out,
-                &format!(
-                    "{:<width$}  nodes {:>10}  time {:>5}  nps {:>10}",
-                    pos.name,
-                    nodes,
-                    format!("{:.0}", elapsed * 1000.0),
-                    nps,
-                    width = name_width
-                ),
+                &format!("Position: {}/{} ({})", idx + 1, total_cases, pos.fen),
             );
+
+            NODE_COUNT.store(0, Ordering::Relaxed);
+
+            let (bm, _score) = self.engine.search(&pos.position(), depth, None, None);
+            let nodes = NODE_COUNT.load(Ordering::Relaxed);
+            total_nodes += nodes;
+
+            let bm_str = if bm.is_null() {
+                "(none)".to_string()
+            } else {
+                bm.to_string()
+            };
+            self.writeln_and_log(out, &format!("bestmove {}", bm_str));
 
             out.flush().unwrap();
         }
 
         let total_time_ms = (start_all.elapsed().as_secs_f64() * 1000.0) as u64;
-        let total_nps = (total_nodes as f64 / (total_time_ms as f64 / 1000.0)) as u64;
+        let total_nps = if total_time_ms == 0 {
+            total_nodes
+        } else {
+            (total_nodes as f64 / (total_time_ms as f64 / 1000.0)) as u64
+        };
 
+        self.writeln_and_log(out, "");
         self.writeln_and_log(out, "===========================");
         self.writeln_and_log(out, &format!("Total time (ms) : {total_time_ms}"));
         self.writeln_and_log(out, &format!("Nodes searched  : {total_nodes}"));
