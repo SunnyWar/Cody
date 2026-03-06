@@ -22,11 +22,12 @@ Unlike traditional engines (like Stockfish) or NNUE-based engines tuned by human
 
 **First time here?** Start with these resources:
 1. **[README.md](README.md)** <- You are here (project overview)
-2. **[QUICKREF.md](QUICKREF.md)** - Command cheatsheet while working
-3. **[cody-graph/PHASES.md](cody-graph/PHASES.md)** - Details on each orchestration phase
-4. **[cody-graph/DIAGNOSTICS.md](cody-graph/DIAGNOSTICS.md)** - Troubleshooting and logs
-5. **[cody-graph/ELO_GAIN_PHASE.md](cody-graph/ELO_GAIN_PHASE.md)** - ELO loop details
-6. **[architecture.md](architecture.md)** - Deep dive into design and implementation
+2. **[ROADMAP.md](ROADMAP.md)** - Current priorities and completed milestones
+3. **[QUICKREF.md](QUICKREF.md)** - Command cheatsheet while working
+4. **[cody-graph/PHASES.md](cody-graph/PHASES.md)** - Details on each orchestration phase
+5. **[cody-graph/DIAGNOSTICS.md](cody-graph/DIAGNOSTICS.md)** - Troubleshooting and logs
+6. **[cody-graph/ELO_GAIN_PHASE.md](cody-graph/ELO_GAIN_PHASE.md)** - ELO loop details
+7. **[architecture.md](architecture.md)** - Deep dive into design and implementation
 
 For running the improvement orchestrator, see **"Automated Improvement System"** section below.
 
