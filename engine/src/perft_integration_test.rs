@@ -134,10 +134,10 @@ mod perft_integration_tests {
 
             // Only apply disambiguation filters for non-pawns
             if moving_kind != PieceKind::Pawn {
-                if let Some(file) = dis_file
-                    && mv.from().file_char() != file
-                {
-                    continue;
+                if let Some(file) = dis_file {
+                    if mv.from().file_char() != file {
+                        continue;
+                    }
                 }
                 if let Some(rank) = dis_rank
                     && mv.from().rank_char() != rank
