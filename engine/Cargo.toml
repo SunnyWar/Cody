@@ -1,9 +1,6 @@
 [package]
 name = "engine"
 version = "1.3.2"
-
-[lints]
-rust.clippy = "warn"
 edition = "2024"
 
 [[bin]]
