@@ -10,6 +10,10 @@ from tools.run_fmt import run_fmt
 from tools.apply_diff import apply_diff
 from tools.rollback_changes import rollback_changes
 
+
+def _retry_node_for_phase(state: CodyState) -> str:
+    return "run_clippy" if state.get("current_phase", "clippy") == "clippy" else "clippy_agent"
+
 def route_phase(state: CodyState) -> str:
     """
     Route to the appropriate phase agent based on current_phase.
@@ -69,6 +73,9 @@ def after_clippy_agent(state: CodyState):
     if state["status"] == "error":
         return END
     if state["status"] == "ok":
+        # Refactoring may complete with "no beneficial strategy found" and no patch.
+        if state.get("current_phase") == "refactoring" and state.get("last_command") == "clippy_llm_think":
+            return "phase_complete"
         # All warnings attempted, proceed to build
         return "run_build"
     return "apply_diff"
@@ -76,10 +83,11 @@ def after_clippy_agent(state: CodyState):
 def after_apply_diff(state: CodyState):
     if state["status"] == "error":
         return END
-    # If diff was rejected (too many lines, etc.), loop back to clippy to try next warning
-    if state.get("last_command") == "apply_diff_rejected":
-        print("[cody-graph] [DIAG] Diff rejected, running clippy again for next warning", flush=True)
-        return "run_clippy"
+    # If diff was rejected or no diff was generated, retry according to phase workflow.
+    if state.get("last_command") in ("apply_diff_rejected", "apply_diff_no_diff"):
+        retry_node = _retry_node_for_phase(state)
+        print(f"[cody-graph] [DIAG] Diff unavailable/rejected; retrying via {retry_node}", flush=True)
+        return retry_node
     # After applying a patch, immediately validate that it compiles
     print("[cody-graph] [DIAG] Patch applied, validating with build", flush=True)
     return "run_build"
@@ -144,18 +152,20 @@ def after_rollback(state: CodyState):
             if warning_sig not in attempted:
                 attempted = attempted + [warning_sig]
         
+        retry_node = _retry_node_for_phase(state)
         print(
             "[cody-graph] [DIAG] Rollback after repair failure; "
-            "retrying clippy for next warning",
+            f"retrying via {retry_node}",
             flush=True,
         )
-        return "run_clippy"
+        return retry_node
     
     # If rollback happened after apply_diff (malformed patch, etc.):
     # Mark the warning as attempted but keep retrying
     if state.get("last_command") == "apply_diff":
-        print("[cody-graph] [DIAG] Rollback after failed patch application, retrying clippy", flush=True)
-        return "run_clippy"
+        retry_node = _retry_node_for_phase(state)
+        print(f"[cody-graph] [DIAG] Rollback after failed patch application, retrying via {retry_node}", flush=True)
+        return retry_node
     
     # Otherwise, end the phase (critical build failure during validation)
     return END

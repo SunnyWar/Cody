@@ -10,6 +10,46 @@ from state.cody_state import CodyState
 
 DEFAULT_MAX_PHASE_ITERATIONS = 8
 
+REFRACTORING_STRATEGIES = [
+    {
+        "name": "Move functions/structs across files",
+        "instruction": (
+            "Move one cohesive function or struct (and any tightly coupled helpers) to another existing "
+            "file or to one new file to reduce complexity and improve organization. Keep behavior identical. "
+            "If no clear organizational improvement exists, do not change code and explain why."
+        ),
+    },
+    {
+        "name": "Replace with more idiomatic Rust",
+        "instruction": (
+            "Replace one small code section with a more idiomatic Rust equivalent while keeping behavior "
+            "functionally identical. If no meaningful idiomatic improvement exists, do not change code and explain why."
+        ),
+    },
+    {
+        "name": "Rename for expressiveness",
+        "instruction": (
+            "Rename one function, variable, or type to make intent clearer and more expressive, updating all "
+            "affected references. Keep behavior identical. If no meaningful naming improvement exists, do not "
+            "change code and explain why."
+        ),
+    },
+    {
+        "name": "Reorder functions for readability",
+        "instruction": (
+            "Reorder functions within a single file to improve logical flow and readability without changing behavior. "
+            "If no readability gain is clear, do not change code and explain why."
+        ),
+    },
+    {
+        "name": "Add intent comments",
+        "instruction": (
+            "Add concise, high-value comments that explain intent of non-obvious blocks/functions. Do not add noisy "
+            "comments. If comments would not materially improve understanding, do not change code and explain why."
+        ),
+    },
+]
+
 def _load_config(repo_path: str) -> dict:
     config_override = os.environ.get("CODY_CONFIG_PATH")
     if config_override:
@@ -155,6 +195,27 @@ def _read_file_head_snippet(repo_path: str, file_path: str, max_lines: int = 120
         rel_path = full_path
     return f"File: {rel_path}\n" + "\n".join(numbered)
 
+def _collect_refactoring_file_context(repo_path: str, max_files: int = 3, max_lines: int = 140) -> str:
+    root = Path(repo_path)
+    if not root.exists():
+        return ""
+
+    candidates: list[Path] = []
+    for pattern in ("engine/src/**/*.rs", "bitboard/src/**/*.rs"):
+        candidates.extend(p for p in root.glob(pattern) if p.is_file())
+
+    if not candidates:
+        return ""
+
+    # Prefer larger files first for richer refactoring opportunities.
+    ranked = sorted(candidates, key=lambda p: (-p.stat().st_size, str(p)))
+    snippets: list[str] = []
+    for path in ranked[:max_files]:
+        block = _read_file_head_snippet(repo_path, str(path), max_lines=max_lines)
+        if block:
+            snippets.append(block)
+    return "\n\n".join(snippets)
+
 def _get_system_prompt_for_phase(phase: str) -> str:
     """Get the system prompt appropriate for the current phase."""
     phase_prompts = {
@@ -197,6 +258,9 @@ CONTEXT PROVIDED:
 
 STRICT RULES:
 - Only refactor without changing behavior.
+- You will receive one specific REFACTORING STRATEGY in the user context. Follow that strategy exactly.
+- If the strategy would not produce a clear, measurable improvement, do NOT change code.
+- When not changing code, respond with a short explanation only (no diff block).
 - Respond with a short explanation of the refactoring.
 - Provide changes as a UNIFIED DIFF in a markdown diff block.
 - REQUIRED FORMAT EXAMPLE:
@@ -320,13 +384,32 @@ def clippy_agent(state: CodyState) -> CodyState:
 
     config = _load_config(state.get("repo_path", ""))
     current_iteration = int(state.get("phase_iteration", 0) or 0)
-    max_iterations = int(config.get("max_phase_iterations", DEFAULT_MAX_PHASE_ITERATIONS))
+    config_max_iterations = int(config.get("max_phase_iterations", DEFAULT_MAX_PHASE_ITERATIONS))
+    if phase == "refactoring":
+        max_iterations = len(REFRACTORING_STRATEGIES)
+    else:
+        max_iterations = config_max_iterations
     print(
         f"[cody-graph] [DIAG] Phase iteration: {current_iteration}/{max_iterations}",
         flush=True,
     )
 
     if current_iteration >= max_iterations:
+        if phase == "refactoring":
+            done_msg = (
+                "Refactoring phase completed: all configured refactor strategies were attempted "
+                "and no clearly beneficial change was found."
+            )
+            result_state = {
+                **state,
+                "last_command": "clippy_llm_think",
+                "last_output": done_msg,
+                "status": "ok",
+            }
+            print(f"[cody-graph] [DIAG] {done_msg}", flush=True)
+            print("[cody-graph] clippy_agent: END (no-op complete)", flush=True)
+            return result_state
+
         error_msg = (
             f"Phase '{phase}' exceeded max iterations ({max_iterations}). "
             "Stopping to avoid non-deterministic infinite retry loop."
@@ -346,119 +429,137 @@ def clippy_agent(state: CodyState) -> CodyState:
 
     system_prompt = _get_system_prompt_for_phase(phase)
     
-    # We inject the last tool output (either code or clippy errors) 
-    # as a "user" message so the LLM reacts to the current state.
+    # We inject relevant context as a "user" message so the LLM reacts to current state.
     last_output = state.get("last_output", "") or ""
-    all_issues_raw, first_file, first_line = _extract_all_issues(last_output)
-    
-    # Filter out already-attempted warnings
     attempted = state.get("attempted_warnings", []) or []
     current_warning_signature = None
-    
-    is_test_repair = state.get("last_command") == "cargo_test" and int(state.get("consecutive_test_failures", 0) or 0) > 0
-
-    if isinstance(all_issues_raw, list):
-        # New format: list of dicts
-        all_issues = _filter_attempted_issues(all_issues_raw, attempted)
-        
-        if not all_issues and all_issues_raw and not is_test_repair:
-            # All warnings have been attempted - mark phase as complete
-            print(f"[cody-graph] [DIAG] All clippy warnings have been attempted. Moving to next phase.", flush=True)
-            result_state = {
-                **state,
-                "last_command": "clippy_llm_think",
-                "last_output": "All clippy warnings have been attempted.",
-                "status": "ok",
-                "phase_iteration": current_iteration + 1,
-            }
-            print("[cody-graph] clippy_agent: END (all warnings attempted)", flush=True)
-            return result_state
-        
-        print(f"[cody-graph] [DIAG] Filtered issues: {len(all_issues)}/{len(all_issues_raw)} (attempted: {len(attempted)})", flush=True)
-        
-        # Debug: show all filtered issues
-        for idx, issue in enumerate(all_issues):
-            sig = issue.get("signature") or "(no signature)"
-            print(f"[cody-graph] [DIAG] Issue {idx + 1}: file={issue.get('file')}, line={issue.get('line')}, sig={sig[:80]}", flush=True)
-        
-        # Format issues for LLM and store signature of current warning
-        all_issues_text = "\n\n".join(f"ISSUE {idx + 1}:\n{issue['text']}" for idx, issue in enumerate(all_issues))
-        
-        # Find first issue with valid signature (not None)
-        first_issue_with_sig = None
-        for issue in all_issues:
-            if issue.get("signature"):
-                first_issue_with_sig = issue
-                break
-        
-        if first_issue_with_sig:
-            file_path = first_issue_with_sig["file"]
-            line_no = first_issue_with_sig["line"]
-            current_warning_signature = first_issue_with_sig.get("signature")
-        else:
-            file_path = all_issues[0]["file"] if all_issues else first_file
-            line_no = all_issues[0]["line"] if all_issues else first_line
-            current_warning_signature = None
-        
-        print(f"[cody-graph] [DIAG] Current warning signature: {current_warning_signature}", flush=True)
-    else:
-        # Old format or no issues
-        all_issues_text = all_issues_raw
-        file_path = first_file
-        line_no = first_line
-    
     repo_path = state.get("repo_path", "")
-    snippet = _read_context_snippet(repo_path, file_path, line_no)
+    file_path = None
+    line_no = None
 
-    context_parts = []
-    
-    # Check if we're in a build repair attempt
-    repair_attempt_num = int(state.get("repair_attempts", 0) or 0)
-    is_build_repair = state.get("last_command") == "cargo_build" and repair_attempt_num > 0
-    
-    if is_build_repair:
-        context_parts.append(
-            f"BUILD REPAIR MODE (Attempt #{repair_attempt_num}):\n"
-            f"The previous code change caused the build to fail. "
-            f"The build error is shown below. "
-            f"Generate a minimal fix that resolves the build error while keeping the intended change. "
-            f"Do NOT revert the entire change - instead, fix the compiler error."
+    if phase == "refactoring":
+        strategy = REFRACTORING_STRATEGIES[current_iteration]
+        print(
+            f"[cody-graph] [DIAG] Refactor strategy {current_iteration + 1}/{len(REFRACTORING_STRATEGIES)}: {strategy['name']}",
+            flush=True,
         )
-    
-    if is_test_repair:
-        changed_files = state.get("changed_files", []) or []
-        context_parts.append(
-            "TEST FAILURE REPAIR MODE:\n"
-            "A recent code change caused tests to fail. Decide whether the code change is valid and tests should be updated, "
-            "or whether tests found a real bug and code must be fixed. Make ONE minimal fix now."
-        )
-        context_parts.append("TEST OUTPUT:\n" + last_output)
-        if changed_files:
-            context_parts.append("CHANGED FILES:\n" + "\n".join(changed_files[:10]))
-            snippet_blocks: list[str] = []
-            for changed in changed_files[:2]:
-                block = _read_file_head_snippet(repo_path, changed, max_lines=120)
-                if block:
-                    snippet_blocks.append(block)
-            if snippet_blocks:
-                context_parts.append("CHANGED FILE CODE CONTEXT:\n\n" + "\n\n".join(snippet_blocks))
+        refactor_context = _collect_refactoring_file_context(repo_path)
+        context_parts = [
+            f"REFACTORING_STRATEGY ({current_iteration + 1}/{len(REFRACTORING_STRATEGIES)} - hardest_to_easiest): {strategy['name']}",
+            "TASK:\n" + strategy["instruction"],
+            "IMPORTANT:\nApply exactly one small refactor. If no real benefit is found, do not create a diff.",
+        ]
+        if refactor_context:
+            context_parts.append("RUST_CODE_CONTEXT:\n" + refactor_context)
+        current_context = {
+            "role": "user",
+            "content": "\n\n".join(context_parts),
+        }
+    else:
+        all_issues_raw, first_file, first_line = _extract_all_issues(last_output)
+        is_test_repair = state.get("last_command") == "cargo_test" and int(state.get("consecutive_test_failures", 0) or 0) > 0
 
-    if all_issues_text:
-        issue_count = all_issues_text.count("ISSUE ")
-        context_parts.append(f"ALL_CLIPPY_ISSUES ({issue_count} total):\n" + all_issues_text)
-        if issue_count > 1:
+        if isinstance(all_issues_raw, list):
+            # New format: list of dicts
+            all_issues = _filter_attempted_issues(all_issues_raw, attempted)
+
+            if not all_issues and all_issues_raw and not is_test_repair:
+                # All warnings have been attempted - mark phase as complete
+                print(f"[cody-graph] [DIAG] All clippy warnings have been attempted. Moving to next phase.", flush=True)
+                result_state = {
+                    **state,
+                    "last_command": "clippy_llm_think",
+                    "last_output": "All clippy warnings have been attempted.",
+                    "status": "ok",
+                    "phase_iteration": current_iteration + 1,
+                }
+                print("[cody-graph] clippy_agent: END (all warnings attempted)", flush=True)
+                return result_state
+
+            print(f"[cody-graph] [DIAG] Filtered issues: {len(all_issues)}/{len(all_issues_raw)} (attempted: {len(attempted)})", flush=True)
+
+            # Debug: show all filtered issues
+            for idx, issue in enumerate(all_issues):
+                sig = issue.get("signature") or "(no signature)"
+                print(f"[cody-graph] [DIAG] Issue {idx + 1}: file={issue.get('file')}, line={issue.get('line')}, sig={sig[:80]}", flush=True)
+
+            # Format issues for LLM and store signature of current warning
+            all_issues_text = "\n\n".join(f"ISSUE {idx + 1}:\n{issue['text']}" for idx, issue in enumerate(all_issues))
+
+            # Find first issue with valid signature (not None)
+            first_issue_with_sig = None
+            for issue in all_issues:
+                if issue.get("signature"):
+                    first_issue_with_sig = issue
+                    break
+
+            if first_issue_with_sig:
+                file_path = first_issue_with_sig["file"]
+                line_no = first_issue_with_sig["line"]
+                current_warning_signature = first_issue_with_sig.get("signature")
+            else:
+                file_path = all_issues[0]["file"] if all_issues else first_file
+                line_no = all_issues[0]["line"] if all_issues else first_line
+                current_warning_signature = None
+
+            print(f"[cody-graph] [DIAG] Current warning signature: {current_warning_signature}", flush=True)
+        else:
+            # Old format or no issues
+            all_issues_text = all_issues_raw
+            file_path = first_file
+            line_no = first_line
+
+        snippet = _read_context_snippet(repo_path, file_path, line_no)
+
+        context_parts = []
+
+        # Check if we're in a build repair attempt
+        repair_attempt_num = int(state.get("repair_attempts", 0) or 0)
+        is_build_repair = state.get("last_command") == "cargo_build" and repair_attempt_num > 0
+
+        if is_build_repair:
             context_parts.append(
-                "\nIMPORTANT: Multiple issues present. "
-                "Pick the SIMPLEST one that requires the FEWEST lines changed. "
-                "Make ONE incremental fix only."
+                f"BUILD REPAIR MODE (Attempt #{repair_attempt_num}):\n"
+                f"The previous code change caused the build to fail. "
+                f"The build error is shown below. "
+                f"Generate a minimal fix that resolves the build error while keeping the intended change. "
+                f"Do NOT revert the entire change - instead, fix the compiler error."
             )
-    if snippet:
-        context_parts.append("CODE_CONTEXT:\n" + snippet)
 
-    current_context = {
-        "role": "user",
-        "content": "\n\n".join(context_parts) if context_parts else "CLIPPY_OUTPUT:\n" + last_output,
-    }
+        if is_test_repair:
+            changed_files = state.get("changed_files", []) or []
+            context_parts.append(
+                "TEST FAILURE REPAIR MODE:\n"
+                "A recent code change caused tests to fail. Decide whether the code change is valid and tests should be updated, "
+                "or whether tests found a real bug and code must be fixed. Make ONE minimal fix now."
+            )
+            context_parts.append("TEST OUTPUT:\n" + last_output)
+            if changed_files:
+                context_parts.append("CHANGED FILES:\n" + "\n".join(changed_files[:10]))
+                snippet_blocks: list[str] = []
+                for changed in changed_files[:2]:
+                    block = _read_file_head_snippet(repo_path, changed, max_lines=120)
+                    if block:
+                        snippet_blocks.append(block)
+                if snippet_blocks:
+                    context_parts.append("CHANGED FILE CODE CONTEXT:\n\n" + "\n\n".join(snippet_blocks))
+
+        if all_issues_text:
+            issue_count = all_issues_text.count("ISSUE ")
+            context_parts.append(f"ALL_CLIPPY_ISSUES ({issue_count} total):\n" + all_issues_text)
+            if issue_count > 1:
+                context_parts.append(
+                    "\nIMPORTANT: Multiple issues present. "
+                    "Pick the SIMPLEST one that requires the FEWEST lines changed. "
+                    "Make ONE incremental fix only."
+                )
+        if snippet:
+            context_parts.append("CODE_CONTEXT:\n" + snippet)
+
+        current_context = {
+            "role": "user",
+            "content": "\n\n".join(context_parts) if context_parts else "CLIPPY_OUTPUT:\n" + last_output,
+        }
     
     print(f"[cody-graph] [DIAG] Context size: {len(current_context['content'])} chars", flush=True)
     print(f"[cody-graph] [DIAG] File with warning: {file_path}, line: {line_no}", flush=True)
