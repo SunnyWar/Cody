@@ -31,12 +31,18 @@ pub struct SearchHeuristics {
     history: [[i32; 64]; 64],
 }
 
-impl SearchHeuristics {
-    pub fn new() -> Self {
+impl Default for SearchHeuristics {
+    fn default() -> Self {
         Self {
             killer_moves: [[ChessMove::null(); 2]; MAX_SEARCH_PLY],
             history: [[0; 64]; 64],
         }
+    }
+}
+
+impl SearchHeuristics {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     fn score_move(&self, pos: &bitboard::position::Position, mv: &ChessMove, ply: usize) -> i32 {
@@ -80,11 +86,9 @@ impl SearchHeuristics {
             return;
         }
 
-        if ply < MAX_SEARCH_PLY {
-            if self.killer_moves[ply][0] != mv {
-                self.killer_moves[ply][1] = self.killer_moves[ply][0];
-                self.killer_moves[ply][0] = mv;
-            }
+        if ply < MAX_SEARCH_PLY && self.killer_moves[ply][0] != mv {
+            self.killer_moves[ply][1] = self.killer_moves[ply][0];
+            self.killer_moves[ply][0] = mv;
         }
 
         let bonus = (depth * depth) as i32;
