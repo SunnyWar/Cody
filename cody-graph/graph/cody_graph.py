@@ -85,7 +85,9 @@ def after_clippy(state: CodyState):
 
 def after_clippy_agent(state: CodyState):
     if state["status"] == "error":
-        if state.get("current_phase") in ("UCIfeatures", "performance"):
+        # All phases should continue to next phase on error (max iterations, etc.)
+        # Only truly critical errors (missing API key, etc.) should have stopped earlier
+        if state.get("current_phase") in ("clippy", "refactoring", "UCIfeatures", "performance"):
             return "phase_complete"
         return END
     if state["status"] == "ok":
@@ -104,6 +106,10 @@ def after_clippy_agent(state: CodyState):
 
 def after_apply_diff(state: CodyState):
     if state["status"] == "error":
+        # For single-change phases (UCIfeatures, performance), continue to next phase on error
+        if state.get("current_phase") in ("UCIfeatures", "performance", "refactoring"):
+            print(f"[cody-graph] [DIAG] apply_diff error in {state.get('current_phase')}, moving to next phase", flush=True)
+            return "phase_complete"
         return END
     # If diff was rejected or no diff was generated, retry according to phase workflow.
     if state.get("last_command") in ("apply_diff_rejected", "apply_diff_no_diff"):
@@ -161,6 +167,10 @@ def after_build(state: CodyState):
 def after_build_repair_attempt(state: CodyState):
     """After LLM generates a repair, apply it and try building again."""
     if state["status"] == "error":
+        # For single-change phases, continue to next phase if repair fails
+        if state.get("current_phase") in ("UCIfeatures", "performance", "refactoring"):
+            print(f"[cody-graph] [DIAG] Repair attempt failed in {state.get('current_phase')}, moving to next phase", flush=True)
+            return "phase_complete"
         return END
     if state["status"] == "ok":
         # All warnings attempted, move on
@@ -214,7 +224,12 @@ def after_rollback(state: CodyState):
         print(f"[cody-graph] [DIAG] Rollback after failed patch application, retrying via {retry_node}", flush=True)
         return retry_node
     
-    # Otherwise, end the phase (critical build failure during validation)
+    # For single-change phases with critical failures, move to next phase
+    if state.get("current_phase") in ("refactoring", "UCIfeatures", "performance"):
+        print(f"[cody-graph] [DIAG] Critical failure in {state.get('current_phase')}, moving to next phase", flush=True)
+        return "phase_complete"
+    
+    # Otherwise, end orchestration (critical build failure in clippy phase)
     return END
 
 def after_tests(state: CodyState):
