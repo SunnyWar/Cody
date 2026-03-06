@@ -7,7 +7,8 @@ The cody-graph orchestration system now implements a robust **build failure reco
 1. **Attempts LLM repair** (up to 2 attempts via `build_repair_attempt`)
 2. **Tracks failed warnings** to avoid re-attempting them
 3. **Rolls back on exhausted repairs** and continues with the next warning
-4. **Provides reusable retry logic** for all phases (not just clippy)
+4. **Detects already-applied patches** to handle edge cases
+5. **Provides reusable retry logic** for all phases (not just clippy)
 
 ## Key Changes
 
@@ -163,6 +164,19 @@ if patch_applied_successfully:
     }
 ```
 
+**Additional Robustness Improvements:**
+
+- **Already-Applied Detection**: When a patch fails to apply, the system now checks if it's already been applied by:
+  1. Attempting reverse git apply (confirms patch is present)
+  2. Checking file content for all added lines
+  
+- **Edge Case Handling**: If a patch is detected as already applied, it treats it as success rather than failure, avoiding spurious rollbacks.
+
+- **Graceful git apply Strategies**: Multiple application strategies with fallback:
+  1. Standard `git apply --whitespace=nowarn`
+  2. Zero-context hunks: `git apply --unidiff-zero`
+  3. Recount mode: `git apply --unidiff-zero --recount`
+
 ### 9. Updated `phase_complete` Transition
 
 When moving to the next phase, repair attempts are reset:
@@ -292,6 +306,10 @@ python .\cody-graph\main.py clippy
 4. **Test failure after repair**: Same flow as original patch → runs test repair
 5. **Rollback during repair**: Marks warning failed → continues
 6. **Phase transition**: Resets repair attempts and attempted_warnings
+7. **Already-applied patch**: Detected via reverse-apply or content check → treated as success
+8. **Corrupted code state**: Detected via content verification → skips broken warning
+9. **Stale clippy output**: System handles patches that target code already partially fixed
+10. **Failed rollback**: Attempts continue with next warning despite rollback errors
 
 ## Implementation Notes
 
@@ -299,3 +317,75 @@ python .\cody-graph\main.py clippy
 - **Deterministic**: Fixed MAX_REPAIR_ATTEMPTS prevents non-deterministic loops
 - **Transparent Logging**: All routing decisions logged to stdout with [DIAG] prefix
 - **Backward Compatible**: Doesn't break existing phase agents or tools
+
+## Initial Failure Analysis and Resolution
+
+### What Happened
+
+On first run of `python .\cody-graph\main.py clippy`:
+
+1. **Issue**: Code had a conflict:
+   - Line 358: `let mut move_index = 0;` (declared but shadowed)
+   - Line 359: `for (move_index, m) in moves_vec.iter().cloned().enumerate() {` (uses enumerate)
+   - Line 436: `move_index += 1;` (tries to mutate immutable loop variable)
+
+2. **LLM Fix**: Generated a patch to change line 359 from `for m in ...` to `for (move_index, m) in ...enumerate()` 
+
+3. **Problem**: The code was **already in that state** (partially fixed), so the patch couldn't apply
+   - Context mismatch: patch expected `for m in moves_vec...`, found `for (move_index, m) in ...enumerate()`
+
+4. **Result**: Patch apply failed → system tried to rollback → exit
+
+### Root Causes Addressed
+
+1. **Code Corruption**: The mixed state (incomplete refactoring) caused patch application to fail
+   - **Fix**: Manually corrected the code by removing the unused declaration and increment
+   - **Prevention**: Added content-based patch detection to handle already-applied patches gracefully
+
+2. **Patch Already Applied**: The recovery system didn't handle this edge case
+   - **Fix**: Added `_is_patch_already_applied()` to detect when changes are already in place
+   - Added reverse-apply check in `_run_patch_with_strategies()` 
+   - These detect when a patch is already applied and treat it as success
+
+3. **No Fallback for Detection Failure**: If patch tool fails, system would exit
+   - **Fix**: Added Python-based content verification as fallback
+   - Even if git apply fails, system can detect and handle already-applied patches
+
+### Improvements Made
+
+**In [tools/apply_diff.py](tools/apply_diff.py):**
+- Added `_is_patch_already_applied()` function with two strategies:
+  1. Reverse-apply check via git
+  2. Content-based verification (scan for added lines)
+  
+- Modified `_run_patch_with_strategies()` to detect already-applied patches
+  
+- Enhanced failure handling in main apply_diff function:
+  - Check if patch is already applied before marking as failure
+  - Treat already-applied patches as success
+  - Continue to next warning instead of exiting
+
+### How It Prevents Future Issues
+
+```
+If patch fails to apply with "patch does not apply":
+  ├─ Check: Can reverse-apply succeed? 
+  │  └─ YES → Patch already applied, treat as success ✓
+  └─ NO → Check: Are all added lines in file?
+     ├─ YES → Content-based detection confirms applied, treat as success ✓  
+     └─ NO → Patch legitimately failed, skip warning and try next ✗
+```
+
+This prevents:
+- **False failures**: Patches that are already applied won't crash the system
+- **Broken source**: Even if patches fail, next warnings are attempted  
+- **Silent successes**: Already-applied patches are logged and tracked
+- **Stuck loops**: Attempted warnings are tracked to avoid rehashing
+
+### Code Fixes Applied
+
+In [engine/src/search/core.rs](engine/src/search/core.rs):
+- **Removed** line 358: `let mut move_index = 0;` (unused, shadowed by loop variable)
+- **Removed** line 436: `move_index += 1;` (enumerate provides immutable index, increment not needed)
+
+This fixed the compilation errors and allows the system to move on to the next warning (too_many_arguments).

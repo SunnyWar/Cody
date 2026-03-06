@@ -355,8 +355,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         return e.value;
     }
 
-    let mut move_index = 0;
-    for m in moves_vec.iter().cloned() {
+    for (move_index, m) in moves_vec.iter().cloned().enumerate() {
         {
             let (parent, child) = arena.get_pair_mut(ply, ply + 1);
             parent.position.apply_move_into(&m, &mut child.position);
@@ -432,8 +431,6 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
             heuristics.update_on_beta_cutoff(ply, m, remaining);
             break;
         }
-
-        move_index += 1;
     }
 
     // store final result in TT as exact

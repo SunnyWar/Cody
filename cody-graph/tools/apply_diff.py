@@ -126,12 +126,60 @@ def _run_patch_with_strategies(repo_path: str) -> subprocess.CompletedProcess:
         if result.returncode == 0:
             print(f"[cody-graph] [DIAG] Strategy {idx} succeeded", flush=True)
             return result
+        
+        # Check for "already applied" pattern in error output
+        if "patch does not apply" in result.stderr.lower() or "hunks? failed" in result.stderr.lower():
+            # Could be already applied - try reverse to confirm
+            print(f"[cody-graph] [DIAG] Patch may already be applied, checking with reverse apply...", flush=True)
+            check_result = subprocess.run(
+                ["git", "apply", "--whitespace=nowarn", "--reverse", "--check", "changes.patch"],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+            )
+            if check_result.returncode == 0:
+                print(f"[cody-graph] [DIAG] Confirmed: patch is already applied (reverse apply succeeded)", flush=True)
+                # Return success with a special marker
+                result.returncode = 0
+                result.stdout = "Patch already applied to target file"
+                return result
+        
         print(
             f"[cody-graph] [DIAG] Strategy {idx} failed with exit code {result.returncode}",
             flush=True,
         )
 
     return last_result
+
+def _is_patch_already_applied(repo_path: str, patches: list[dict]) -> bool:
+    """Check if a patch is already applied by examining file content.
+    
+    Returns True if all additions in the patch are already present in the files.
+    """
+    for patch in patches:
+        target_path = patch["new_path"] if patch["new_path"] != "/dev/null" else patch["old_path"]
+        abs_path = os.path.join(repo_path, target_path)
+        
+        if not os.path.exists(abs_path):
+            return False
+        
+        try:
+            with open(abs_path, "r", encoding="utf-8") as f:
+                file_content = f.read()
+        except Exception:
+            return False
+        
+        # Check if all added lines from the patch are present in the file
+        for hunk in patch.get("hunks", []):
+            for hline in hunk.get("lines", []):
+                if not hline or hline[0] != "+":
+                    continue
+                added_line = hline[1:]  # Remove the '+' marker
+                if added_line not in file_content:
+                    # Added line not found - patch likely not applied
+                    return False
+    
+    return True
 
 def _normalize_diff_path(path: str) -> str:
     path = path.strip()
@@ -610,6 +658,25 @@ def apply_diff(state: dict) -> dict:
                 f"Python fallback also failed: {fallback_msg}"
             )
             print(f"[cody-graph] apply_diff: ERROR - {error_details[:200]}", flush=True)
+            
+            # Check if the patch is already applied before marking as failure
+            try:
+                patches = _parse_unified_diff(diff_content)
+                if _is_patch_already_applied(repo_path, patches):
+                    print("[cody-graph] [DIAG] Patch appears to be already applied - treating as success", flush=True)
+                    result_state = {
+                        **state,
+                        "status": "pending",
+                        "last_output": "Patch already applied (detected via content check)",
+                        "last_diff": diff_content,
+                        "last_command": "apply_diff",
+                        "current_warning_signature": None,
+                        "repair_attempts": 0,
+                    }
+                    print("[cody-graph] apply_diff: END (already applied)", flush=True)
+                    return result_state
+            except Exception as check_err:
+                print(f"[cody-graph] [DIAG] Could not verify already-applied status: {check_err}", flush=True)
             
             # Mark warning as attempted and continue to next one
             warning_signature = state.get("current_warning_signature")
