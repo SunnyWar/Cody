@@ -15,6 +15,7 @@ PHASE_CLI_ALIASES = {
     "unit_tests_docs": "tests",
     "ELOGain": "elogain",
     "UCIfeatures": "ucifeatures",
+    "refactoring": "refactor",
 }
 
 
@@ -70,7 +71,7 @@ def _print_usage(phases: list[str]) -> None:
     print("Examples:")
     print("  python .\\cody-graph\\main.py all")
     print("  python .\\cody-graph\\main.py clippy")
-    print("  python .\\cody-graph\\main.py refactoring")
+    print("  python .\\cody-graph\\main.py refactor")
     print("  python .\\cody-graph\\main.py tests")
 
 phases_list = _load_phases_config(repo_root)

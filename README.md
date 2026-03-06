@@ -107,12 +107,21 @@ Configure in `cody-agent/config.json`:
 
 From the repo root:
 ```bash
-python cody-graph/main.py
+# Run all configured phases
+python cody-graph/main.py all
+
+# Run a single phase
+python cody-graph/main.py clippy      # Fix compiler warnings
+python cody-graph/main.py refactor    # Code quality improvements
+python cody-graph/main.py features    # New features/UCI commands
+python cody-graph/main.py performance # Speed optimization
+python cody-graph/main.py elogain     # Chess ELO improvements
+python cody-graph/main.py tests       # Test coverage & docs
 ```
 
 This will:
-1. Load configured phases (default: clippy only)
-2. Execute each phase sequentially
+1. Load configured phases from `cody-agent/config.json`
+2. Execute phases sequentially (or run a single phase)
 3. Generate diagnostics in `.cody_logs/`
 4. Save progress to `orchestrator_state.json`
 
