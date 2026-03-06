@@ -38,6 +38,20 @@ pub trait Evaluator {
     fn evaluate(&self, pos: &Position) -> i32;
 }
 
+/// Convert a White-centric evaluator score into side-to-move perspective.
+///
+/// Negamax expects every node score to be from the perspective of the player
+/// to move in `pos`.
+#[inline]
+pub fn evaluate_for_side_to_move<E: Evaluator>(evaluator: &E, pos: &Position) -> i32 {
+    let white_centric = evaluator.evaluate(pos);
+    if pos.side_to_move == Color::White {
+        white_centric
+    } else {
+        -white_centric
+    }
+}
+
 impl Evaluator for MaterialEvaluator {
     fn evaluate(&self, pos: &Position) -> i32 {
         let mut score = 0;
