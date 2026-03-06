@@ -90,8 +90,24 @@ impl CodyApi {
                 "ucinewgame" => self.handle_newgame(&mut stdout),
                 cmd if cmd.starts_with("position") => self.handle_position(cmd, &mut stdout),
                 cmd if cmd.starts_with("go") => self.handle_go(cmd, &mut stdout),
+                "ponderhit" => {
+                    // Transition from pondering to normal search. Clear the stop flag so
+                    // a future "go" (with actual time controls) can proceed.
+                    self.stop.store(false, Ordering::Relaxed);
+                    // Also clear any lingering ponder/infinite flags in limits so that
+                    // subsequent go parsing starts from a clean slate.
+                    self.limits.ponder = false;
+                    self.limits.infinite = false;
+                }
                 "stop" => {
                     self.stop.store(true, Ordering::Relaxed);
+                }
+                cmd if cmd.starts_with("register") => {
+                    // UCI 'register' is used by some GUIs for license management.
+                    // Cody does not require registration, so we acknowledge and ignore.
+                    if cmd.trim() == "register" || cmd.trim() == "register later" {
+                        self.writeln_and_log(&mut stdout, "info string registration not required");
+                    }
                 }
                 cmd if cmd.starts_with("bench") => self.handle_bench(cmd, &mut stdout),
                 "quit" => should_quit = true,

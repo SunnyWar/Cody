@@ -3,6 +3,7 @@ from langgraph.graph import StateGraph, START, END
 from state.cody_state import CodyState
 from agents.clippy_agent import clippy_agent
 from agents.elo_gain_agent import elo_gain_agent
+from agents.ucifeatures_agent import ucifeatures_agent
 from tools.run_build import run_build
 from tools.run_clippy import run_clippy
 from tools.run_tests import run_tests
@@ -27,6 +28,8 @@ def route_phase(state: CodyState) -> str:
     
     if phase == "ELOGain":
         return "elo_gain_agent"
+    elif phase == "UCIfeatures":
+        return "ucifeatures_agent"
     elif phase == "clippy":
         # Clippy phase: run clippy to detect warnings
         return "run_clippy"
@@ -71,10 +74,14 @@ def after_clippy(state: CodyState):
 
 def after_clippy_agent(state: CodyState):
     if state["status"] == "error":
+        if state.get("current_phase") == "UCIfeatures":
+            return "phase_complete"
         return END
     if state["status"] == "ok":
         # Refactoring may complete with "no beneficial strategy found" and no patch.
         if state.get("current_phase") == "refactoring" and state.get("last_command") == "clippy_llm_think":
+            return "phase_complete"
+        if state.get("current_phase") == "UCIfeatures":
             return "phase_complete"
         # All warnings attempted, proceed to build
         return "run_build"
@@ -85,6 +92,9 @@ def after_apply_diff(state: CodyState):
         return END
     # If diff was rejected or no diff was generated, retry according to phase workflow.
     if state.get("last_command") in ("apply_diff_rejected", "apply_diff_no_diff"):
+        if state.get("current_phase") == "UCIfeatures":
+            print("[cody-graph] [DIAG] UCIfeatures: no patch produced/applied; ending phase", flush=True)
+            return "phase_complete"
         retry_node = _retry_node_for_phase(state)
         print(f"[cody-graph] [DIAG] Diff unavailable/rejected; retrying via {retry_node}", flush=True)
         return retry_node
@@ -95,6 +105,10 @@ def after_apply_diff(state: CodyState):
 def after_build(state: CodyState):
     if state["status"] == "ok":
         return "run_tests"
+
+    if state.get("current_phase") == "UCIfeatures" and state.get("last_diff"):
+        print("[cody-graph] [DIAG] UCIfeatures: build failed after single change; rolling back and ending phase", flush=True)
+        return "rollback_changes"
     
     # Build failed - determine context for routing
     # If we were validating a patch post-apply_diff, check if we should attempt repair
@@ -131,6 +145,10 @@ def after_rollback(state: CodyState):
     from tools.retry_manager import create_retry_manager
     retry_mgr = create_retry_manager(state)
     
+    if state.get("current_phase") == "UCIfeatures":
+        print("[cody-graph] [DIAG] UCIfeatures: rollback complete, ending phase", flush=True)
+        return "phase_complete"
+
     # If rollback happened after a failed repair attempt:
     # 1. Mark the warning as permanently failed
     # 2. Reset repair counter for next attempt
@@ -173,6 +191,10 @@ def after_rollback(state: CodyState):
 def after_tests(state: CodyState):
     if state["status"] == "ok":
         return "run_fmt"
+
+    if state.get("current_phase") == "UCIfeatures" and state.get("last_diff"):
+        print("[cody-graph] [DIAG] UCIfeatures: tests failed after single change; rolling back and ending phase", flush=True)
+        return "rollback_changes"
 
     # For test failures after a patch: give AI one repair attempt before rollback.
     if state.get("last_diff"):
@@ -255,6 +277,7 @@ builder = StateGraph(CodyState)
 builder.add_node("route_phase", lambda state: {"current_phase": state.get("current_phase", "clippy")})  # Routing node (no-op, just decides direction)
 builder.add_node("clippy_agent", clippy_agent)
 builder.add_node("elo_gain_agent", elo_gain_agent)
+builder.add_node("ucifeatures_agent", ucifeatures_agent)
 builder.add_node("apply_diff", apply_diff)
 builder.add_node("run_clippy", run_clippy)
 builder.add_node("run_build", run_build)
@@ -299,6 +322,11 @@ builder.add_edge("elo_gain_agent", "phase_complete")
 # 2. Agent -> Apply Diff (Write fix to disk)
 builder.add_conditional_edges(
     "clippy_agent",
+    after_clippy_agent,
+)
+
+builder.add_conditional_edges(
+    "ucifeatures_agent",
     after_clippy_agent,
 )
 
