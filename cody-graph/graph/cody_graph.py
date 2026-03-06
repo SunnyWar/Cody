@@ -96,8 +96,8 @@ def after_clippy_agent(state: CodyState):
         if state.get("current_phase") == "performance" and state.get("last_command") == "performance_phase_complete":
             return "phase_complete"
         if state.get("current_phase") in ("UCIfeatures", "performance"):
-            # Performance-only: When agent completes, proceed to build/test iteration
-            return "run_build"
+            # Performance/UCIfeatures: LLM generated a suggestion, now apply diff if present
+            return "apply_diff"
         # All warnings attempted, proceed to build
         return "run_build"
     return "apply_diff"
@@ -107,7 +107,18 @@ def after_apply_diff(state: CodyState):
         return END
     # If diff was rejected or no diff was generated, retry according to phase workflow.
     if state.get("last_command") in ("apply_diff_rejected", "apply_diff_no_diff"):
-        if state.get("current_phase") in ("UCIfeatures", "performance"):
+        if state.get("current_phase") == "performance":
+            # Keep moving through performance strategies even when one patch fails.
+            current_iteration = int(state.get("phase_iteration", 0) or 0)
+            if current_iteration < 8:
+                print(
+                    "[cody-graph] [DIAG] performance: patch not applied; trying next strategy",
+                    flush=True,
+                )
+                return "performance_agent"
+            print("[cody-graph] [DIAG] performance: all strategies attempted", flush=True)
+            return "phase_complete"
+        if state.get("current_phase") == "UCIfeatures":
             phase_name = state.get("current_phase", "unknown")
             print(f"[cody-graph] [DIAG] {phase_name}: no patch produced/applied; ending phase", flush=True)
             return "phase_complete"
