@@ -19,6 +19,11 @@ use bitboard::position::Position;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
+const ASPIRATION_START_DELTA_CP: i32 = 25;
+const ASPIRATION_MAX_RESEARCHES: usize = 4;
+const ASPIRATION_MIN_DEPTH: usize = 3;
+const ASPIRATION_MATE_GUARD_CP: i32 = 500;
+
 pub struct Engine<
     M: MoveGenerator + Clone + Send + Sync + 'static,
     E: Evaluator + Clone + Send + Sync + 'static,
@@ -138,8 +143,6 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             let mut best_score = i32::MIN;
             let mut best_move = fallback_move;
             let mut searched_any = false;
-            let mut alpha = -INF;
-            let beta = INF;
 
             // Probe TT and reorder instantly if match found
             self.probe_for_best_move(d, &mut moves);
@@ -152,88 +155,88 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             );
 
             if self.num_threads <= 1 {
-                // Serial path: prepare a TT reference that points at our engine TT if present,
-                // otherwise to a temporary local table used only for this search.
-                let mut local_tt_storage;
-                let tt_ref: &mut crate::core::tt::TranspositionTable = match self.tt.as_mut() {
-                    Some(ref_mut) => ref_mut,
-                    None => {
-                        local_tt_storage = crate::core::tt::TranspositionTable::new(1);
-                        &mut local_tt_storage
-                    }
-                };
+                let can_use_aspiration = d >= ASPIRATION_MIN_DEPTH
+                    && last_completed_score != i32::MIN
+                    && last_completed_score.abs() < MATE_SCORE - ASPIRATION_MATE_GUARD_CP;
 
-                for m in moves {
-                    // Check stop flag and time budget before each move
-                    let now = Instant::now();
-                    let elapsed = now.duration_since(start).as_millis() as u64;
-                    if let Some(mt) = time_budget_ms
-                        && elapsed >= mt
-                    {
-                        break;
-                    }
-                    if let Some(stopflag) = stop
-                        && stopflag.load(Ordering::Relaxed)
-                    {
-                        break;
-                    }
+                if can_use_aspiration {
+                    let mut delta = ASPIRATION_START_DELTA_CP;
+                    let mut alpha = (last_completed_score - delta).max(-INF);
+                    let mut beta = (last_completed_score + delta).min(INF);
+                    let mut researches = 0usize;
 
-                    {
-                        let (parent, child) = self.arena.get_pair_mut(0, 1);
-                        parent.position.apply_move_into(&m, &mut child.position);
+                    loop {
+                        let (window_best_move, window_best_score, window_searched_any) = self
+                            .search_root_serial_window(
+                                root,
+                                d,
+                                &moves,
+                                time_budget_ms,
+                                stop,
+                                &start,
+                                &mut last_info_time,
+                                &mut heuristics,
+                                alpha,
+                                beta,
+                            );
+
+                        best_move = window_best_move;
+                        best_score = window_best_score;
+                        searched_any = window_searched_any;
+
+                        // On timeout/stop before any move, keep previous completed result.
+                        if !searched_any {
+                            break;
+                        }
+
+                        let fail_low = best_score <= alpha;
+                        let fail_high = best_score >= beta;
+                        if !fail_low && !fail_high {
+                            break;
+                        }
+
+                        researches += 1;
+                        if researches >= ASPIRATION_MAX_RESEARCHES {
+                            let (full_best_move, full_best_score, full_searched_any) = self
+                                .search_root_serial_window(
+                                    root,
+                                    d,
+                                    &moves,
+                                    time_budget_ms,
+                                    stop,
+                                    &start,
+                                    &mut last_info_time,
+                                    &mut heuristics,
+                                    -INF,
+                                    INF,
+                                );
+                            best_move = full_best_move;
+                            best_score = full_best_score;
+                            searched_any = full_searched_any;
+                            break;
+                        }
+
+                        delta = delta.saturating_mul(2);
+                        if fail_low {
+                            alpha = (last_completed_score - delta).max(-INF);
+                        }
+                        if fail_high {
+                            beta = (last_completed_score + delta).min(INF);
+                        }
                     }
-
-                    let mut repetition_history = [0u64; MAX_REPETITION_HISTORY];
-                    repetition_history[0] = root.zobrist_hash();
-                    repetition_history[1] = self.arena.get(1).position.zobrist_hash();
-
-                    let score = -search_node_with_arena(
-                        &self.movegen,
-                        &self.evaluator,
-                        &mut self.arena,
-                        1,
-                        d - 1,
-                        -beta,
-                        -alpha,
-                        tt_ref,
-                        &mut heuristics,
-                        stop,
+                } else {
+                    (best_move, best_score, searched_any) = self.search_root_serial_window(
+                        root,
+                        d,
+                        &moves,
                         time_budget_ms,
-                        Some(&start),
-                        &mut repetition_history,
-                        2,
+                        stop,
+                        &start,
+                        &mut last_info_time,
+                        &mut heuristics,
+                        -INF,
+                        INF,
                     );
-
-                    if !searched_any || score > best_score {
-                        best_score = score;
-                        best_move = m;
-                    }
-                    searched_any = true;
-
-                    if score > alpha {
-                        alpha = score;
-                    }
-                    if alpha >= beta {
-                        break;
-                    }
-
-                    // Periodic progress info is useful for timed UCI searches,
-                    // but it is expensive noise for fixed-depth bench runs.
-                    if time_budget_ms.is_some()
-                        && now.duration_since(last_info_time).as_millis() >= 1000
-                    {
-                        let pv_str = if best_move.is_null() {
-                            "".to_string()
-                        } else {
-                            best_move.to_string()
-                        };
-                        let seldepth = current_seldepth().max(d);
-                        let hashfull = tt_ref.hashfull_per_mille();
-                        crate::search::core::print_uci_info(
-                            d, seldepth, best_score, &pv_str, elapsed, hashfull,
-                        );
-                        last_info_time = now;
-                    }
                 }
             } else {
                 // Parallel root move evaluation using rayon
@@ -381,5 +384,109 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         if let Some(tt) = self.tt.as_mut() {
             tt.clear();
         }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn search_root_serial_window(
+        &mut self,
+        root: &Position,
+        d: usize,
+        moves: &[ChessMove],
+        time_budget_ms: Option<u64>,
+        stop: Option<&std::sync::atomic::AtomicBool>,
+        start: &Instant,
+        last_info_time: &mut Instant,
+        heuristics: &mut SearchHeuristics,
+        alpha: i32,
+        beta: i32,
+    ) -> (ChessMove, i32, bool) {
+        // Serial path: prefer engine TT if configured, otherwise use a tiny
+        // temporary table for this pass.
+        let mut local_tt_storage;
+        let tt_ref: &mut crate::core::tt::TranspositionTable = match self.tt.as_mut() {
+            Some(ref_mut) => ref_mut,
+            None => {
+                local_tt_storage = crate::core::tt::TranspositionTable::new(1);
+                &mut local_tt_storage
+            }
+        };
+
+        let mut best_score = i32::MIN;
+        let mut best_move = moves[0];
+        let mut searched_any = false;
+        let mut local_alpha = alpha;
+
+        for m in moves.iter().copied() {
+            // Check stop flag and time budget before each root move.
+            let now = Instant::now();
+            let elapsed = now.duration_since(*start).as_millis() as u64;
+            if let Some(mt) = time_budget_ms
+                && elapsed >= mt
+            {
+                break;
+            }
+            if let Some(stopflag) = stop
+                && stopflag.load(Ordering::Relaxed)
+            {
+                break;
+            }
+
+            {
+                let (parent, child) = self.arena.get_pair_mut(0, 1);
+                parent.position.apply_move_into(&m, &mut child.position);
+            }
+
+            let mut repetition_history = [0u64; MAX_REPETITION_HISTORY];
+            repetition_history[0] = root.zobrist_hash();
+            repetition_history[1] = self.arena.get(1).position.zobrist_hash();
+
+            let score = -search_node_with_arena(
+                &self.movegen,
+                &self.evaluator,
+                &mut self.arena,
+                1,
+                d - 1,
+                -beta,
+                -local_alpha,
+                tt_ref,
+                heuristics,
+                stop,
+                time_budget_ms,
+                Some(start),
+                &mut repetition_history,
+                2,
+            );
+
+            if !searched_any || score > best_score {
+                best_score = score;
+                best_move = m;
+            }
+            searched_any = true;
+
+            if score > local_alpha {
+                local_alpha = score;
+            }
+            if local_alpha >= beta {
+                break;
+            }
+
+            // Periodic progress info is useful for timed UCI searches,
+            // but it is expensive noise for fixed-depth bench runs.
+            if time_budget_ms.is_some() && now.duration_since(*last_info_time).as_millis() >= 1000 {
+                let pv_str = if best_move.is_null() {
+                    "".to_string()
+                } else {
+                    best_move.to_string()
+                };
+                let seldepth = current_seldepth().max(d);
+                let hashfull = tt_ref.hashfull_per_mille();
+                crate::search::core::print_uci_info(
+                    d, seldepth, best_score, &pv_str, elapsed, hashfull,
+                );
+                *last_info_time = now;
+            }
+        }
+
+        (best_move, best_score, searched_any)
     }
 }
