@@ -92,6 +92,9 @@ def after_clippy_agent(state: CodyState):
         # Refactoring may complete with "no beneficial strategy found" and no patch.
         if state.get("current_phase") == "refactoring" and state.get("last_command") == "clippy_llm_think":
             return "phase_complete"
+        # Performance phase complete - all strategies attempted
+        if state.get("current_phase") == "performance" and state.get("last_command") == "performance_phase_complete":
+            return "phase_complete"
         if state.get("current_phase") in ("UCIfeatures", "performance"):
             # Performance-only: When agent completes, proceed to build/test iteration
             return "run_build"
@@ -232,6 +235,20 @@ def after_tests(state: CodyState):
 
 def after_fmt(state: CodyState):
     if state["status"] == "ok":
+        # Performance phase: loop back through strategies
+        if state.get("current_phase") == "performance":
+            current_iteration = int(state.get("phase_iteration", 0) or 0)
+            max_iterations = 8  # number of strategies in PERFORMANCE_STRATEGIES
+            if current_iteration < max_iterations:
+                print(
+                    f"[cody-graph] [DIAG] Performance: completed iteration {current_iteration}, looping to next strategy",
+                    flush=True,
+                )
+                return "performance_agent"
+            else:
+                print("[cody-graph] [DIAG] Performance: all strategies attempted, phase complete", flush=True)
+                return "phase_complete"
+        
         print("[cody-graph] [DIAG] Code formatted, phase complete", flush=True)
         return "phase_complete"
     return "rollback_changes"
