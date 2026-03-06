@@ -1,5 +1,7 @@
+use crate::VERBOSE;
 use crate::api::uciapi::CodyApi;
 use bitboard::Square;
+use std::sync::atomic::Ordering;
 
 #[test]
 fn test_parse_go_limits_ponder_is_infinite_without_time_or_depth() {
@@ -40,6 +42,145 @@ fn test_handle_help_lists_allowed_commands() {
     assert!(text.contains("Allowed commands:"));
     assert!(text.contains("  help"));
     assert!(text.contains("  go [depth N|movetime MS|wtime|btime|winc|binc|ponder|infinite]"));
+}
+
+#[test]
+fn test_dispatch_register_and_register_later_acknowledged() {
+    let api = &mut CodyApi::new();
+    let mut out = Vec::<u8>::new();
+
+    let should_quit = api.dispatch_command("register", &mut out);
+    assert!(!should_quit);
+    let text = String::from_utf8(out).expect("register output should be valid utf-8");
+    assert!(text.contains("info string registration not required"));
+
+    let mut out_later = Vec::<u8>::new();
+    let should_quit_later = api.dispatch_command("register later", &mut out_later);
+    assert!(!should_quit_later);
+    let text_later =
+        String::from_utf8(out_later).expect("register later output should be valid utf-8");
+    assert!(text_later.contains("info string registration not required"));
+}
+
+#[test]
+fn test_dispatch_unknown_command_emits_message() {
+    let api = &mut CodyApi::new();
+    let mut out = Vec::<u8>::new();
+
+    let should_quit = api.dispatch_command("not_a_real_command", &mut out);
+    assert!(!should_quit);
+
+    let text = String::from_utf8(out).expect("unknown command output should be valid utf-8");
+    assert!(text.contains("Unknown command: 'not_a_real_command'"));
+    assert!(text.contains("Type help for more information"));
+}
+
+#[test]
+fn test_dispatch_quit_returns_true() {
+    let api = &mut CodyApi::new();
+    let mut out = Vec::<u8>::new();
+
+    let should_quit = api.dispatch_command("quit", &mut out);
+    assert!(should_quit);
+    assert!(out.is_empty());
+}
+
+#[test]
+fn test_dispatch_stop_sets_stop_flag() {
+    let api = &mut CodyApi::new();
+    let mut out = Vec::<u8>::new();
+
+    assert!(!api.stop_requested());
+    let should_quit = api.dispatch_command("stop", &mut out);
+
+    assert!(!should_quit);
+    assert!(api.stop_requested());
+    assert!(out.is_empty());
+}
+
+#[test]
+fn test_dispatch_ponderhit_clears_stop_and_ponder_flags() {
+    let api = &mut CodyApi::new();
+    let mut out = Vec::<u8>::new();
+
+    // Seed internal state so we can validate the reset behavior.
+    api.handle_setoption("setoption name Ponder value true");
+    api.dispatch_command("go ponder depth 1", &mut out);
+    assert!(api.current_limits().ponder);
+    api.dispatch_command("stop", &mut out);
+    assert!(api.stop_requested());
+
+    let should_quit = api.dispatch_command("ponderhit", &mut out);
+    assert!(!should_quit);
+    assert!(!api.stop_requested());
+    assert!(!api.current_limits().ponder);
+    assert!(!api.current_limits().infinite);
+}
+
+#[test]
+fn test_parse_go_limits_uses_white_time_budget_when_white_to_move() {
+    let api = CodyApi::new();
+    let limits = api.parse_go_limits("go wtime 60000 btime 30000 winc 1000 binc 500");
+
+    assert_eq!(limits.movetime_ms, Some(2100));
+    assert_eq!(limits.wtime_ms, Some(60000));
+    assert_eq!(limits.btime_ms, Some(30000));
+}
+
+#[test]
+fn test_parse_go_limits_uses_black_time_budget_when_black_to_move() {
+    let api = &mut CodyApi::new();
+    let mut out = std::io::sink();
+
+    api.handle_position("position startpos moves e2e4", &mut out);
+    let limits = api.parse_go_limits("go wtime 60000 btime 30000 winc 1000 binc 500");
+
+    assert_eq!(limits.movetime_ms, Some(1100));
+    assert_eq!(limits.wtime_ms, Some(60000));
+    assert_eq!(limits.btime_ms, Some(30000));
+}
+
+#[test]
+fn test_parse_go_limits_infinite_keeps_no_movetime() {
+    let api = CodyApi::new();
+    let limits = api.parse_go_limits("go infinite");
+
+    assert!(limits.infinite);
+    assert_eq!(limits.movetime_ms, None);
+    assert_eq!(limits.depth, None);
+}
+
+#[test]
+fn test_parse_go_limits_ponder_with_movetime_not_forced_infinite() {
+    let api = CodyApi::new();
+    let limits = api.parse_go_limits("go ponder movetime 50");
+
+    assert!(limits.ponder);
+    assert_eq!(limits.movetime_ms, Some(50));
+    assert!(!limits.infinite);
+}
+
+#[test]
+fn test_handle_setoption_verbose_toggles_global_flag() {
+    let api = &mut CodyApi::new();
+
+    api.handle_setoption("setoption name Verbose value true");
+    assert!(VERBOSE.load(Ordering::Relaxed));
+
+    api.handle_setoption("setoption name Verbose value false");
+    assert!(!VERBOSE.load(Ordering::Relaxed));
+}
+
+#[test]
+fn test_handle_setoption_ponder_toggles_runtime_option() {
+    let api = &mut CodyApi::new();
+
+    assert!(!api.ponder_enabled());
+    api.handle_setoption("setoption name Ponder value true");
+    assert!(api.ponder_enabled());
+
+    api.handle_setoption("setoption name Ponder value false");
+    assert!(!api.ponder_enabled());
 }
 
 #[allow(clippy::collapsible_if)]
