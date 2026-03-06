@@ -36,16 +36,16 @@ Cody uses an automated multi-phase improvement loop powered by **LangGraph** orc
 
 ### Single-Phase (Current - Clippy Fixes)
 ```
-1. Run clippy → Detect warnings
+1. Run clippy --W clippy::pedantic → Detect warnings
 2. LLM proposes fix (unified diff)
 3. Apply patch to disk
-4. Verify (clippy + build + tests)
+4. Verify (build + tests)
 5. Commit on success or rollback on failure
 ```
 
 ### Multi-Phase (Ready to Deploy)
 Additional phases can be enabled in `cody-agent/config.json`:
-- **Clippy phase:** Eliminate compiler warnings
+- **Clippy phase:** Eliminate pedantic clippy warnings
 - **Refactoring phase:** Improve code quality and architecture
 - **UCIfeatures phase:** Implement missing UCI commands for tournament-grade protocol support
 - **Performance phase:** Optimize critical paths for speed (uses o3 model)
