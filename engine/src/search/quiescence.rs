@@ -1,6 +1,7 @@
 use crate::core::arena::Arena;
 use crate::search::evaluator::Evaluator;
 use crate::search::evaluator::evaluate_for_side_to_move;
+use crate::search::see::compute_see;
 use bitboard::mov::ChessMove;
 use bitboard::movegen::MoveGenerator;
 use bitboard::piece::Color;
@@ -12,6 +13,11 @@ use smallvec::SmallVec;
 const MAX_QSEARCH_DEPTH: usize = 8;
 const DELTA_MARGIN: i32 = 200; // Queen value margin for delta pruning
 const CHECK_GEN_DEPTH_LIMIT: Option<usize> = None; // None => disable non-capture check generation in qsearch
+/// SEE threshold: prune captures with SEE worse than this value (in centipawns)
+/// -100 means allow trades of equal value; more negative allows bigger losses
+const SEE_QUIET_THRESHOLD: i32 = -50;
+/// SEE threshold in deeper qsearch - tighter pruning to avoid explosion
+const SEE_DEEP_THRESHOLD: i32 = 0;
 
 pub fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
     movegen: &M,
@@ -77,6 +83,19 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
                         let victim_val = piece_value(victim.kind());
                         // If stand_pat + captured piece value + margin is still below alpha, prune
                         if stand_pat + victim_val + DELTA_MARGIN < alpha {
+                            return false;
+                        }
+
+                        // SEE pruning: skip bad captures on high-density boards
+                        // Adjust threshold based on qsearch depth - tighter at depth > 2
+                        let see_threshold = if qsearch_depth >= 2 {
+                            SEE_DEEP_THRESHOLD
+                        } else {
+                            SEE_QUIET_THRESHOLD
+                        };
+
+                        let see_value = compute_see(&pos, m.from, m.to);
+                        if see_value < see_threshold {
                             return false;
                         }
                     }
