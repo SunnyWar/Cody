@@ -29,6 +29,11 @@ const PIECE_VALUES: [i32; 6] = [
     0,   // King (not scored in material)
 ];
 
+const BISHOP_PAIR_BONUS: i32 = 30;
+const DOUBLED_PAWN_PENALTY: i32 = 12;
+const ISOLATED_PAWN_PENALTY: i32 = 10;
+const PASSED_PAWN_BONUS_BY_ADVANCE: [i32; 8] = [0, 5, 10, 18, 28, 42, 60, 0];
+
 /// Simple material-count evaluator.
 /// Positive = advantage for White, negative = advantage for Black.
 #[derive(Clone, Copy)]
@@ -106,8 +111,113 @@ impl Evaluator for MaterialEvaluator {
             }
         }
 
+        score += evaluate_bishop_pair(pos);
+        score += evaluate_pawn_structure(pos);
+
         score
     }
+}
+
+fn evaluate_bishop_pair(pos: &Position) -> i32 {
+    let white_bishops = pos
+        .pieces
+        .get(Piece::from_parts(Color::White, Some(PieceKind::Bishop)))
+        .count_ones() as i32;
+    let black_bishops = pos
+        .pieces
+        .get(Piece::from_parts(Color::Black, Some(PieceKind::Bishop)))
+        .count_ones() as i32;
+
+    let white_bonus = if white_bishops >= 2 {
+        BISHOP_PAIR_BONUS
+    } else {
+        0
+    };
+    let black_bonus = if black_bishops >= 2 {
+        BISHOP_PAIR_BONUS
+    } else {
+        0
+    };
+
+    white_bonus - black_bonus
+}
+
+fn evaluate_pawn_structure(pos: &Position) -> i32 {
+    evaluate_pawn_structure_for_color(pos, Color::White)
+        - evaluate_pawn_structure_for_color(pos, Color::Black)
+}
+
+fn evaluate_pawn_structure_for_color(pos: &Position, color: Color) -> i32 {
+    let our_pawns = pos
+        .pieces
+        .get(Piece::from_parts(color, Some(PieceKind::Pawn)));
+    let their_pawns = pos
+        .pieces
+        .get(Piece::from_parts(color.opposite(), Some(PieceKind::Pawn)));
+
+    if our_pawns.is_empty() {
+        return 0;
+    }
+
+    let mut score = 0;
+    let mut file_counts = [0u8; 8];
+
+    for sq in our_pawns.squares() {
+        file_counts[sq.file() as usize] = file_counts[sq.file() as usize].saturating_add(1);
+    }
+
+    for sq in our_pawns.squares() {
+        let file = sq.file() as usize;
+        let rank = sq.rank() as usize;
+
+        if file_counts[file] > 1 {
+            score -= DOUBLED_PAWN_PENALTY;
+        }
+
+        let left_file_has_pawn = file > 0 && file_counts[file - 1] > 0;
+        let right_file_has_pawn = file < 7 && file_counts[file + 1] > 0;
+        if !left_file_has_pawn && !right_file_has_pawn {
+            score -= ISOLATED_PAWN_PENALTY;
+        }
+
+        if is_passed_pawn(sq, color, their_pawns.0) {
+            let advance = if color == Color::White {
+                rank
+            } else {
+                7usize.saturating_sub(rank)
+            };
+            score += PASSED_PAWN_BONUS_BY_ADVANCE[advance.min(7)];
+        }
+    }
+
+    score
+}
+
+fn is_passed_pawn(sq: bitboard::Square, color: Color, enemy_pawns_bits: u64) -> bool {
+    let file = sq.file() as i32;
+    let rank = sq.rank() as i32;
+
+    let file_start = (file - 1).max(0);
+    let file_end = (file + 1).min(7);
+
+    for ef in file_start..=file_end {
+        for er in 0..8 {
+            let ahead = match color {
+                Color::White => er > rank,
+                Color::Black => er < rank,
+            };
+            if !ahead {
+                continue;
+            }
+
+            let idx = (er * 8 + ef) as u64;
+            if (enemy_pawns_bits & (1u64 << idx)) != 0 {
+                return false;
+            }
+        }
+    }
+
+    true
 }
 
 fn compute_phase(pos: &Position) -> i32 {

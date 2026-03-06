@@ -39,6 +39,25 @@ pub const MATE_SCORE: i32 = 30_000;
 // Large infinity value for alpha-beta bounds
 pub const INF: i32 = 1_000_000_000;
 const MAX_SEARCH_PLY: usize = 128;
+pub const MAX_REPETITION_HISTORY: usize = MAX_SEARCH_PLY + 4;
+
+#[inline]
+fn is_threefold_repetition(
+    key: u64,
+    repetition_history: &[u64; MAX_REPETITION_HISTORY],
+    repetition_len: usize,
+) -> bool {
+    let mut count = 0usize;
+    for seen in repetition_history.iter().take(repetition_len) {
+        if *seen == key {
+            count += 1;
+            if count >= 3 {
+                return true;
+            }
+        }
+    }
+    false
+}
 
 pub struct SearchHeuristics {
     killer_moves: [[ChessMove; 2]; MAX_SEARCH_PLY],
@@ -251,6 +270,8 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     stop: Option<&std::sync::atomic::AtomicBool>,
     time_budget_ms: Option<u64>,
     start_time: Option<&std::time::Instant>,
+    repetition_history: &mut [u64; MAX_REPETITION_HISTORY],
+    repetition_len: usize,
 ) -> i32 {
     NODE_COUNT.fetch_add(1, Ordering::Relaxed);
     update_seldepth(ply);
@@ -288,6 +309,18 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     // Compute key once; full Zobrist recomputation is expensive.
     let key = arena.get(ply).position.zobrist_hash();
 
+    // Draw adjudication.
+    // 1) Threefold repetition from the current search path.
+    if is_threefold_repetition(key, repetition_history, repetition_len) {
+        return 0;
+    }
+
+    // 2) Fifty-move rule (claimable draw). We treat claimable draws as
+    // immediate draws to avoid wasting search on objectively drawn lines.
+    if arena.get(ply).position.halfmove_clock >= 100 {
+        return 0;
+    }
+
     // Probe TT if provided (tt is always present in serial path; for parallel we
     // pass a local dummy).
     // - Exact entries with a non-null move are verified against the generated legal
@@ -322,6 +355,13 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         if ply + 1 < MAX_SEARCH_PLY {
             arena.get_mut(ply + 1).position = child_pos;
             let null_reduction = (remaining / 3).max(1);
+            let child_key = arena.get(ply + 1).position.zobrist_hash();
+            let next_rep_len = if repetition_len < MAX_REPETITION_HISTORY {
+                repetition_history[repetition_len] = child_key;
+                repetition_len + 1
+            } else {
+                repetition_len
+            };
             let null_score = -search_node_with_arena(
                 movegen,
                 evaluator,
@@ -335,6 +375,8 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
                 stop,
                 time_budget_ms,
                 start_time,
+                repetition_history,
+                next_rep_len,
             );
             if null_score >= beta {
                 return null_score;
@@ -386,6 +428,14 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
             parent.position.apply_move_into(&m, &mut child.position);
         }
 
+        let child_key = arena.get(ply + 1).position.zobrist_hash();
+        let next_rep_len = if repetition_len < MAX_REPETITION_HISTORY {
+            repetition_history[repetition_len] = child_key;
+            repetition_len + 1
+        } else {
+            repetition_len
+        };
+
         // Late Move Reduction (LMR): reduce depth for moves beyond the first 2 or 3
         // if they don't look promising. Re-search at full depth if needed.
         let mut depth_for_search = remaining - 1;
@@ -420,6 +470,8 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
             stop,
             time_budget_ms,
             start_time,
+            repetition_history,
+            next_rep_len,
         );
 
         // If LMR returned a value > alpha, re-search at full depth to verify
@@ -437,6 +489,8 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
                 stop,
                 time_budget_ms,
                 start_time,
+                repetition_history,
+                next_rep_len,
             );
         }
 
