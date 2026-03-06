@@ -12,7 +12,6 @@ from tools.phase_manager import save_phase_state
 repo_root = Path(os.environ.get("CODY_REPO_PATH", Path(__file__).resolve().parents[1]))
 
 PHASE_CLI_ALIASES = {
-    "unit_tests_docs": "tests",
     "ELOGain": "elogain",
     "UCIfeatures": "ucifeatures",
     "refactoring": "refactor",
@@ -70,9 +69,10 @@ def _print_usage(phases: list[str]) -> None:
     print("")
     print("Examples:")
     print("  python .\\cody-graph\\main.py all")
-    print("  python .\\cody-graph\\main.py clippy")
-    print("  python .\\cody-graph\\main.py refactor")
-    print("  python .\\cody-graph\\main.py tests")
+    # Show a few example phases dynamically
+    for i, phase in enumerate(phases[:3]):
+        cli_phase = _to_cli_phase(phase)
+        print(f"  python .\\cody-graph\\main.py {cli_phase}")
 
 phases_list = _load_phases_config(repo_root)
 
