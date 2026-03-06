@@ -1,5 +1,4 @@
-#[derive(Debug, Clone, Copy)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct GoLimits {
     pub depth: Option<usize>,
     pub movetime_ms: Option<u64>,
@@ -11,4 +10,3 @@ pub struct GoLimits {
     pub ponder: bool,
     pub infinite: bool,
 }
-

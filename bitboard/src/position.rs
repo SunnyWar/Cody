@@ -42,6 +42,13 @@ impl Default for Position {
 
 impl Position {
     #[inline]
+    /// Fast, flat copy of a complete `Position`.
+    ///
+    /// Even though the body is only a single assignment (lowered to a `memcpy`
+    /// because `Position: Copy`), this helper sits on the hottest path of the
+    /// search.  Forcing cross-crate inlining removes the call overhead when it
+    /// is executed millions of times per second.
+    #[inline(always)]
     pub fn copy_from(&mut self, other: &Position) {
         *self = *other;
     }
@@ -51,7 +58,10 @@ impl Position {
     // engine) can benefit from cross-crate inlining without relying on LTO.
     #[inline(always)]
     pub fn all_pieces(&self) -> BitBoardMask {
-        self.pieces.all()
+        // `OccupancyMap::Both` already tracks the union of all piece
+        // bitboards, so we can return it directly instead of recomputing the
+        // union (which would require up to 12 OR-operations on the hot path).
+        self.occupancy[OccupancyKind::Both]
     }
 
     #[inline(always)]
