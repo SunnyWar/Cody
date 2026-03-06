@@ -70,9 +70,10 @@ mod perft_integration_tests {
 
         let len = move_str.len();
         assert!(len >= 2, "Invalid move token: {token}");
+        let mut chars = move_str.chars().rev();
+        let dest_rank = chars.next().expect("move_str has at least 2 chars");
+        let dest_file = chars.next().expect("move_str has at least 2 chars");
 
-        let dest_file = move_str.as_bytes()[len - 2] as char;
-        let dest_rank = move_str.as_bytes()[len - 1] as char;
         let dest_sq = Square::from_coords(dest_file, dest_rank)
             .unwrap_or_else(|| panic!("Invalid destination in {token}"));
 
