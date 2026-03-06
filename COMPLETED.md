@@ -61,7 +61,7 @@
   - Integrated with ELO gain agent
   - Documentation: `VERSION_MANAGEMENT.md`
 - [x] Enhanced multi-phase routing in `cody_graph.py`
-- [x] Documentation: `ELO_GAIN_PHASE.md`, `ELOGAIN_QUICKSTART.md`, `ELOGAIN_DELIVERY.md`
+- [x] Documentation: `cody-graph/ELO_GAIN_PHASE.md`, `cody-graph/PHASES.md`, `cody-graph/DIAGNOSTICS.md`
 - [x] Reorganized development priorities around orchestration completion
 - [x] Enhanced cody-graph with detailed diagnostics
 - [x] Added multi-phase orchestration infrastructure
