@@ -8,7 +8,7 @@ def save_phase_state(repo_path: str, state: dict) -> None:
     orchestrator_state = {
         "current_phase": state.get("current_phase", "clippy"),
         "phases_completed": state.get("phases_completed", []),
-        "phases_todo": state.get("phases_todo", []),
+        "phase_pool": state.get("phase_pool", {}),
         "phase_iteration": state.get("phase_iteration", 0),
         "status": state.get("status", "pending"),
         "last_update": datetime.now().isoformat(),

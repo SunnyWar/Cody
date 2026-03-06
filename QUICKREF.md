@@ -244,14 +244,20 @@ Current phase and progress saved to `orchestrator_state.json`:
 
 ```json
 {
-  "current_phase": "clippy",
+  "current_phase": "performance",
   "phases_completed": ["clippy"],
-  "phases_todo": ["refactoring", "performance"],
+  "phase_pool": {
+    "refactoring": 1.0,
+    "ELOGain": 5.0,
+    "UCIfeatures": 1.0
+  },
   "phase_iteration": 5,
   "status": "ok",
   "last_update": "2026-03-03T12:34:56.789012"
 }
 ```
+
+**Note:** Phases are now selected using weighted random selection. `performance` and `ELOGain` have 5x higher weights (5.0) than other phases (1.0), making them more likely to be selected.
 
 ## Troubleshooting
 

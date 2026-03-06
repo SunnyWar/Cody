@@ -76,6 +76,16 @@ def _print_usage(phases: list[str]) -> None:
 
 phases_list = _load_phases_config(repo_root)
 
+# Define phase weights (performance and ELOGain weighted heavily)
+PHASE_WEIGHTS = {
+    "clippy": 1.0,
+    "refactoring": 1.0,
+    "tests": 1.0,
+    "UCIfeatures": 1.0,
+    "performance": 5.0,  # 5x more likely than default phases
+    "ELOGain": 5.0,      # 5x more likely than default phases
+}
+
 if len(sys.argv) < 2:
     _print_usage(phases_list)
     raise SystemExit(0)
@@ -101,7 +111,12 @@ if selection != "all" and not scheduled_phases:
     raise SystemExit(1)
 
 first_phase = scheduled_phases[0] if scheduled_phases else "clippy"
-remaining_phases = scheduled_phases[1:] if len(scheduled_phases) > 1 else []
+
+# Build phase pool with weights for all scheduled phases except the first one
+phase_pool = {}
+for phase in scheduled_phases[1:]:
+    weight = PHASE_WEIGHTS.get(phase, 1.0)
+    phase_pool[phase] = weight
 
 initial_state: CodyState = {
     "messages": [
@@ -123,7 +138,7 @@ initial_state: CodyState = {
     "best_clippy_error_count": None,
     "clippy_has_syntax_error": None,
     "current_phase": first_phase,
-    "phases_todo": remaining_phases,
+    "phase_pool": phase_pool,
     "phases_completed": [],
     "phase_iteration": 0,
     "attempted_warnings": [],

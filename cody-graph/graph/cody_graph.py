@@ -1,4 +1,5 @@
 # graph/cody_graph.py
+import random
 from langgraph.graph import StateGraph, START, END
 from state.cody_state import CodyState
 from agents.clippy_agent import clippy_agent
@@ -280,23 +281,30 @@ def after_fmt(state: CodyState):
     return "rollback_changes"
 
 def phase_complete(state: CodyState) -> CodyState:
-    """Transition to the next phase or end orchestration."""
+    """Transition to the next phase using weighted random selection."""
     print("[cody-graph] phase_complete: START", flush=True)
     
     current = state["current_phase"]
     completed = state["phases_completed"] + [current]
-    todo = state["phases_todo"]
+    pool = state["phase_pool"].copy()  # Copy to avoid mutating state directly
     
     print(f"[cody-graph] [DIAG] Phase '{current}' completed", flush=True)
     print(f"[cody-graph] [DIAG] Completed phases: {completed}", flush=True)
-    print(f"[cody-graph] [DIAG] Remaining phases: {todo}", flush=True)
+    print(f"[cody-graph] [DIAG] Remaining phase pool: {pool}", flush=True)
     
-    if todo:
-        next_phase = todo[0]
+    if pool:
+        # Weighted random selection from phase pool
+        phases = list(pool.keys())
+        weights = list(pool.values())
+        next_phase = random.choices(phases, weights=weights, k=1)[0]
+        
+        # Remove selected phase from pool
+        del pool[next_phase]
+        
         result = {
             **state,
             "current_phase": next_phase,
-            "phases_todo": todo[1:],
+            "phase_pool": pool,
             "phases_completed": completed,
             "phase_iteration": 0,
             "consecutive_test_failures": 0,
@@ -305,10 +313,10 @@ def phase_complete(state: CodyState) -> CodyState:
             "clippy_has_syntax_error": None,
             "attempted_warnings": [],  # Reset for new phase
             "repair_attempts": 0,  # Reset repair attempts for new phase
-            "last_output": f"Phase '{current}' complete. Starting phase '{next_phase}'.",
+            "last_output": f"Phase '{current}' complete. Starting phase '{next_phase}' (randomly selected).",
             "status": "pending",
         }
-        print(f"[cody-graph] [DIAG] Transitioning to phase: {next_phase}", flush=True)
+        print(f"[cody-graph] [DIAG] Randomly selected next phase: {next_phase} (weight: {weights[phases.index(next_phase)]})", flush=True)
         print("[cody-graph] phase_complete: END (next phase)", flush=True)
         return result
     else:
@@ -324,7 +332,7 @@ def phase_complete(state: CodyState) -> CodyState:
 
 def after_phase_complete(state: CodyState):
     """Route after phase completion: either to next phase or to END."""
-    if state["phases_todo"]:
+    if state["phase_pool"]:
         # More phases to do - route through phase router for next phase
         return "route_phase"
     return END
