@@ -74,14 +74,35 @@ def _sanitize_diff(diff_content: str) -> str:
     lines = [l for l in lines if not l.startswith('*** Begin') and not l.startswith('*** End')]
     
     cleaned = []
+    numbered_hunk_line = re.compile(r"^([ +\-])\s*\d+\s\|\s?(.*)$")
     for line in lines:
+        # Strip common git diff metadata lines that break strict unified parsing.
+        if (
+            line.startswith("diff --git ")
+            or line.startswith("index ")
+            or line.startswith("new file mode ")
+            or line.startswith("deleted file mode ")
+            or line.startswith("similarity index ")
+            or line.startswith("rename from ")
+            or line.startswith("rename to ")
+            or line.startswith("old mode ")
+            or line.startswith("new mode ")
+            or line.startswith("Binary files ")
+        ):
+            continue
         # Convert *** markers to --- +++ format
         if line.startswith('*** Update File:'):
             filename = line.replace('*** Update File:', '').strip()
             cleaned.append(f'--- a/{filename}')
             cleaned.append(f'+++ b/{filename}')
         else:
-            cleaned.append(line)
+            # Convert numbered snippet lines inside hunks to valid unified-diff lines.
+            # Example: "+  30 | static mut X: bool = false;" -> "+static mut X: bool = false;"
+            m = numbered_hunk_line.match(line)
+            if m:
+                cleaned.append(f"{m.group(1)}{m.group(2)}")
+            else:
+                cleaned.append(line)
     
     sanitized = "\n".join(cleaned).rstrip("\n") + "\n"
     return sanitized
@@ -208,6 +229,8 @@ def _parse_unified_diff(diff_content: str) -> list[dict]:
         while i < len(lines):
             if lines[i].startswith("--- "):
                 break
+            if lines[i].startswith("diff --git "):
+                break
             if not lines[i].startswith("@@ "):
                 i += 1
                 continue
@@ -226,7 +249,12 @@ def _parse_unified_diff(diff_content: str) -> list[dict]:
             hunk_lines: list[str] = []
             while i < len(lines):
                 hline = lines[i]
-                if hline.startswith("@@ ") or hline.startswith("--- "):
+                if (
+                    hline.startswith("@@ ")
+                    or hline.startswith("--- ")
+                    or hline.startswith("diff --git ")
+                    or hline.startswith("index ")
+                ):
                     break
                 hunk_lines.append(hline)
                 i += 1
@@ -380,7 +408,7 @@ def _matches_subsequence(lines: list[str], start: int, expected: list[str]) -> b
         return False
     return lines[start:start + len(expected)] == expected
 
-def _find_unique_subsequence(lines: list[str], start: int, expected: list[str]) -> int | None:
+def _find_best_subsequence(lines: list[str], start: int, expected: list[str]) -> int | None:
     if not expected:
         return start
 
@@ -389,10 +417,13 @@ def _find_unique_subsequence(lines: list[str], start: int, expected: list[str]) 
     for idx in range(max(0, start), max_start + 1):
         if _matches_subsequence(lines, idx, expected):
             matches.append(idx)
-            if len(matches) > 1:
-                return None
 
-    return matches[0] if matches else None
+    if not matches:
+        return None
+
+    # Prefer the closest match to the requested start to preserve intent while
+    # still handling stale line numbers and repeated blocks.
+    return min(matches, key=lambda idx: abs(idx - start))
 
 def _apply_unified_diff_python(repo_path: str, diff_content: str) -> tuple[bool, str]:
     patches = _parse_unified_diff(diff_content)
@@ -425,10 +456,10 @@ def _apply_patch_to_lines_with_fallback(path: str, original_text: str, hunks: li
 
         target_idx = max(src_idx, hunk["old_start"] - 1)
         if expected_old_lines and not _matches_subsequence(original_lines, target_idx, expected_old_lines):
-            relocated = _find_unique_subsequence(original_lines, src_idx, expected_old_lines)
+            relocated = _find_best_subsequence(original_lines, target_idx, expected_old_lines)
             if relocated is None:
                 raise ValueError(
-                    f"Could not uniquely relocate hunk in {path} near line {hunk['old_start']}"
+                    f"Could not relocate hunk in {path} near line {hunk['old_start']}"
                 )
             target_idx = relocated
 

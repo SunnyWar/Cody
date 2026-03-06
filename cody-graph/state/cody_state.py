@@ -25,3 +25,4 @@ class CodyState(TypedDict):
     attempted_warnings: List[str] # warnings already attempted (to avoid retry loops)
     current_warning_signature: Optional[str]  # signature of warning being fixed
     repair_attempts: int          # number of LLM repair attempts for current patch (resets per patch)
+    ucifeatures_recommendation: Optional[dict]  # recommendation payload chosen for UCIfeatures phase

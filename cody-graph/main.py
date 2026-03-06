@@ -129,6 +129,7 @@ initial_state: CodyState = {
     "attempted_warnings": [],
     "current_warning_signature": None,
     "repair_attempts": 0,
+    "ucifeatures_recommendation": None,
 }
 
 print("=" * 80)
