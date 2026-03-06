@@ -1,8 +1,6 @@
-use crate::VERBOSE;
 use crate::core::arena::Arena;
 use crate::search::evaluator::Evaluator;
 use crate::search::evaluator::evaluate_for_side_to_move;
-use crate::util;
 use bitboard::mov::ChessMove;
 use bitboard::movegen::MoveGenerator;
 use bitboard::piece::Color;
@@ -10,13 +8,10 @@ use bitboard::piece::Piece;
 use bitboard::piece::PieceKind;
 use bitboard::position::Position;
 use smallvec::SmallVec;
-use std::fs::OpenOptions;
-use std::io::Write;
-use std::sync::atomic::Ordering;
 
-const MAX_QSEARCH_DEPTH: usize = 16;
+const MAX_QSEARCH_DEPTH: usize = 8;
 const DELTA_MARGIN: i32 = 200; // Queen value margin for delta pruning
-const MAX_CHECK_DEPTH: usize = 1; // Only generate checks at shallow qsearch depth
+const CHECK_GEN_DEPTH_LIMIT: Option<usize> = None; // None => disable non-capture check generation in qsearch
 
 pub fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
     movegen: &M,
@@ -43,20 +38,6 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
     // Prevent infinite qsearch recursion
     if qsearch_depth >= MAX_QSEARCH_DEPTH {
         return evaluate_for_side_to_move(evaluator, &arena.get(ply).position);
-    }
-
-    // Stand pat evaluation
-    if VERBOSE.load(Ordering::Relaxed) {
-        eprintln!("[debug] quiescence enter ply={}", ply);
-        // Append to cody_uci.log for traceability
-        if let Ok(mut f) = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("cody_uci.log")
-        {
-            let stamp = util::iso_stamp_ms();
-            let _ = writeln!(f, "{} OUT: [debug] quiescence enter ply={}", stamp, ply);
-        }
     }
 
     let pos = arena.get(ply).position;
@@ -102,13 +83,20 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
 
                     let mut temp = pos;
                     pos.apply_move_into(m, &mut temp);
-                    !movegen.in_check(&temp)
+                    // `apply_move_into` flips side_to_move. `in_check` tests the
+                    // side to move, so temporarily restore mover-to-move to verify
+                    // we didn't leave our own king in check.
+                    let mut legal_test = temp;
+                    legal_test.side_to_move = pos.side_to_move;
+                    !movegen.in_check(&legal_test)
                 })
                 .collect();
 
         // At shallow qsearch depth, also generate checking moves
         // to catch tactical shots that would otherwise be over the horizon
-        if qsearch_depth < MAX_CHECK_DEPTH {
+        if let Some(limit) = CHECK_GEN_DEPTH_LIMIT
+            && qsearch_depth < limit
+        {
             let all_quiet = bitboard::movegen::generate_legal_moves(&pos);
             for m in all_quiet {
                 // Skip if already in move list (captures/promotions)

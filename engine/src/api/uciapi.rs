@@ -425,6 +425,8 @@ impl CodyApi {
 
     pub fn handle_bench(&mut self, _cmd: &str, out: &mut impl Write) {
         let depth = 4;
+        let prev_verbose = VERBOSE.load(Ordering::Relaxed);
+        VERBOSE.store(false, Ordering::Relaxed);
 
         // Clone into a Vec so we can sort
         let mut cases: Vec<&TestCase> = TEST_CASES.iter().collect();
@@ -443,6 +445,10 @@ impl CodyApi {
                 out,
                 &format!("Position: {}/{} ({})", idx + 1, total_cases, pos.fen),
             );
+
+            // Isolate benchmark positions so TT/history from prior cases do not
+            // distort timing or node counts on later positions.
+            self.engine.clear_state();
 
             NODE_COUNT.store(0, Ordering::Relaxed);
 
@@ -473,6 +479,8 @@ impl CodyApi {
         self.writeln_and_log(out, &format!("Nodes searched  : {total_nodes}"));
         self.writeln_and_log(out, &format!("Nodes/second    : {total_nps}"));
         out.flush().unwrap();
+
+        VERBOSE.store(prev_verbose, Ordering::Relaxed);
     }
 
     pub fn handle_newgame(&mut self, _out: &mut impl Write) {
