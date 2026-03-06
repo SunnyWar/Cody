@@ -97,7 +97,7 @@ def _save_diagnostic(logs_dir: str, name: str, content: str) -> None:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{timestamp}_{name}.log"
     filepath = os.path.join(logs_dir, filename)
-    with open(filepath, "w") as f:
+    with open(filepath, "w", encoding="utf-8") as f:
         f.write(content)
     print(f"[cody-graph] [DIAG] Saved: {filename}", flush=True)
 
@@ -569,7 +569,7 @@ def apply_diff(state: dict) -> dict:
         # Write the diff to a temporary file
         patch_path = os.path.join(repo_path, "changes.patch")
         print(f"[cody-graph] [DIAG] Writing patch to: {patch_path}", flush=True)
-        with open(patch_path, "w") as f:
+        with open(patch_path, "w", encoding="utf-8") as f:
             f.write(diff_content)
 
         print("[cody-graph] [DIAG] Looking for patch tool (git or patch)...", flush=True)
