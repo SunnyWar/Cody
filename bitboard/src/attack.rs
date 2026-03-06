@@ -42,9 +42,9 @@ pub fn is_square_attacked(square: Square, by_color: Color, board: &BoardState) -
         Color::Black => &board.black_pieces,
     };
 
-    // Check knight attacks (opposite color squares only)
-    let knight_like = attacking_pieces.knights & !king_color_mask;
-    if !knight_like.is_empty() && (KNIGHT_ATTACKS[sq_index] & knight_like).is_nonempty() {
+    // Check knight attacks ─ knights always land on the opposite-coloured square,
+    // so we mask once and perform a single population test.
+    if (KNIGHT_ATTACKS[sq_index] & attacking_pieces.knights & !king_color_mask).is_nonempty() {
         return true;
     }
 
@@ -93,17 +93,24 @@ pub fn is_square_attacked(square: Square, by_color: Color, board: &BoardState) -
 
 /// Check if the king of the given color is in check
 pub fn is_king_in_check(king_color: Color, board: &BoardState) -> bool {
-    let king_bb = match king_color {
-        Color::White => board.white_pieces.king,
-        Color::Black => board.black_pieces.king,
+    // Fetch the king bitboard for the required colour.
+    // `matches!` avoids generating the larger `match` construct.
+    let king_bb = if matches!(king_color, Color::White) {
+        board.white_pieces.king
+    } else {
+        board.black_pieces.king
     };
 
-    if king_bb.is_empty() {
+    // No king on the board (illegal position) – cannot be in check.
+    let bb_bits = king_bb.0;
+    if bb_bits == 0 {
         return false;
     }
 
-    let king_square = Square::try_from_index(king_bb.0.trailing_zeros() as u8)
-        .expect("king bit index must be in 0..64");
+    // SAFETY: `bb_bits` has exactly one bit set (the king), so the index
+    // produced by `trailing_zeros` is guaranteed to be in 0..64.
+    let king_square: Square =
+        unsafe { core::mem::transmute::<u8, Square>(bb_bits.trailing_zeros() as u8) };
 
     is_square_attacked(king_square, king_color.opposite(), board)
 }

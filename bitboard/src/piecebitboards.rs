@@ -18,7 +18,7 @@ impl PieceBitboards {
     #[inline]
     /// Hot-path accessor: force inlining, strip runtime checks and
     /// bounds-checks.
-    #[inline(always)]
+    
     pub fn get(&self, piece: Piece) -> BitBoardMask {
         // Keep the correctness guard in debug builds without polluting release code.
         debug_assert!(piece != Piece::None, "Tried to get() a None piece");

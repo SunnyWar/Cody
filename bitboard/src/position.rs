@@ -46,6 +46,10 @@ impl Position {
         *self = *other;
     }
 
+    // `all_pieces` is invoked in every move-generation call. Mark it
+    // `#[inline(always)]` so that callers in other crates (e.g. the search
+    // engine) can benefit from cross-crate inlining without relying on LTO.
+    #[inline(always)]
     pub fn all_pieces(&self) -> BitBoardMask {
         self.pieces.all()
     }
