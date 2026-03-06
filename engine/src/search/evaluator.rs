@@ -34,6 +34,20 @@ const DOUBLED_PAWN_PENALTY: i32 = 12;
 const ISOLATED_PAWN_PENALTY: i32 = 10;
 const PASSED_PAWN_BONUS_BY_ADVANCE: [i32; 8] = [0, 5, 10, 18, 28, 42, 60, 0];
 
+// Piece mobility (activity bonus per legal move a piece can make)
+const MOBILITY_WEIGHT: i32 = 4;
+
+// King safety penalties (centipawns per issue)
+const EXPOSED_KING_PENALTY: i32 = 25; // King on open file/rank
+const OPEN_FILE_NEAR_KING: i32 = 15; // Semi-open file near king
+const KING_LACKING_ESCAPE_SQUARES: i32 = 20; // King with few escape squares
+// Rook activity bonuses
+const ROOK_ON_OPEN_FILE_BONUS: i32 = 20; // Rook with no pawns on file
+const ROOK_ON_SEMIOPEN_FILE_BONUS: i32 = 10; // Rook with enemy pawns only
+
+// Advanced pawn promotion bonuses (heavily weighted to encourage winning
+// endgames)
+const PAWN_NEAR_PROMOTION: [i32; 8] = [0, 0, 0, 8, 20, 60, 150, 0];
 /// Simple material-count evaluator.
 /// Positive = advantage for White, negative = advantage for Black.
 #[derive(Clone, Copy)]
@@ -113,6 +127,10 @@ impl Evaluator for MaterialEvaluator {
 
         score += evaluate_bishop_pair(pos);
         score += evaluate_pawn_structure(pos);
+        score += evaluate_mobility(pos);
+        score += evaluate_king_safety(pos);
+        score += evaluate_rook_activity(pos);
+        score += evaluate_pawn_advancement(pos);
 
         score
     }
@@ -274,4 +292,248 @@ fn blend_tables(mid: i32, end: i32, phase: i32) -> i32 {
     // phase = 0 when minimal material (endgame)
     // So weight MID when phase is high, END when phase is low
     ((mid * (MAX_PHASE - phase)) + (end * phase)) / MAX_PHASE
+}
+
+/// Evaluate piece mobility (number of squares each piece can move to).
+/// Active pieces are worth more than passive pieces.
+fn evaluate_mobility(pos: &Position) -> i32 {
+    let mut white_mobility = 0i32;
+    let mut black_mobility = 0i32;
+
+    // Simple mobility: count checks per piece (expensive but necessary for
+    // strength) For now, use a lightweight heuristic based on piece placement
+    // rather than generating all legal moves.
+
+    for color in [Color::White, Color::Black] {
+        for kind in [
+            PieceKind::Knight,
+            PieceKind::Bishop,
+            PieceKind::Rook,
+            PieceKind::Queen,
+        ] {
+            let piece = Piece::from_parts(color, Some(kind));
+            let bb = pos.pieces.get(piece);
+
+            // Lightweight heuristic: pieces in center/active squares are better
+            // than pieces on edges/passive squares.
+            for sq in bb.squares() {
+                let rank = sq.rank() as i32;
+                let file = sq.file() as i32;
+
+                // Center control bonus (pieces closer to center d-file & 4-5 ranks)
+                let center_distance = ((file - 3).abs() + (rank - 3).abs()).max(1);
+                let center_bonus = (5 - center_distance) / 2; // +2 to 0 depending on distance
+
+                let mobility_bonus = center_bonus * MOBILITY_WEIGHT;
+
+                if color == Color::White {
+                    white_mobility += mobility_bonus;
+                } else {
+                    black_mobility += mobility_bonus;
+                }
+            }
+        }
+    }
+
+    white_mobility - black_mobility
+}
+
+/// Evaluate king safety (penalize exposed kings).
+fn evaluate_king_safety(pos: &Position) -> i32 {
+    let mut white_safety = 0i32;
+    let mut black_safety = 0i32;
+
+    for color in [Color::White, Color::Black] {
+        let king_piece = Piece::from_parts(color, Some(PieceKind::King));
+        let king_bb = pos.pieces.get(king_piece);
+
+        if king_bb.is_empty() {
+            continue; // No king (shouldn't happen in legal position)
+        }
+
+        // Find king square (should be exactly one)
+        if let Some(king_sq) = king_bb.squares().next() {
+            let king_rank = king_sq.rank() as i32;
+            let king_file = king_sq.file() as i32;
+
+            // Penalty: king on open files/ranks (few pawns nearby)
+            let our_pawns = pos
+                .pieces
+                .get(Piece::from_parts(color, Some(PieceKind::Pawn)));
+            let enemy_pawns = pos
+                .pieces
+                .get(Piece::from_parts(color.opposite(), Some(PieceKind::Pawn)));
+
+            let mut nearby_pawn_count = 0;
+            for file_offset in -1..=1 {
+                let check_file = king_file + file_offset;
+                if !(0..=7).contains(&check_file) {
+                    continue;
+                }
+
+                for rank_offset in -1..=1 {
+                    let check_rank = king_rank + rank_offset;
+                    if !(0..=7).contains(&check_rank) {
+                        continue;
+                    }
+
+                    // Count our own pawns for shelter
+                    let idx = ((check_rank * 8 + check_file) as u32) as u64;
+                    if check_file != king_file && (our_pawns.0 & (1u64 << idx)) != 0 {
+                        nearby_pawn_count += 1;
+                    }
+                }
+            }
+
+            let safety_penalty = if nearby_pawn_count < 2 {
+                EXPOSED_KING_PENALTY
+            } else {
+                0
+            };
+
+            // Penalty: king on edge of board (fewer escape squares)
+            let escape_penalty =
+                if king_file == 0 || king_file == 7 || king_rank == 0 || king_rank == 7 {
+                    KING_LACKING_ESCAPE_SQUARES / 2
+                } else {
+                    0
+                };
+
+            // Penalty: king on semi-open file (no friendly pawns but enemy pawns present)
+            let semi_open_file_penalty = {
+                let mut our_pawn_on_file = false;
+                let mut enemy_pawn_on_file = false;
+
+                for rank in 0..8 {
+                    let sq_idx = (rank * 8 + king_file as usize) as u64;
+                    if (our_pawns.0 & (1u64 << sq_idx)) != 0 {
+                        our_pawn_on_file = true;
+                    }
+                    if (enemy_pawns.0 & (1u64 << sq_idx)) != 0 {
+                        enemy_pawn_on_file = true;
+                    }
+                }
+
+                if !our_pawn_on_file && enemy_pawn_on_file {
+                    OPEN_FILE_NEAR_KING
+                } else {
+                    0
+                }
+            };
+
+            let mut king_safety_penalty = safety_penalty + escape_penalty + semi_open_file_penalty;
+
+            // Bonus for castling (if castling rights still exist, king is safer)
+            let castling_bonus = if color == Color::White {
+                let has_castling = pos.castling_rights.kingside(Color::White)
+                    || pos.castling_rights.queenside(Color::White);
+                if has_castling {
+                    -EXPOSED_KING_PENALTY / 3
+                } else {
+                    0
+                }
+            } else {
+                let has_castling = pos.castling_rights.kingside(Color::Black)
+                    || pos.castling_rights.queenside(Color::Black);
+                if has_castling {
+                    -EXPOSED_KING_PENALTY / 3
+                } else {
+                    0
+                }
+            };
+
+            king_safety_penalty += castling_bonus;
+
+            if color == Color::White {
+                white_safety += king_safety_penalty;
+            } else {
+                black_safety += king_safety_penalty;
+            }
+        }
+    }
+
+    white_safety - black_safety
+}
+
+/// Evaluate rook activity (rooks on open/semi-open files are valuable).
+fn evaluate_rook_activity(pos: &Position) -> i32 {
+    let mut white_bonus = 0i32;
+    let mut black_bonus = 0i32;
+
+    for color in [Color::White, Color::Black] {
+        let rook_piece = Piece::from_parts(color, Some(PieceKind::Rook));
+        let rooks = pos.pieces.get(rook_piece);
+
+        let our_pawns = pos
+            .pieces
+            .get(Piece::from_parts(color, Some(PieceKind::Pawn)));
+        let enemy_pawns = pos
+            .pieces
+            .get(Piece::from_parts(color.opposite(), Some(PieceKind::Pawn)));
+
+        for rook_sq in rooks.squares() {
+            let file = rook_sq.file() as usize;
+
+            // Check if file is open or semi-open
+            let mut our_pawn_on_file = false;
+            let mut enemy_pawn_on_file = false;
+
+            for rank in 0..8 {
+                let sq_idx = (rank * 8 + file) as u64;
+                if (our_pawns.0 & (1u64 << sq_idx)) != 0 {
+                    our_pawn_on_file = true;
+                }
+                if (enemy_pawns.0 & (1u64 << sq_idx)) != 0 {
+                    enemy_pawn_on_file = true;
+                }
+            }
+
+            let bonus = if !our_pawn_on_file && !enemy_pawn_on_file {
+                ROOK_ON_OPEN_FILE_BONUS // Fully open file
+            } else if !our_pawn_on_file && enemy_pawn_on_file {
+                ROOK_ON_SEMIOPEN_FILE_BONUS // Semi-open (enemy pawns only)
+            } else {
+                0 // Own pawns on file block the rook
+            };
+
+            if color == Color::White {
+                white_bonus += bonus;
+            } else {
+                black_bonus += bonus;
+            }
+        }
+    }
+
+    white_bonus - black_bonus
+}
+
+/// Evaluate pawn advancement toward promotion.
+/// Heavy bonus for pawns near promotion to encourage pushing for wins.
+fn evaluate_pawn_advancement(pos: &Position) -> i32 {
+    let mut white_bonus = 0i32;
+    let mut black_bonus = 0i32;
+
+    let white_pawns = pos
+        .pieces
+        .get(Piece::from_parts(Color::White, Some(PieceKind::Pawn)));
+    for sq in white_pawns.squares() {
+        let rank = sq.rank() as usize;
+        // Rank 0 is irrelevant, rank 7 is promotion. Rank 5, 6 get bonuses
+        if rank >= 4 {
+            white_bonus += PAWN_NEAR_PROMOTION[rank];
+        }
+    }
+
+    let black_pawns = pos
+        .pieces
+        .get(Piece::from_parts(Color::Black, Some(PieceKind::Pawn)));
+    for sq in black_pawns.squares() {
+        let rank = sq.rank() as usize;
+        // For black, rank 0 is promotion, rank 7 is start. Rank 1-3 get bonuses
+        if rank <= 3 {
+            black_bonus += PAWN_NEAR_PROMOTION[7 - rank];
+        }
+    }
+
+    white_bonus - black_bonus
 }

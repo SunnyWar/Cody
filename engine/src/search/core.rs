@@ -290,18 +290,6 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         }
     }
 
-    // Debug: announce entry to this node
-    if (ply <= 2 || NODE_COUNT.load(Ordering::Relaxed).is_multiple_of(500_000))
-        && VERBOSE.load(Ordering::Relaxed)
-    {
-        eprintln!(
-            "[debug] search_node enter ply={} remaining={} nodecount={}",
-            ply,
-            remaining,
-            NODE_COUNT.load(Ordering::Relaxed)
-        );
-    }
-
     if remaining == 0 {
         return quiescence_with_arena(movegen, evaluator, arena, ply, alpha, beta);
     }
