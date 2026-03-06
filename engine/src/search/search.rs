@@ -3,6 +3,7 @@
 use crate::core::arena::Arena;
 use crate::search::core::INF;
 use crate::search::core::MATE_SCORE;
+use crate::search::core::MAX_REPETITION_HISTORY;
 use crate::search::core::NODE_COUNT;
 use crate::search::core::SearchHeuristics;
 use crate::search::core::current_seldepth;
@@ -181,6 +182,11 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                         let (parent, child) = self.arena.get_pair_mut(0, 1);
                         parent.position.apply_move_into(&m, &mut child.position);
                     }
+
+                    let mut repetition_history = [0u64; MAX_REPETITION_HISTORY];
+                    repetition_history[0] = root.zobrist_hash();
+                    repetition_history[1] = self.arena.get(1).position.zobrist_hash();
+
                     let score = -search_node_with_arena(
                         &self.movegen,
                         &self.evaluator,
@@ -194,6 +200,8 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                         stop,
                         time_budget_ms,
                         Some(&start),
+                        &mut repetition_history,
+                        2,
                     );
 
                     if !searched_any || score > best_score {
@@ -249,6 +257,15 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                             // Each thread gets its own arena to avoid synchronization
                             let mut local_arena = Arena::new(arena_cap);
                             local_arena.get_mut(0).position.copy_from(root);
+                            {
+                                let (parent, child) = local_arena.get_pair_mut(0, 1);
+                                parent.position.apply_move_into(&m, &mut child.position);
+                            }
+
+                            let mut repetition_history = [0u64; MAX_REPETITION_HISTORY];
+                            repetition_history[0] = root.zobrist_hash();
+                            repetition_history[1] = local_arena.get(1).position.zobrist_hash();
+
                             let mut local_tt_thread = crate::core::tt::TranspositionTable::new(1);
                             let mut local_heuristics = SearchHeuristics::new();
                             let score = -search_node_with_arena(
@@ -264,6 +281,8 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                                 stop,
                                 time_budget_ms,
                                 Some(&start),
+                                &mut repetition_history,
+                                2,
                             );
                             (m, score)
                         })
