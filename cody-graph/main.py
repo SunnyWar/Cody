@@ -59,9 +59,10 @@ def _load_phases_config(repo_root: Path) -> list:
 
 def _print_usage(phases: list[str]) -> None:
     print("Usage:")
-    print("  python .\\cody-graph\\main.py <phase|all>")
+    print("  python .\\cody-graph\\main.py <command>")
     print("")
-    print("Options:")
+    print("Allowed commands:")
+    print("  help         Show this help message")
     print("  all          Run full orchestration (current behavior)")
     for phase in phases:
         cli_phase = _to_cli_phase(phase)
@@ -92,6 +93,10 @@ if len(sys.argv) < 2:
 
 selection = sys.argv[1].strip().lower()
 
+if selection == "help":
+    _print_usage(phases_list)
+    raise SystemExit(0)
+
 if selection == "all":
     scheduled_phases = phases_list
 else:
@@ -99,15 +104,11 @@ else:
     if selected_phase is not None:
         scheduled_phases = [selected_phase]
     else:
-        print(f"Invalid phase option: {selection}")
-        print("")
-        _print_usage(phases_list)
+        print(f"Unknown command: '{selection}'. Type help for more information.")
         raise SystemExit(1)
 
 if selection != "all" and not scheduled_phases:
-    print(f"Invalid phase option: {selection}")
-    print("")
-    _print_usage(phases_list)
+    print(f"Unknown command: '{selection}'. Type help for more information.")
     raise SystemExit(1)
 
 first_phase = scheduled_phases[0] if scheduled_phases else "clippy"

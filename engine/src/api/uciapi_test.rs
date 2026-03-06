@@ -21,6 +21,27 @@ fn test_parse_go_limits_bare_go_keeps_default_movetime() {
     assert!(!limits.ponder);
 }
 
+#[test]
+fn test_command_keyword_uses_exact_first_token() {
+    assert_eq!(CodyApi::command_keyword("go depth 4"), Some("go"));
+    assert_eq!(CodyApi::command_keyword("goo"), Some("goo"));
+    assert_eq!(CodyApi::command_keyword("   help   "), Some("help"));
+    assert_eq!(CodyApi::command_keyword("   \t   "), None);
+}
+
+#[test]
+fn test_handle_help_lists_allowed_commands() {
+    let api = &mut CodyApi::new();
+    let mut out = Vec::<u8>::new();
+
+    api.handle_help(&mut out);
+    let text = String::from_utf8(out).expect("help output should be valid utf-8");
+
+    assert!(text.contains("Allowed commands:"));
+    assert!(text.contains("  help"));
+    assert!(text.contains("  go [depth N|movetime MS|wtime|btime|winc|binc|ponder|infinite]"));
+}
+
 #[allow(clippy::collapsible_if)]
 #[test]
 fn test_uci_position_moves_c3d5_state_consistency() {
