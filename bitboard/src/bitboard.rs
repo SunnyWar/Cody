@@ -123,8 +123,19 @@ const fn bishop_mask(square: Square) -> BitBoardMask {
     BitBoardMask(d.0 | a.0)
 }
 
+/// Fast bishop attacks using magic bitboard lookup tables.
+/// This is the hot-path version used in move generation.
 #[inline]
-pub const fn bishop_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
+pub fn bishop_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
+    let mask = BISHOP_MASKS[square.index()];
+    let index = occupancy_to_index(occupancy, mask);
+    BISHOP_ATTACKS[square.index()][index]
+}
+
+/// Const version for compile-time bishop attack computation.
+/// Kept for initializing const tables but not used in hot path.
+#[inline]
+pub const fn bishop_attacks_from_const(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
     let origin = square.bitboard();
     // Diagonal directions
     let diag_mask = DIAGONAL_MASKS[square.index()];

@@ -6,6 +6,7 @@ use crate::piece::PieceKind;
 use crate::position::MoveGenContext;
 use crate::position::Position;
 
+#[inline(always)]
 pub fn generate_pseudo_bishop_moves(
     pos: &Position,
     context: &MoveGenContext,
@@ -22,6 +23,7 @@ pub fn generate_pseudo_bishop_moves(
     }
 }
 
+#[inline(always)]
 pub fn generate_pseudo_rook_moves(
     pos: &Position,
     context: &MoveGenContext,
@@ -37,6 +39,8 @@ pub fn generate_pseudo_rook_moves(
     }
 }
 
+/// Optimized queen move generation - now benefits from fast bishop_attacks_from
+#[inline(always)]
 pub fn generate_pseudo_queen_moves(
     pos: &Position,
     context: &MoveGenContext,
@@ -47,6 +51,7 @@ pub fn generate_pseudo_queen_moves(
         .get(Piece::from_parts(context.us, Some(PieceKind::Queen)));
 
     for from in queens.squares() {
+        // Both functions now use fast table lookups after optimization
         let valid_moves = (rook_attacks_from(from, context.occupancy)
             | bishop_attacks_from(from, context.occupancy))
         .and(context.not_ours);
