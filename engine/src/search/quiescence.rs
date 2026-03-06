@@ -1,6 +1,7 @@
 use crate::VERBOSE;
 use crate::core::arena::Arena;
 use crate::search::evaluator::Evaluator;
+use crate::search::evaluator::evaluate_for_side_to_move;
 use crate::util;
 use bitboard::mov::ChessMove;
 use bitboard::movegen::MoveGenerator;
@@ -41,7 +42,7 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
 
     // Prevent infinite qsearch recursion
     if qsearch_depth >= MAX_QSEARCH_DEPTH {
-        return evaluator.evaluate(&arena.get(ply).position);
+        return evaluate_for_side_to_move(evaluator, &arena.get(ply).position);
     }
 
     // Stand pat evaluation
@@ -63,7 +64,7 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
 
     // When in check, we MUST search (can't stand pat), otherwise stand pat is valid
     let stand_pat = if !in_check {
-        evaluator.evaluate(&pos)
+        evaluate_for_side_to_move(evaluator, &pos)
     } else {
         i32::MIN + 1 // Placeholder, must search when in check
     };

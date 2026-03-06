@@ -10,6 +10,7 @@ use crate::search::core::order_moves_with_heuristics;
 use crate::search::core::reset_seldepth;
 use crate::search::core::search_node_with_arena;
 use crate::search::evaluator::Evaluator;
+use crate::search::evaluator::evaluate_for_side_to_move;
 use bitboard::mov::ChessMove;
 use bitboard::movegen::MoveGenerator;
 use bitboard::movegen::generate_legal_moves;
@@ -92,7 +93,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             }
 
             // Even at depth 0, never emit 0000 from a non-terminal position.
-            return (moves[0], self.evaluator.evaluate(root));
+            return (moves[0], evaluate_for_side_to_move(&self.evaluator, root));
         }
 
         // Track the overall start time for nps calculations
@@ -283,7 +284,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                 // Do not overwrite the last completed move with 0000.
                 if last_completed_move.is_null() {
                     last_completed_move = fallback_move;
-                    last_completed_score = self.evaluator.evaluate(root);
+                    last_completed_score = evaluate_for_side_to_move(&self.evaluator, root);
                 }
                 break;
             }
