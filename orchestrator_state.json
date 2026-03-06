@@ -1,11 +1,11 @@
 {
-  "current_phase": "UCIfeatures",
+  "current_phase": "performance",
   "phases_completed": [
-    "UCIfeatures"
+    "performance"
   ],
   "phases_todo": [],
   "phase_iteration": 0,
   "status": "ok",
-  "last_update": "2026-03-05T20:45:20.204818",
+  "last_update": "2026-03-05T21:55:04.513994",
   "run_count": 0
 }

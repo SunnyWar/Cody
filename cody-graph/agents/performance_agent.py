@@ -453,8 +453,14 @@ def performance_agent(state: CodyState) -> CodyState:
         except Exception:
             pass
 
-    # Prepare the LLM request
+    # Prepare the LLM request with system prompt as first message
+    system_prompt = _get_system_prompt_for_strategy(strategy["name"])
+    
     messages = [
+        {
+            "role": "system",
+            "content": system_prompt,
+        },
         {
             "role": "user",
             "content": f"""
@@ -472,18 +478,14 @@ Focus ONLY on this one optimization. If no improvement is possible, explain brie
         }
     ]
 
-    system_prompt = _get_system_prompt_for_strategy(strategy["name"])
-
     try:
         print(f"[cody-graph] [DIAG] Requesting LLM optimization...", flush=True)
-        response = client.messages.create(
+        resp = client.chat.completions.create(
             model=_select_model(config, "performance"),
-            max_tokens=2000,
-            system=system_prompt,
             messages=messages,
         )
 
-        llm_output = response.content[0].text if response.content else ""
+        llm_output = resp.choices[0].message.content if resp.choices else ""
         print(f"[cody-graph] [DIAG] LLM response received ({len(llm_output)} chars)", flush=True)
 
         result_state = {
@@ -493,6 +495,7 @@ Focus ONLY on this one optimization. If no improvement is possible, explain brie
             "status": "ok",
             "last_file": perf_file_used,
             "timestamp": datetime.now().isoformat(),
+            "phase_iteration": current_iteration + 1,  # Increment for next strategy
         }
 
         print("[cody-graph] performance_agent: END (success)", flush=True)
