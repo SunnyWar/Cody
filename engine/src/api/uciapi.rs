@@ -96,48 +96,7 @@ impl CodyApi {
         for cmd in rx {
             // Log incoming command
             self.log_in(&cmd);
-            let mut should_quit = false;
-            let command = Self::command_keyword(&cmd);
-            match command {
-                Some("uci") => self.handle_uci(&mut stdout),
-                Some("setoption") => self.handle_setoption(&cmd),
-                Some("isready") => self.handle_isready(&mut stdout),
-                Some("ucinewgame") => self.handle_newgame(&mut stdout),
-                Some("position") => self.handle_position(&cmd, &mut stdout),
-                Some("go") => self.handle_go(&cmd, &mut stdout),
-                Some("help") => self.handle_help(&mut stdout),
-                Some("ponderhit") => {
-                    // Transition from pondering to normal search. Clear the stop flag so
-                    // a future "go" (with actual time controls) can proceed.
-                    self.stop.store(false, Ordering::Relaxed);
-                    // Also clear any lingering ponder/infinite flags in limits so that
-                    // subsequent go parsing starts from a clean slate.
-                    self.limits.ponder = false;
-                    self.limits.infinite = false;
-                }
-                Some("stop") => {
-                    self.stop.store(true, Ordering::Relaxed);
-                }
-                Some("register")
-                    // UCI 'register' is used by some GUIs for license management.
-                    // Cody does not require registration, so we acknowledge and ignore.
-                    if (cmd.trim() == "register" || cmd.trim() == "register later") =>
-                {
-                    self.writeln_and_log(&mut stdout, "info string registration not required");
-                }
-                Some("bench") => self.handle_bench(&cmd, &mut stdout),
-                Some("quit") => should_quit = true,
-                Some(_) => {
-                    self.writeln_and_log(
-                        &mut stdout,
-                        &format!(
-                            "Unknown command: '{}'. Type help for more information.",
-                            cmd.trim()
-                        ),
-                    );
-                }
-                None => {}
-            }
+            let should_quit = self.dispatch_command(&cmd, &mut stdout);
             stdout.flush().ok();
             if should_quit {
                 break;
@@ -145,8 +104,69 @@ impl CodyApi {
         }
     }
 
+    pub(crate) fn dispatch_command(&mut self, cmd: &str, out: &mut impl Write) -> bool {
+        let command = Self::command_keyword(cmd);
+        match command {
+            Some("uci") => self.handle_uci(out),
+            Some("setoption") => self.handle_setoption(cmd),
+            Some("isready") => self.handle_isready(out),
+            Some("ucinewgame") => self.handle_newgame(out),
+            Some("position") => self.handle_position(cmd, out),
+            Some("go") => self.handle_go(cmd, out),
+            Some("help") => self.handle_help(out),
+            Some("ponderhit") => {
+                // Transition from pondering to normal search. Clear the stop flag so
+                // a future "go" (with actual time controls) can proceed.
+                self.stop.store(false, Ordering::Relaxed);
+                // Also clear any lingering ponder/infinite flags in limits so that
+                // subsequent go parsing starts from a clean slate.
+                self.limits.ponder = false;
+                self.limits.infinite = false;
+            }
+            Some("stop") => {
+                self.stop.store(true, Ordering::Relaxed);
+            }
+            Some("register")
+                // UCI 'register' is used by some GUIs for license management.
+                // Cody does not require registration, so we acknowledge and ignore.
+                if (cmd.trim() == "register" || cmd.trim() == "register later") =>
+            {
+                self.writeln_and_log(out, "info string registration not required");
+            }
+            Some("bench") => self.handle_bench(cmd, out),
+            Some("quit") => return true,
+            Some(_) => {
+                self.writeln_and_log(
+                    out,
+                    &format!(
+                        "Unknown command: '{}'. Type help for more information.",
+                        cmd.trim()
+                    ),
+                );
+            }
+            None => {}
+        }
+
+        false
+    }
+
     pub(crate) fn command_keyword(cmd: &str) -> Option<&str> {
         cmd.split_whitespace().next()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn stop_requested(&self) -> bool {
+        self.stop.load(Ordering::Relaxed)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn ponder_enabled(&self) -> bool {
+        self.ponder_enabled
+    }
+
+    #[cfg(test)]
+    pub(crate) fn current_limits(&self) -> GoLimits {
+        self.limits
     }
 
     fn log_in(&mut self, cmd: &str) {
