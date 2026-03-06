@@ -580,6 +580,72 @@ mod perft_integration_tests {
     }
 
     #[test]
+    fn test_search_depth4_with_aspiration_active_returns_legal_bestmove() {
+        // Depth >= 3 activates aspiration-window re-search in the serial path.
+        let fen = "rnbqkb1r/1p2pppp/2p2n2/3p4/P7/P1PP2PP/4PP2/RNBQKBNR w KQkq - 1 8";
+        let pos = Position::from_fen(fen);
+
+        let legal_moves = generate_legal_moves(&pos);
+        assert!(!legal_moves.is_empty(), "Position should have legal moves");
+
+        let mut engine = Engine::new(65_536, SimpleMoveGen, MaterialEvaluator);
+        let (best_move, _score) = engine.search(&pos, 4, None, None);
+
+        assert!(
+            !best_move.is_null(),
+            "Aspiration-enabled search returned null move (0000)"
+        );
+        assert!(
+            legal_moves.contains(&best_move),
+            "Aspiration-enabled search returned illegal move {}",
+            best_move
+        );
+    }
+
+    #[test]
+    fn test_search_tactical_path_is_stable_with_aspiration_enabled() {
+        // Tactical position used to ensure aspiration-window re-search remains
+        // deterministic and legal across repeated searches.
+        let fen = "rnb1kbnr/pppp1ppp/8/4p2Q/6P1/8/PPPPPP1P/RNB1KBNR w KQkq - 0 3";
+        let pos = Position::from_fen(fen);
+        let legal_moves = generate_legal_moves(&pos);
+        assert!(!legal_moves.is_empty(), "Position should have legal moves");
+
+        let mut engine_a = Engine::new(65_536, SimpleMoveGen, MaterialEvaluator);
+        let (best_move_a, score_a) = engine_a.search(&pos, 5, None, None);
+
+        let mut engine_b = Engine::new(65_536, SimpleMoveGen, MaterialEvaluator);
+        let (best_move_b, score_b) = engine_b.search(&pos, 5, None, None);
+
+        assert!(
+            !best_move_a.is_null(),
+            "Mate-path search returned null move (0000)"
+        );
+        assert!(
+            legal_moves.contains(&best_move_a),
+            "Mate-path search returned illegal move {}",
+            best_move_a
+        );
+        assert!(
+            !best_move_b.is_null(),
+            "Repeated search returned null move (0000)"
+        );
+        assert!(
+            legal_moves.contains(&best_move_b),
+            "Repeated search returned illegal move {}",
+            best_move_b
+        );
+        assert_eq!(
+            best_move_a, best_move_b,
+            "Repeated aspiration-enabled searches should agree on best move"
+        );
+        assert_eq!(
+            score_a, score_b,
+            "Repeated aspiration-enabled searches should agree on score"
+        );
+    }
+
+    #[test]
     fn test_movegen_validation_normal_positions() {
         // Test diagnostic validation on various positions
         let test_positions = vec![
