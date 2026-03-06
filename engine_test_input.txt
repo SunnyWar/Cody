@@ -1,8 +1,0 @@
-uci
-position startpos moves d2d3
-go depth 3
-position startpos moves d2d3 d7d6
-go depth 3
-position startpos moves d2d3 d7d6 c2c3
-go depth 3
-quit
