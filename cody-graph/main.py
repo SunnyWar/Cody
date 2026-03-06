@@ -2,6 +2,7 @@
 import os
 import json
 import sys
+import subprocess
 from pathlib import Path
 
 from graph.cody_graph import app
@@ -135,10 +136,85 @@ print(f"Repository: {repo_root}")
 print(f"Phases scheduled: {[_to_cli_phase(phase) for phase in scheduled_phases]}")
 print("=" * 80)
 
-result = app.invoke(initial_state)
+def _cleanup_temp_files(repo_path: Path) -> None:
+    """Remove temporary/junk files created during orchestration."""
+    temp_files = [
+        repo_path / ".dummy",
+        repo_path / ".placeholder_fix",
+        repo_path / "devnull",
+        repo_path / "placeholder_fix.txt",
+    ]
+    
+    for temp_file in temp_files:
+        if temp_file.exists():
+            try:
+                temp_file.unlink()
+                print(f"[cleanup] Removed: {temp_file.name}", flush=True)
+            except Exception as e:
+                print(f"[cleanup] Warning: Failed to remove {temp_file.name}: {e}", flush=True)
 
-# Save phase state for future reference/resumption
-save_phase_state(str(repo_root), result)
+def _restore_unintended_changes(repo_path: Path) -> None:
+    """
+    Restore any accidentally modified source files.
+    This ensures only intentional ELOGain changes are committed.
+    """
+    # Files that should NOT be modified by ELOGain phase
+    protected_files = [
+        "README.md",
+        "bitboard/src/lib.rs",
+    ]
+    
+    for file_path in protected_files:
+        full_path = repo_path / file_path
+        if full_path.exists():
+            # Check if this file has uncommitted changes
+            try:
+                result = subprocess.run(
+                    ["git", "diff", "--quiet", file_path],
+                    cwd=str(repo_path),
+                    capture_output=True,
+                    timeout=5,
+                )
+                if result.returncode != 0:  # File has changes
+                    # Restore to last committed version
+                    restore_result = subprocess.run(
+                        ["git", "restore", file_path],
+                        cwd=str(repo_path),
+                        capture_output=True,
+                        timeout=5,
+                    )
+                    if restore_result.returncode == 0:
+                        print(f"[cleanup] Restored: {file_path}", flush=True)
+                    else:
+                        print(f"[cleanup] Warning: Failed to restore {file_path}", flush=True)
+            except Exception as e:
+                print(f"[cleanup] Warning: Could not check/restore {file_path}: {e}", flush=True)
+
+try:
+    result = app.invoke(initial_state)
+
+    # Save phase state for future reference/resumption
+    save_phase_state(str(repo_root), result)
+except Exception as e:
+    # Ensure cleanup happens even if script fails
+    print(f"[ERROR] Orchestration failed: {e}", flush=True)
+    _cleanup_temp_files(repo_root)
+    raise
+finally:
+    # Always clean up temporary files and restore unintended changes before exiting
+    print("\n" + "=" * 80)
+    print("[CLEANUP] Running post-orchestration cleanup...")
+    print("=" * 80)
+    _cleanup_temp_files(repo_root)
+    _restore_unintended_changes(repo_root)
+    print("[CLEANUP] Complete", flush=True)
+
+# Only print results if orchestration succeeded
+if 'result' not in locals():
+    print("\n" + "=" * 80)
+    print("ORCHESTRATION FAILED - Cleanup complete")
+    print("=" * 80)
+    sys.exit(1)
 
 status = result["status"]
 last_command = result.get("last_command")
