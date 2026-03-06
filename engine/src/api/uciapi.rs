@@ -97,14 +97,16 @@ impl CodyApi {
             // Log incoming command
             self.log_in(&cmd);
             let mut should_quit = false;
-            match cmd.as_str() {
-                "uci" => self.handle_uci(&mut stdout),
-                cmd if cmd.starts_with("setoption") => self.handle_setoption(cmd),
-                "isready" => self.handle_isready(&mut stdout),
-                "ucinewgame" => self.handle_newgame(&mut stdout),
-                cmd if cmd.starts_with("position") => self.handle_position(cmd, &mut stdout),
-                cmd if cmd.starts_with("go") => self.handle_go(cmd, &mut stdout),
-                "ponderhit" => {
+            let command = Self::command_keyword(&cmd);
+            match command {
+                Some("uci") => self.handle_uci(&mut stdout),
+                Some("setoption") => self.handle_setoption(&cmd),
+                Some("isready") => self.handle_isready(&mut stdout),
+                Some("ucinewgame") => self.handle_newgame(&mut stdout),
+                Some("position") => self.handle_position(&cmd, &mut stdout),
+                Some("go") => self.handle_go(&cmd, &mut stdout),
+                Some("help") => self.handle_help(&mut stdout),
+                Some("ponderhit") => {
                     // Transition from pondering to normal search. Clear the stop flag so
                     // a future "go" (with actual time controls) can proceed.
                     self.stop.store(false, Ordering::Relaxed);
@@ -113,25 +115,38 @@ impl CodyApi {
                     self.limits.ponder = false;
                     self.limits.infinite = false;
                 }
-                "stop" => {
+                Some("stop") => {
                     self.stop.store(true, Ordering::Relaxed);
                 }
-                cmd if cmd.starts_with("register")
+                Some("register")
                     // UCI 'register' is used by some GUIs for license management.
                     // Cody does not require registration, so we acknowledge and ignore.
-                    && (cmd.trim() == "register" || cmd.trim() == "register later") =>
+                    if (cmd.trim() == "register" || cmd.trim() == "register later") =>
                 {
                     self.writeln_and_log(&mut stdout, "info string registration not required");
                 }
-                cmd if cmd.starts_with("bench") => self.handle_bench(cmd, &mut stdout),
-                "quit" => should_quit = true,
-                _ => {}
+                Some("bench") => self.handle_bench(&cmd, &mut stdout),
+                Some("quit") => should_quit = true,
+                Some(_) => {
+                    self.writeln_and_log(
+                        &mut stdout,
+                        &format!(
+                            "Unknown command: '{}'. Type help for more information.",
+                            cmd.trim()
+                        ),
+                    );
+                }
+                None => {}
             }
             stdout.flush().ok();
             if should_quit {
                 break;
             }
         }
+    }
+
+    pub(crate) fn command_keyword(cmd: &str) -> Option<&str> {
+        cmd.split_whitespace().next()
     }
 
     fn log_in(&mut self, cmd: &str) {
@@ -170,6 +185,24 @@ impl CodyApi {
         self.writeln_and_log(out, "option name Verbose type check default false");
 
         self.writeln_and_log(out, "uciok");
+    }
+
+    pub fn handle_help(&mut self, out: &mut impl Write) {
+        self.writeln_and_log(out, "Allowed commands:");
+        self.writeln_and_log(out, "  uci");
+        self.writeln_and_log(out, "  isready");
+        self.writeln_and_log(out, "  ucinewgame");
+        self.writeln_and_log(out, "  position [startpos|fen ...] [moves ...]");
+        self.writeln_and_log(
+            out,
+            "  go [depth N|movetime MS|wtime|btime|winc|binc|ponder|infinite]",
+        );
+        self.writeln_and_log(out, "  stop");
+        self.writeln_and_log(out, "  setoption name <name> [value <value>]");
+        self.writeln_and_log(out, "  register [later]");
+        self.writeln_and_log(out, "  bench");
+        self.writeln_and_log(out, "  quit");
+        self.writeln_and_log(out, "  help");
     }
 
     pub fn handle_setoption(&mut self, cmd: &str) {
