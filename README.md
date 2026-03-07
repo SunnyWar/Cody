@@ -228,9 +228,10 @@ Cody currently plays at much less than **<1000 ELO**, reflecting its development
 | Version      | EloGain |
 |--------------|---------|
 | cody-v1.0.0  | 0       |
-| cody-v1.1.2  | +56.5   |
-| cody-v1.4.3  | +144.4  |
-| cody-v1.5.3  | +197.4  |
+| cody-v1.1.2  | +50.0   |
+| cody-v1.4.3  | +188.3  |
+| cody-v1.9.3  | +206.0  |
+
 
 ## 🚀 Development Status
 
