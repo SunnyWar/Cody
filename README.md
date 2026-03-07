@@ -223,7 +223,14 @@ cargo run --release -p engine -- perft 5
 
 ## 🎯 Playing Strength
 
-Cody currently plays at much less than **<1000 ELO**, reflecting its development stage as an AI-generated engine. 
+Cody currently plays at about 1600, based on playing against weak engines: Simplex and Minimal.
+
+Rank Name                          Elo     +/-   Games   Score    Draw
+   0 cody-v1.9.3                   -35     111      20   45.0%   50.0%
+   1 Simplex                       241     206      10   80.0%   40.0%
+   2 Minimal                      -147     135      10   30.0%   60.0%
+
+**Version ELO increases**
 
 | Version      | EloGain |
 |--------------|---------|
