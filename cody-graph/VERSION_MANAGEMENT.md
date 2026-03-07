@@ -120,10 +120,8 @@ if not success:
 
 - ✅ **ELO Gain Agent** - Updated to use `commit_util.py`
 - ✅ **commit_or_revert.py** - Updated to use `commit_util.py`
-- ⏳ **Clippy Agent** - TODO: Update when commits are implemented
-- ⏳ **Refactoring Agent** - TODO: Implement with `commit_util.py`
-- ⏳ **Performance Agent** - TODO: Implement with `commit_util.py`
-- ⏳ **UCI Features Agent** - TODO: Implement with `commit_util.py`
+
+Remaining migration tasks are tracked in the root `TODO.md` document.
 
 ## Binary Management
 

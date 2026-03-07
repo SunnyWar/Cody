@@ -194,21 +194,7 @@ engine.set_num_threads(8);
 
 ## Implementation Checklist
 
-### Minimal Set (30min, gets ~9-10x speedup):
-- [ ] Set `num_threads = 8` in uciapi.rs
-- [ ] Set `hash_size_mb = 256` in uciapi.rs
-- [ ] Add `target-cpu=znver3` in Cargo.toml profile
-
-### Balanced Set (2 hours, gets ~10-12x):
-- [ ] Above + move generation cache-line alignment
-- [ ] Verify SEE thresholds are optimal
-- [ ] Benchmark with `cargo bench --release`
-
-### Aggressive Set (4+ hours, gets ~12-15x):
-- [ ] All above
-- [ ] Fine-tune aspiration window for your eval
-- [ ] Per-thread arena optimization
-- [ ] Profile with flamegraph to find remaining hotspots
+Task tracking for this checklist has been consolidated into `TODO.md` at the repository root.
 
 ---
 

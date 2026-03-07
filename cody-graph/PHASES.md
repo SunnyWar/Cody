@@ -334,10 +334,4 @@ See [ELO_GAIN_PHASE.md](ELO_GAIN_PHASE.md) for comprehensive documentation inclu
 
 ## Future Enhancements
 
-- [ ] Per-phase iteration limits
-- [ ] Conditional phase branching based on results
-- [ ] Phase-specific rollback strategies
-- [ ] Parallel phase execution (with conflict detection)
-- [ ] Phase result aggregation and reporting
-- [ ] ELO Gain phase: LLM feedback loop for failure analysis
-- [ ] ELO Gain phase: Adaptive game count (more games if close call)
+Open enhancement tasks are tracked in the root `TODO.md` document.
