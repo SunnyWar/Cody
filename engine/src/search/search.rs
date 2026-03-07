@@ -17,6 +17,10 @@ use bitboard::mov::ChessMove;
 use bitboard::movegen::MoveGenerator;
 use bitboard::movegen::generate_legal_moves_fast;
 use bitboard::position::Position;
+use std::cell::RefCell;
+use std::sync::Arc;
+use std::sync::RwLock;
+use std::sync::atomic::AtomicI32;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
@@ -24,6 +28,7 @@ const ASPIRATION_START_DELTA_CP: i32 = 25;
 const ASPIRATION_MAX_RESEARCHES: usize = 4;
 const ASPIRATION_MIN_DEPTH: usize = 3;
 const ASPIRATION_MATE_GUARD_CP: i32 = 500;
+const PARALLEL_MIN_DEPTH: usize = 12; // Only use threading for deep searches
 
 pub struct Engine<
     M: MoveGenerator + Clone + Send + Sync + 'static,
@@ -34,7 +39,8 @@ pub struct Engine<
     evaluator: E,
     arena_capacity: usize,
     num_threads: usize,
-    tt: Option<crate::core::tt::TranspositionTable>,
+    tt: Arc<RwLock<crate::core::tt::TranspositionTable>>,
+    thread_pool: Option<rayon::ThreadPool>,
 }
 
 impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Send + Sync + 'static>
@@ -47,13 +53,23 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             evaluator,
             arena_capacity: arena_size,
             num_threads: 1,
-            tt: Some(crate::core::tt::TranspositionTable::new(20)),
+            tt: Arc::new(RwLock::new(crate::core::tt::TranspositionTable::new(20))),
+            thread_pool: None,
         }
     }
 
     /// Set number of threads to use for root parallelism. 1 = serial.
     pub fn set_num_threads(&mut self, n: usize) {
-        self.num_threads = n.max(1);
+        let n = n.max(1);
+        if self.num_threads != n {
+            self.num_threads = n;
+            // Rebuild thread pool if threads > 1
+            if n > 1 {
+                self.thread_pool = rayon::ThreadPoolBuilder::new().num_threads(n).build().ok();
+            } else {
+                self.thread_pool = None;
+            }
+        }
     }
 
     /// Set the hash table size in megabytes. The actual size will be
@@ -71,7 +87,9 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             size_pow2 += 1;
         }
 
-        self.tt = Some(crate::core::tt::TranspositionTable::new(size_pow2));
+        self.tt = Arc::new(RwLock::new(crate::core::tt::TranspositionTable::new(
+            size_pow2,
+        )));
     }
 
     /// Iterative deepening search. max_depth is the maximum search depth to
@@ -155,7 +173,9 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                 (!last_completed_move.is_null()).then_some(last_completed_move),
             );
 
-            if self.num_threads <= 1 {
+            if self.num_threads <= 1 || d < PARALLEL_MIN_DEPTH {
+                // Use serial search for single-threaded mode or shallow depths
+                // (parallel overhead not worth it for shallow searches)
                 let can_use_aspiration = d >= ASPIRATION_MIN_DEPTH
                     && last_completed_score != i32::MIN
                     && last_completed_score.abs() < MATE_SCORE - ASPIRATION_MATE_GUARD_CP;
@@ -240,19 +260,28 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                     );
                 }
             } else {
-                // Parallel root move evaluation using rayon
+                // Parallel root move evaluation using rayon with persistent thread pool
                 use rayon::prelude::*;
 
-                // Make a thread pool with the requested number of threads
-                let pool = rayon::ThreadPoolBuilder::new()
-                    .num_threads(self.num_threads)
-                    .build()
-                    .expect("Failed to build rayon thread pool");
+                // Use the persistent thread pool (already created in set_num_threads)
+                let pool = self
+                    .thread_pool
+                    .as_ref()
+                    .expect("Thread pool not initialized");
 
                 // Clone components into the closure so each thread owns its data.
                 let mg = self.movegen.clone();
                 let ev = self.evaluator.clone();
                 let arena_cap = self.arena_capacity;
+
+                // Shared atomic alpha for basic cutoffs across threads
+                let shared_alpha = Arc::new(AtomicI32::new(i32::MIN));
+
+                // Use thread-local storage to reuse arenas and TTs across moves
+                thread_local! {
+                    static THREAD_ARENA: RefCell<Option<Arena>> = RefCell::new(None);
+                    static THREAD_TT: RefCell<Option<crate::core::tt::TranspositionTable>> = RefCell::new(None);
+                }
 
                 let results: Vec<(ChessMove, i32)> = pool.install(|| {
                     moves
@@ -260,36 +289,78 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                         .par_iter()
                         .copied()
                         .map(move |m| {
-                            // Each thread gets its own arena to avoid synchronization
-                            let mut local_arena = Arena::new(arena_cap);
-                            local_arena.get_mut(0).position.copy_from(root);
-                            {
-                                let (parent, child) = local_arena.get_pair_mut(0, 1);
-                                parent.position.apply_move_into(&m, &mut child.position);
-                            }
+                            // Get or create thread-local arena (reused across all moves in this
+                            // thread)
+                            let score = THREAD_ARENA.with(|arena_cell| {
+                                let mut arena_opt = arena_cell.borrow_mut();
+                                if arena_opt.is_none() {
+                                    *arena_opt = Some(Arena::new(arena_cap));
+                                }
+                                let local_arena = arena_opt.as_mut().unwrap();
 
-                            let mut repetition_history = [0u64; MAX_REPETITION_HISTORY];
-                            repetition_history[0] = root.zobrist_hash();
-                            repetition_history[1] = local_arena.get(1).position.zobrist_hash();
+                                local_arena.get_mut(0).position.copy_from(root);
+                                {
+                                    let (parent, child) = local_arena.get_pair_mut(0, 1);
+                                    parent.position.apply_move_into(&m, &mut child.position);
+                                }
 
-                            let mut local_tt_thread = crate::core::tt::TranspositionTable::new(1);
-                            let mut local_heuristics = SearchHeuristics::new();
-                            let score = -search_node_with_arena(
-                                &mg,
-                                &ev,
-                                &mut local_arena,
-                                1,
-                                d - 1,
-                                -INF,
-                                INF,
-                                &mut local_tt_thread,
-                                &mut local_heuristics,
-                                stop,
-                                time_budget_ms,
-                                Some(&start),
-                                &mut repetition_history,
-                                2,
-                            );
+                                let mut repetition_history = [0u64; MAX_REPETITION_HISTORY];
+                                repetition_history[0] = root.zobrist_hash();
+                                repetition_history[1] = local_arena.get(1).position.zobrist_hash();
+
+                                // Get or create thread-local TT (reused across all moves in this
+                                // thread)
+                                THREAD_TT.with(|tt_cell| {
+                                    let mut tt_opt = tt_cell.borrow_mut();
+                                    if tt_opt.is_none() {
+                                        // 16MB per thread (2^20 entries)
+                                        *tt_opt =
+                                            Some(crate::core::tt::TranspositionTable::new(20));
+                                    }
+                                    let local_tt = tt_opt.as_mut().unwrap();
+                                    let mut local_heuristics = SearchHeuristics::new();
+
+                                    // Use shared alpha for better cutoffs in parallel search
+                                    let current_alpha = shared_alpha.load(Ordering::Relaxed);
+                                    let score = -search_node_with_arena(
+                                        &mg,
+                                        &ev,
+                                        local_arena,
+                                        1,
+                                        d - 1,
+                                        -INF,
+                                        -current_alpha,
+                                        local_tt,
+                                        &mut local_heuristics,
+                                        stop,
+                                        time_budget_ms,
+                                        Some(&start),
+                                        &mut repetition_history,
+                                        2,
+                                    );
+
+                                    // Update shared alpha if we found a better move
+                                    loop {
+                                        let current = shared_alpha.load(Ordering::Relaxed);
+                                        if score <= current {
+                                            break;
+                                        }
+                                        if shared_alpha
+                                            .compare_exchange(
+                                                current,
+                                                score,
+                                                Ordering::Relaxed,
+                                                Ordering::Relaxed,
+                                            )
+                                            .is_ok()
+                                        {
+                                            break;
+                                        }
+                                    }
+
+                                    score
+                                })
+                            });
                             (m, score)
                         })
                         .collect()
@@ -325,11 +396,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                 "".to_string()
             };
             let seldepth = current_seldepth().max(d);
-            let hashfull = self
-                .tt
-                .as_ref()
-                .map(|tt| tt.hashfull_per_mille())
-                .unwrap_or(0);
+            let hashfull = self.tt.read().unwrap().hashfull_per_mille();
             // Always print info at the end of each depth
             crate::search::core::print_uci_info(
                 d,
@@ -357,12 +424,9 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
     }
 
     fn probe_for_best_move(&mut self, d: usize, moves: &mut MoveList) {
-        let Some(ttref) = self.tt.as_ref() else {
-            return;
-        };
-
         let key = self.arena.get(0).position.zobrist_hash();
-        if let Some(e) = ttref.probe(key, d as i8, -INF, INF) {
+        let tt_guard = self.tt.read().unwrap();
+        if let Some(e) = tt_guard.probe(key, d as i8, -INF, INF) {
             let bmove = e.best_move;
             if bmove.is_null() {
                 return;
@@ -389,9 +453,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
 
     pub fn clear_state(&mut self) {
         NODE_COUNT.store(0, Ordering::Relaxed);
-        if let Some(tt) = self.tt.as_mut() {
-            tt.clear();
-        }
+        self.tt.write().unwrap().clear();
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -408,16 +470,9 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         alpha: i32,
         beta: i32,
     ) -> (ChessMove, i32, bool) {
-        // Serial path: prefer engine TT if configured, otherwise use a tiny
-        // temporary table for this pass.
-        let mut local_tt_storage;
-        let tt_ref: &mut crate::core::tt::TranspositionTable = match self.tt.as_mut() {
-            Some(ref_mut) => ref_mut,
-            None => {
-                local_tt_storage = crate::core::tt::TranspositionTable::new(1);
-                &mut local_tt_storage
-            }
-        };
+        // Serial path: get exclusive access to the TT
+        let mut tt_guard = self.tt.write().unwrap();
+        let tt_ref: &mut crate::core::tt::TranspositionTable = &mut *tt_guard;
 
         let mut best_score = i32::MIN;
         let mut best_move = moves[0];
