@@ -449,22 +449,62 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             repetition_history[0] = root.zobrist_hash();
             repetition_history[1] = self.arena.get(1).position.zobrist_hash();
 
-            let score = -search_node_with_arena(
-                &self.movegen,
-                &self.evaluator,
-                &mut self.arena,
-                1,
-                d - 1,
-                -beta,
-                -local_alpha,
-                tt_ref,
-                heuristics,
-                stop,
-                time_budget_ms,
-                Some(start),
-                &mut repetition_history,
-                2,
-            );
+            let score = if i == 0 {
+                -search_node_with_arena(
+                    &self.movegen,
+                    &self.evaluator,
+                    &mut self.arena,
+                    1,
+                    d - 1,
+                    -beta,
+                    -local_alpha,
+                    tt_ref,
+                    heuristics,
+                    stop,
+                    time_budget_ms,
+                    Some(start),
+                    &mut repetition_history,
+                    2,
+                )
+            } else {
+                let mut pvs_score = -search_node_with_arena(
+                    &self.movegen,
+                    &self.evaluator,
+                    &mut self.arena,
+                    1,
+                    d - 1,
+                    -local_alpha - 1,
+                    -local_alpha,
+                    tt_ref,
+                    heuristics,
+                    stop,
+                    time_budget_ms,
+                    Some(start),
+                    &mut repetition_history,
+                    2,
+                );
+
+                if pvs_score > local_alpha && pvs_score < beta {
+                    pvs_score = -search_node_with_arena(
+                        &self.movegen,
+                        &self.evaluator,
+                        &mut self.arena,
+                        1,
+                        d - 1,
+                        -beta,
+                        -local_alpha,
+                        tt_ref,
+                        heuristics,
+                        stop,
+                        time_budget_ms,
+                        Some(start),
+                        &mut repetition_history,
+                        2,
+                    );
+                }
+
+                pvs_score
+            };
 
             if !searched_any || score > best_score {
                 best_score = score;

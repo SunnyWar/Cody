@@ -3,6 +3,7 @@ use crate::core::arena::Arena;
 use crate::core::tt::TTFlag;
 use crate::core::tt::TranspositionTable;
 use crate::search::evaluator::Evaluator;
+use crate::search::evaluator::evaluate_for_side_to_move;
 use crate::search::quiescence::quiescence_with_arena;
 use crate::util;
 use bitboard::MoveList;
@@ -39,6 +40,7 @@ pub fn current_seldepth() -> usize {
 pub const MATE_SCORE: i32 = 30_000;
 // Large infinity value for alpha-beta bounds
 pub const INF: i32 = 1_000_000_000;
+const NULL_MOVE_STATIC_MARGIN_CP: i32 = 120;
 const MAX_SEARCH_PLY: usize = 128;
 pub const MAX_REPETITION_HISTORY: usize = MAX_SEARCH_PLY + 4;
 
@@ -370,9 +372,12 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 
     // Null-move pruning: if we can pass and still fail-high, prune the whole
     // subtree. Only try when: (a) not in check, (b) remaining > 2 (to avoid
-    // qsearch collision), (c) not root.
+    // qsearch collision), (c) not root, (d) static eval is already close to
+    // beta so a fail-high is plausible.
     let pos_ref = arena.get(ply).position;
-    if ply > 0 && remaining > 2 && !movegen.in_check(&pos_ref) {
+    let static_eval = evaluate_for_side_to_move(evaluator, &pos_ref);
+    let can_try_null = static_eval >= beta - NULL_MOVE_STATIC_MARGIN_CP;
+    if ply > 0 && remaining > 2 && !movegen.in_check(&pos_ref) && can_try_null {
         // Make a null move (pass)
         let mut child_pos = pos_ref;
         child_pos.side_to_move = pos_ref.side_to_move.opposite();
@@ -427,7 +432,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 
     let mut best_score = i32::MIN;
     let mut best_move = bitboard::mov::ChessMove::null();
-    // Work with a local mutable  vector so we can reorder based on TT best move
+    // Work with a local mutable vector so we can reorder based on TT best move.
     // Prioritize TT best move first (already at 0 if found).
     if let Some(e) = tt_exact_needs_verify
         && !e.best_move.is_null()
@@ -441,8 +446,11 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     }
 
     let pos = arena.get(ply).position;
+    let tt_best_move = tt_exact_needs_verify
+        .map(|e| e.best_move)
+        .filter(|m| !m.is_null());
     // Full-list move ordering gives alpha-beta the best chance to cut early.
-    order_moves_with_heuristics_fast(&pos, &mut moves, heuristics, ply, None);
+    order_moves_with_heuristics_fast(&pos, &mut moves, heuristics, ply, tt_best_move);
 
     if let Some(e) = tt_exact_needs_verify
         && !e.best_move.is_null()
@@ -514,23 +522,64 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
             }
         }
 
-        // Search with reduced (or normal) depth
-        let mut score = -search_node_with_arena(
-            movegen,
-            evaluator,
-            arena,
-            ply + 1,
-            depth_for_search,
-            -beta,
-            -alpha,
-            tt,
-            heuristics,
-            stop,
-            time_budget_ms,
-            start_time,
-            repetition_history,
-            next_rep_len,
-        );
+        // Principal Variation Search (PVS): first legal move with full window,
+        // later moves with null window and full-window re-search on improvement.
+        let mut score = if move_index == 0 {
+            -search_node_with_arena(
+                movegen,
+                evaluator,
+                arena,
+                ply + 1,
+                depth_for_search,
+                -beta,
+                -alpha,
+                tt,
+                heuristics,
+                stop,
+                time_budget_ms,
+                start_time,
+                repetition_history,
+                next_rep_len,
+            )
+        } else {
+            let mut pvs_score = -search_node_with_arena(
+                movegen,
+                evaluator,
+                arena,
+                ply + 1,
+                depth_for_search,
+                -alpha - 1,
+                -alpha,
+                tt,
+                heuristics,
+                stop,
+                time_budget_ms,
+                start_time,
+                repetition_history,
+                next_rep_len,
+            );
+
+            if pvs_score > alpha && pvs_score < beta {
+                pvs_score = -search_node_with_arena(
+                    movegen,
+                    evaluator,
+                    arena,
+                    ply + 1,
+                    depth_for_search,
+                    -beta,
+                    -alpha,
+                    tt,
+                    heuristics,
+                    stop,
+                    time_budget_ms,
+                    start_time,
+                    repetition_history,
+                    next_rep_len,
+                );
+            }
+
+            pvs_score
+        };
 
         // If LMR returned a value > alpha, re-search at full depth to verify
         if !do_full_depth_search && score > alpha {
