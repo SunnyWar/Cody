@@ -148,33 +148,6 @@ pub(crate) fn push_moves_from_valid_targets_fast(
     }
 }
 
-// Backward-compatible Vec-based helper functions
-fn generate_pseudo_knight_moves(
-    pos: &Position,
-    context: &MoveGenContext,
-    moves: &mut Vec<ChessMove>,
-) {
-    // Get a bitboard of all knights for the current side.
-    // Delegate to the extracted knight module implementation.
-    crate::movegen::generate_pseudo_knight_moves(pos, context, moves);
-}
-
-fn generate_pseudo_bishop_moves(
-    pos: &Position,
-    context: &MoveGenContext,
-    moves: &mut Vec<ChessMove>,
-) {
-    crate::movegen::generate_pseudo_bishop_moves(pos, context, moves);
-}
-
-fn generate_pseudo_rook_moves(
-    pos: &Position,
-    context: &MoveGenContext,
-    moves: &mut Vec<ChessMove>,
-) {
-    crate::movegen::generate_pseudo_rook_moves(pos, context, moves);
-}
-
 #[inline]
 pub(crate) fn push_moves_from_valid_targets(
     pos: &Position,
@@ -191,22 +164,6 @@ pub(crate) fn push_moves_from_valid_targets(
         };
         moves.push(ChessMove::new(from, to, move_type));
     }
-}
-
-fn generate_pseudo_queen_moves(
-    pos: &Position,
-    context: &MoveGenContext,
-    moves: &mut Vec<ChessMove>,
-) {
-    crate::movegen::generate_pseudo_queen_moves(pos, context, moves);
-}
-
-fn generate_pseudo_king_moves(
-    pos: &Position,
-    context: &MoveGenContext,
-    moves: &mut Vec<ChessMove>,
-) {
-    crate::movegen::generate_pseudo_king_moves(pos, context, moves);
 }
 
 /// Diagnostic function that validates legal move generation.
