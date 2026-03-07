@@ -9,6 +9,7 @@ use crate::castling::CastlingRights;
 use crate::mov::ChessMove;
 use crate::mov::MoveType;
 use crate::movegen::generate_legal_moves;
+use crate::movegen::generate_pseudo_moves;
 use crate::occupancy::OccupancyKind;
 use crate::occupancy::OccupancyMap;
 use crate::piece::Color;
@@ -467,6 +468,63 @@ impl Position {
         moves
             .into_iter()
             .find(|m| m.from() == from_sq && m.to() == to_sq && m.promotion() == promo)
+    }
+
+    /// Parse UCI move from a trusted external source (GUI / protocol stream).
+    ///
+    /// This first tries strict legal parsing, then falls back to pseudo-legal
+    /// parsing with legality verification to reject moves that leave the king  
+    /// in check. This prevents desync while remaining robust to minor parsing  
+    /// discrepancies.
+    pub fn parse_uci_move_trusted(&self, mv: &str) -> Option<ChessMove> {
+        // First try strict legal move parsing
+        if let Some(legal_mv) = self.parse_uci_move(mv) {
+            return Some(legal_mv);
+        }
+
+        // Fallback: try pseudo-legal matching with validation
+        if mv.len() < 4 {
+            return None;
+        }
+
+        let from_file = mv.as_bytes()[0] as char;
+        let from_rank = mv.as_bytes()[1] as char;
+        let to_file = mv.as_bytes()[2] as char;
+        let to_rank = mv.as_bytes()[3] as char;
+
+        let from_sq = Square::from_coords(from_file, from_rank)?;
+        let to_sq = Square::from_coords(to_file, to_rank)?;
+
+        let promo = if mv.len() == 5 {
+            PieceKind::from_uci(mv.as_bytes()[4] as char)
+        } else {
+            None
+        };
+
+        let candidate = generate_pseudo_moves(self)
+            .into_iter()
+            .find(|m| m.from() == from_sq && m.to() == to_sq && m.promotion() == promo)?;
+
+        // CRITICAL: Verify the pseudo-legal move doesn't leave our king in check.
+        // This prevents desync from accepting moves that are mechanically possible
+        // but illegal (king in check), which should never occur in valid UCI streams.
+        let mut tmp_pos = Position::default();
+        self.apply_move_into(&candidate, &mut tmp_pos);
+
+        // Find the king square of the side that just moved
+        let moving_side = self.side_to_move;
+        let king_piece = Piece::from_parts(moving_side, Some(PieceKind::King));
+        let king_bb = tmp_pos.pieces.get(king_piece);
+        let king_sq = king_bb.squares().next()?;
+
+        // Check if the king is now attacked by the opponent
+        let board_state = tmp_pos.to_board_state();
+        if is_square_attacked(king_sq, moving_side.opposite(), &board_state) {
+            // Reject: this move would leave our king in check (illegal)
+            return None;
+        }
+
+        Some(candidate)
     }
 
     pub fn to_board_state(&self) -> BoardState {

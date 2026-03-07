@@ -603,6 +603,36 @@ mod perft_integration_tests {
     }
 
     #[test]
+    fn test_reported_move31_position_rejects_a5h3_and_search_stays_legal() {
+        // Reported game position where an external match runner flagged `a5h3`
+        // as an illegal black move.
+        let fen = "1r1k4/6pp/5b2/p4p2/b2P3P/1p2NB2/3R2P1/2K4R b - - 0 31";
+        let pos = Position::from_fen(fen);
+
+        let legal_moves = generate_legal_moves(&pos);
+        assert!(!legal_moves.is_empty(), "Position should have legal moves");
+
+        let illegal = pos.parse_uci_move("a5h3");
+        assert!(
+            illegal.is_none(),
+            "a5h3 must not parse as legal from this position"
+        );
+
+        let mut engine = Engine::new(65_536, SimpleMoveGen, MaterialEvaluator);
+        let (best_move, _score) = engine.search(&pos, 10, None, None);
+
+        assert!(
+            !best_move.is_null(),
+            "Search returned null move (0000) in a non-terminal position"
+        );
+        assert!(
+            legal_moves.contains(&best_move),
+            "Search returned illegal move {} in reported move-31 position",
+            best_move
+        );
+    }
+
+    #[test]
     fn test_search_tactical_path_is_stable_with_aspiration_enabled() {
         // Tactical position used to ensure aspiration-window re-search remains
         // deterministic and legal across repeated searches.

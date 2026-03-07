@@ -318,10 +318,11 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             last_completed_move = best_move;
             last_completed_score = best_score;
             let elapsed = start.elapsed().as_millis() as u64;
-            let pv_str = if last_completed_move.is_null() {
-                "".to_string()
-            } else {
+            let pv_str = if crate::VERBOSE.load(Ordering::Relaxed) && !last_completed_move.is_null()
+            {
                 last_completed_move.to_string()
+            } else {
+                "".to_string()
             };
             let seldepth = current_seldepth().max(d);
             let hashfull = self
@@ -481,10 +482,10 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             // Periodic progress info is useful for timed UCI searches,
             // but it is expensive noise for fixed-depth bench runs.
             if time_budget_ms.is_some() && now.duration_since(*last_info_time).as_millis() >= 1000 {
-                let pv_str = if best_move.is_null() {
-                    "".to_string()
-                } else {
+                let pv_str = if crate::VERBOSE.load(Ordering::Relaxed) && !best_move.is_null() {
                     best_move.to_string()
+                } else {
+                    "".to_string()
                 };
                 let seldepth = current_seldepth().max(d);
                 let hashfull = tt_ref.hashfull_per_mille();
