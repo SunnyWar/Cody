@@ -53,14 +53,24 @@ class SanityCheckResult:
         self.critical_issues: List[str] = []
         self.warnings: List[str] = []
     
-    def add_illegal_move(self, game_num: int, mover: str, move_num: int):
+    def add_illegal_move(
+        self,
+        game_num: int,
+        mover: str,
+        move_num: int,
+        uci_move: Optional[str] = None,
+    ):
         """Record illegal move found."""
         self.illegal_moves.append({
             "game": game_num,
             "mover": mover,
-            "move_number": move_num
+            "move_number": move_num,
+            "uci_move": uci_move,
         })
-        self.critical_issues.append(f"Game {game_num}: {mover} made illegal move at move {move_num}")
+        move_fragment = f" ({uci_move})" if uci_move else ""
+        self.critical_issues.append(
+            f"Game {game_num}: {mover} made illegal move at move {move_num}{move_fragment}"
+        )
     
     def add_quick_loss(self, game_num: int, loser: str, move_num: int):
         """Record extremely quick checkmate/loss."""
@@ -179,11 +189,19 @@ def parse_pgn_for_issues(pgn_file: str) -> Tuple[int, List[Dict], List[Dict]]:
             moves = re.findall(r'(\d+)\.', game)
             move_count = int(moves[-1]) if moves else None
         
-        # Check for illegal move termination
+        # Check for illegal move termination.
+        # Use brace-local parsing so engine eval braces in move text cannot bleed
+        # into the captured player token.
         if "illegal move" in game.lower():
-            illegal_match = re.search(r'\{(.*?) makes an illegal move', game)
-            if illegal_match:
-                player = illegal_match.group(1)
+            illegal_matches = re.findall(
+                r'\{[^{}]*?(White|Black)\s+makes an illegal move(?:\s*:\s*([a-h][1-8][a-h][1-8][nbrqNBRQ]?))?[^{}]*\}',
+                game,
+                re.IGNORECASE,
+            )
+            if illegal_matches:
+                player_raw, illegal_raw = illegal_matches[-1]
+                player = player_raw.capitalize()
+                illegal_uci = illegal_raw.lower() if illegal_raw else None
                 # Use move_count from metadata/notation, or unknown
                 if move_count is not None:
                     display_num = move_count
@@ -194,8 +212,12 @@ def parse_pgn_for_issues(pgn_file: str) -> Tuple[int, List[Dict], List[Dict]]:
                     "game": game_num,
                     "player": player,
                     "move_number": display_num,
+                    "uci_move": illegal_uci,
                 })
-                print(f"  [ILLEGAL] Game {game_num}: {player} made illegal move at move {display_num}")
+                move_fragment = f" ({illegal_uci})" if illegal_uci else ""
+                print(
+                    f"  [ILLEGAL] Game {game_num}: {player} made illegal move at move {display_num}{move_fragment}"
+                )
             continue
         
         # Check for result and move count
@@ -312,7 +334,7 @@ def run_self_play_sanity_check(
             output_buffer.append(line)
             
             # Detect illegal moves in real-time
-            if "illegal move" in line.lower():
+            if "finished game" in line.lower() and "makes an illegal move" in line.lower():
                 result.add_critical_error("Illegal move detected during play!")
         
         process.wait()
@@ -323,7 +345,12 @@ def run_self_play_sanity_check(
         
         # Record findings
         for im in illegal_moves:
-            result.add_illegal_move(im["game"], im["player"], im["move_number"])
+            result.add_illegal_move(
+                im["game"],
+                im["player"],
+                im["move_number"],
+                im.get("uci_move"),
+            )
         
         for ql in quick_losses:
             result.add_quick_loss(ql["game"], ql["loser"], ql["move_number"])

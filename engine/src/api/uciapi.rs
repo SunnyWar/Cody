@@ -6,6 +6,7 @@ use crate::search::evaluator::MaterialEvaluator;
 use crate::test_data::TEST_CASES;
 use crate::test_data::TestCase;
 use bitboard::movegen::SimpleMoveGen;
+use bitboard::movegen::generate_legal_moves;
 use bitboard::piece::Color;
 use bitboard::position::Position;
 use std::fs::File;
@@ -304,7 +305,7 @@ impl CodyApi {
         if let Some(&"moves") = tokens.peek() {
             tokens.next(); // consume "moves"
             for mv in tokens {
-                match pos.parse_uci_move(mv) {
+                match pos.parse_uci_move_trusted(mv) {
                     Some(chess_move) => {
                         let mut new_pos = Position::default();
                         pos.apply_move_into(&chess_move, &mut new_pos);
@@ -321,6 +322,9 @@ impl CodyApi {
                                 format!("Failed to parse UCI move {} for pos {}", mv, pos.to_fen());
                             self.writeln_and_log(out, &text);
                         }
+                        // Stop immediately to avoid cascading desync from
+                        // applying later moves onto an already diverged state.
+                        break;
                     }
                 }
             }
@@ -362,10 +366,34 @@ impl CodyApi {
                 .search(&self.current_pos, max_depth, time_budget, Some(&*self.stop));
         self.pondering_active.store(false, Ordering::Relaxed);
 
-        let bm_str = if bm.is_null() {
+        // Defensive UCI boundary check: never emit an illegal bestmove.
+        // Search should already return legal moves, but this keeps protocol
+        // output safe even if a bug slips through in deeper search code.
+        let legal_moves = generate_legal_moves(&self.current_pos);
+        let selected_bestmove = if bm.is_null() {
+            legal_moves
+                .first()
+                .copied()
+                .unwrap_or_else(bitboard::mov::ChessMove::null)
+        } else if legal_moves.contains(&bm) {
+            bm
+        } else if let Some(fallback) = legal_moves.first().copied() {
+            self.writeln_and_log(
+                out,
+                &format!(
+                    "info string warning: search returned illegal move {}, falling back to {}",
+                    bm, fallback
+                ),
+            );
+            fallback
+        } else {
+            bitboard::mov::ChessMove::null()
+        };
+
+        let bm_str = if selected_bestmove.is_null() {
             "0000".to_string()
         } else {
-            bm.to_string()
+            selected_bestmove.to_string()
         };
         self.writeln_and_log(out, &format!("bestmove {}", bm_str));
     }

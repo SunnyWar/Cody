@@ -1,3 +1,5 @@
+use bitboard::movegen::generate_legal_moves;
+use bitboard::position::Position;
 /// Integration tests for UCI command handlers
 ///
 /// This test suite validates each UCI command exposed by the Cody engine's
@@ -344,12 +346,14 @@ fn test_position_invalid_move_handling() {
     let mut api = CodyApi::new();
     let mut output = Vec::new();
 
-    // Try to apply an invalid move (should be handled gracefully)
-    api.handle_position("position startpos moves e2e4 z9z9", &mut output);
+    // Try to apply an invalid move in the middle of a sequence.
+    // Engine must stop at the first invalid token to avoid state drift.
+    api.handle_position("position startpos moves e2e4 z9z9 e7e5", &mut output);
 
-    // Engine should not panic; position should be at e2e4
+    // Engine should not panic; position should remain exactly after e2e4.
     let fen = api.current_pos.to_fen();
     assert!(fen.contains("4P3")); // e4 pawn present
+    assert!(fen.contains(" b ")); // Black to move (e7e5 must NOT have been applied)
 }
 
 #[test]
@@ -432,6 +436,42 @@ fn test_multiple_searches_same_position() {
 }
 
 #[test]
+fn test_go_emits_legal_bestmove_in_reported_move31_position() {
+    let mut api = CodyApi::new();
+    let mut output = Vec::new();
+
+    let fen = "1r1k4/6pp/5b2/p4p2/b2P3P/1p2NB2/3R2P1/2K4R b - - 0 31";
+    api.handle_position(&format!("position fen {}", fen), &mut output);
+    output.clear();
+
+    api.handle_go("go depth 10", &mut output);
+    let output_str = String::from_utf8(output).unwrap();
+
+    let bestmove_line = output_str
+        .lines()
+        .find(|line| line.starts_with("bestmove "))
+        .expect("UCI output should contain bestmove line");
+
+    let bestmove_uci = bestmove_line
+        .split_whitespace()
+        .nth(1)
+        .expect("bestmove line should contain move token");
+
+    let pos = Position::from_fen(fen);
+    let legal_moves = generate_legal_moves(&pos);
+    let parsed_move = pos
+        .parse_uci_move(bestmove_uci)
+        .expect("Engine bestmove should parse as a legal move");
+
+    assert!(
+        legal_moves.contains(&parsed_move),
+        "Engine emitted illegal bestmove {} for position {}",
+        bestmove_uci,
+        fen
+    );
+}
+
+#[test]
 fn test_newgame_clears_state() {
     let mut api = CodyApi::new();
     let mut output = Vec::new();
@@ -455,4 +495,58 @@ fn test_newgame_clears_state() {
     api.handle_go("go depth 1", &mut output);
     let output_str = String::from_utf8(output).unwrap();
     assert!(output_str.contains("bestmove"));
+}
+
+#[test]
+fn test_round169_illegal_move_a5h3() {
+    // Regression test for illegal move a5h3 reported in Round 169
+    // Game position after 45. h4, where Black illegally played a5h3
+    let mut api = CodyApi::new();
+    let mut output = Vec::new();
+
+    let moves = "e2e4 d7d5 e4d5 g8f6 f1b5 c8d7 b5c4 b7b5 c4d3 e7e6 d5e6 d8e7 d1f3 e7e6 e1d1 e6c6 \
+                 b1c3 c6f3 g1f3 b5b4 h1e1 f8e7 c3b5 b8a6 a2a3 e8d8 f3e5 d7e8 e5d4 a6b8 d4f5 e7d6 \
+                 f5g7 d6e5 e1e5 e8d7 a3b4 b8c6 e5g5 c6b4 d3f5 h8g8 f5d7 d8d7 d2d3 a7a5 c1d2 b4c6 \
+                 a1a4 a8b8 d1c1 c6e8 g7e6 e8f6 e6c5 d7e7 a4c4 h7h6 g5g3 g8g3 f2g3 b8b5 c5a6 e7d6 \
+                 d2f4 d6d7 a6c5 d7e8 c5e4 f6e4 c4c6 e4c5 c6c7 c5e6 c7a7 b5f5 c2c4 e6c5 c1d2 f5h5 \
+                 g3g4 c5d3 d2d3 h5c5 f4h6 c5c6 g4g5 c6c5 h2h4";
+
+    api.handle_position(&format!("position startpos moves {}", moves), &mut output);
+
+    // Verify position was reconstructed successfully (store FEN before search)
+    let pos_fen = api.current_pos.to_fen();
+    eprintln!("Position after move 45: {}", pos_fen);
+
+    output.clear();
+    api.handle_go("go depth 10", &mut output);
+
+    let output_str = String::from_utf8(output).unwrap();
+    let bestmove_line = output_str
+        .lines()
+        .find(|line| line.starts_with("bestmove "))
+        .expect("UCI output should contain bestmove line");
+
+    let bestmove_uci = bestmove_line
+        .split_whitespace()
+        .nth(1)
+        .expect("bestmove line should contain move token");
+
+    // Verify the bestmove is legal and NOT a5h3
+    assert_ne!(
+        bestmove_uci, "a5h3",
+        "Engine must not emit illegal move a5h3"
+    );
+
+    // Check bestmove legality (no longer borrowing api, so safe to access)
+    let pos = &api.current_pos;
+    let legal_moves = generate_legal_moves(pos);
+    let parsed_move = pos
+        .parse_uci_move(bestmove_uci)
+        .expect("Engine bestmove should parse as a legal move");
+
+    assert!(
+        legal_moves.contains(&parsed_move),
+        "Engine emitted illegal bestmove {} in Round 169 position",
+        bestmove_uci
+    );
 }

@@ -60,6 +60,7 @@ class GauntletResult:
         self.worst_fail_pgn: Optional[str] = None
         self.error_message: Optional[str] = None
         self.illegal_move_by_candidate: bool = False
+        self.illegal_move_details: Optional[Dict] = None
     
     def to_dict(self) -> Dict:
         return {
@@ -74,7 +75,38 @@ class GauntletResult:
             "worst_fail_pgn": self.worst_fail_pgn,
             "error_message": self.error_message,
             "illegal_move_by_candidate": self.illegal_move_by_candidate,
+            "illegal_move_details": self.illegal_move_details,
         }
+
+
+def parse_illegal_move_line(line: str) -> Optional[Dict]:
+    """Extract structured illegal-move details from a cutechess output line."""
+    if "illegal move" not in line.lower():
+        return None
+
+    side_match = re.search(r'(White|Black) makes an illegal move', line, re.IGNORECASE)
+    move_match = re.search(r'illegal move:\s*([a-h][1-8][a-h][1-8][nbrqNBRQ]?)', line)
+    pairing_match = re.search(r'\(([^()]+)\s+vs\s+([^()]+)\)', line)
+
+    side = side_match.group(1).capitalize() if side_match else None
+    move = move_match.group(1).lower() if move_match else None
+    white = pairing_match.group(1).strip() if pairing_match else None
+    black = pairing_match.group(2).strip() if pairing_match else None
+
+    offender = None
+    if side == "White" and white:
+        offender = white
+    elif side == "Black" and black:
+        offender = black
+
+    return {
+        "side": side,
+        "uci_move": move,
+        "white": white,
+        "black": black,
+        "offender": offender,
+        "raw": line.strip(),
+    }
 
 
 def parse_cutechess_output(output: str, result: GauntletResult) -> None:
@@ -316,6 +348,10 @@ def run_gauntlet(
         for line in process.stdout:
             print(line, end="")
             output_buffer.append(line)
+
+            illegal_info = parse_illegal_move_line(line)
+            if illegal_info is not None:
+                result.illegal_move_details = illegal_info
             
             # Halt if Candidate made an illegal move
             if "illegal move" in line.lower() and "Candidate" in line:
@@ -326,6 +362,14 @@ def run_gauntlet(
                     result.status = "illegal_move"
                     process.terminate()
                     break
+
+            # Prefer structured offender detection when available.
+            if illegal_info is not None and illegal_info.get("offender") == "Candidate":
+                print("\n🛑 HALTING: Candidate made an illegal move!")
+                result.illegal_move_by_candidate = True
+                result.status = "illegal_move"
+                process.terminate()
+                break
         
         process.wait()
         
