@@ -34,13 +34,7 @@ fn piece_value(kind: PieceKind) -> i32 {
 
 /// Helper to locate a piece at a square
 fn get_piece_at(pos: &Position, sq: Square) -> Option<Piece> {
-    let mask = BitBoardMask::from_square(sq);
-    for (piece, bb) in pos.pieces.iter() {
-        if (bb & mask).is_nonempty() {
-            return Some(piece);
-        }
-    }
-    None
+    pos.piece_at(sq)
 }
 
 /// Returns the least-valuable attacker of a given color on a target square.

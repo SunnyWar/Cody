@@ -259,11 +259,5 @@ fn piece_value(kind: PieceKind) -> i32 {
 }
 
 fn get_piece_on_square(pos: &Position, sq: bitboard::Square) -> Option<Piece> {
-    let mask = bitboard::BitBoardMask::from_square(sq);
-    for (piece, bb) in pos.pieces.iter() {
-        if (bb & mask).is_nonempty() {
-            return Some(piece);
-        }
-    }
-    None
+    pos.piece_at(sq)
 }

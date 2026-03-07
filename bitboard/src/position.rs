@@ -26,6 +26,7 @@ pub struct MoveGenContext {
 #[derive(Clone, Copy, Debug)]
 pub struct Position {
     pub pieces: PieceBitboards,
+    pub piece_on: [Piece; 64],
     pub occupancy: OccupancyMap,
     pub side_to_move: Color,
     pub castling_rights: CastlingRights,
@@ -128,6 +129,7 @@ impl Position {
     fn set_piece(&mut self, sq: Square, piece: Piece) {
         let bit = BitBoardMask::from_square(sq);
         *self.pieces.get_mut(piece) |= bit;
+        self.piece_on[sq.index()] = piece;
 
         let color_occupancy = match piece.color() {
             Color::White => OccupancyKind::White,
@@ -141,12 +143,23 @@ impl Position {
     fn empty() -> Self {
         Self {
             pieces: PieceBitboards::new(),
+            piece_on: [Piece::None; 64],
             occupancy: OccupancyMap::new(),
             side_to_move: Color::White,
             castling_rights: CastlingRights::empty(),
             ep_square: None,
             halfmove_clock: 0,
             fullmove_number: 1,
+        }
+    }
+
+    #[inline(always)]
+    pub fn piece_at(&self, sq: Square) -> Option<Piece> {
+        let piece = self.piece_on[sq.index()];
+        if piece == Piece::None {
+            None
+        } else {
+            Some(piece)
         }
     }
 
@@ -222,34 +235,19 @@ impl Position {
         out.halfmove_clock = self.halfmove_clock;
         out.fullmove_number = self.fullmove_number;
         out.pieces = self.pieces; // Start with a copy, then update only the relevant bitboards
+        out.piece_on = self.piece_on;
         let us = self.side_to_move;
         let them = us.opposite();
 
         let from_mask = BitBoardMask::from_square(mv.from);
 
-        // Remove the moving piece from its original square
-        // Identify the moving piece by checking the original position (self)
-        let moving_piece = {
-            let mut found = None;
-            for kind in [
-                PieceKind::Pawn,
-                PieceKind::Knight,
-                PieceKind::Bishop,
-                PieceKind::Rook,
-                PieceKind::Queen,
-                PieceKind::King,
-            ] {
-                let p = Piece::from_parts(us, Some(kind));
-                let bb = self.pieces.get(p);
-                if (bb & from_mask).is_nonempty() {
-                    found = Some(p);
-                    break;
-                }
-            }
-            found.expect("No piece on from-square")
-        };
+        // Remove the moving piece from its original square.
+        // Fast O(1) lookup via square-indexed cache.
+        let moving_piece = self.piece_on[mv.from.index()];
+        debug_assert!(moving_piece != Piece::None, "No piece on from-square");
         // Only clear the moving piece's bitboard in out
         *out.pieces.get_mut(moving_piece) &= !from_mask;
+        out.piece_on[mv.from.index()] = Piece::None;
         // ...existing code...
 
         // Handle captures (including en passant)
@@ -265,30 +263,18 @@ impl Position {
             _ => mv.to,
         };
 
-        let them_occ = match them {
-            Color::White => OccupancyKind::White,
-            Color::Black => OccupancyKind::Black,
-        };
+        let target_piece = out.piece_on[mv.to.index()];
         let is_promo_capture = matches!(mv.move_type, MoveType::Promotion(_))
-            && (out.occupancy[them_occ] & BitBoardMask::from_square(mv.to)).is_nonempty();
+            && target_piece != Piece::None
+            && target_piece.color() == them;
 
         if matches!(mv.move_type, MoveType::Capture | MoveType::EnPassant) || is_promo_capture {
             let cap_mask = BitBoardMask::from_square(capture_sq);
-            for kind in [
-                PieceKind::Pawn,
-                PieceKind::Knight,
-                PieceKind::Bishop,
-                PieceKind::Rook,
-                PieceKind::Queen,
-                PieceKind::King,
-            ] {
-                let p = Piece::from_parts(them, Some(kind));
-                let bb = out.pieces.get_mut(p);
-                if (*bb & cap_mask).is_nonempty() {
-                    // ...removed debug output...
-                    *bb &= !cap_mask;
-                    break;
-                }
+            let captured_piece = out.piece_on[capture_sq.index()];
+            if captured_piece != Piece::None {
+                // ...removed debug output...
+                *out.pieces.get_mut(captured_piece) &= !cap_mask;
+                out.piece_on[capture_sq.index()] = Piece::None;
             }
         }
 
@@ -303,6 +289,8 @@ impl Position {
                 let rbb = out.pieces.get_mut(rook);
                 *rbb &= !BitBoardMask::from_square(rook_from);
                 *rbb |= BitBoardMask::from_square(rook_to);
+                out.piece_on[rook_from.index()] = Piece::None;
+                out.piece_on[rook_to.index()] = rook;
             }
             MoveType::CastleQueenside => {
                 let (rook_from, rook_to) = match us {
@@ -313,6 +301,8 @@ impl Position {
                 let rbb = out.pieces.get_mut(rook);
                 *rbb &= !BitBoardMask::from_square(rook_from);
                 *rbb |= BitBoardMask::from_square(rook_to);
+                out.piece_on[rook_from.index()] = Piece::None;
+                out.piece_on[rook_to.index()] = rook;
             }
             _ => {}
         }
@@ -328,6 +318,7 @@ impl Position {
         };
         let bb = out.pieces.get_mut(final_piece);
         *bb |= to_mask;
+        out.piece_on[mv.to.index()] = final_piece;
         // ...removed debug output...
 
         // Update occupancy
@@ -400,14 +391,7 @@ impl Position {
             let mut empty = 0;
             for file in 0..8 {
                 let square = Square::from_rank_file(rank, file).unwrap();
-                let mut piece_char = None;
-
-                for (piece, bb) in self.pieces.iter() {
-                    if bb.contains_square(square) {
-                        piece_char = Some(piece.to_char());
-                        break;
-                    }
-                }
+                let piece_char = self.piece_at(square).map(Piece::to_char);
 
                 if let Some(pc) = piece_char {
                     if empty > 0 {
