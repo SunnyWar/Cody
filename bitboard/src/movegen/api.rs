@@ -7,15 +7,8 @@
 
 use crate::BitBoardMask;
 use crate::Square;
-use crate::attack::BoardState;
-use crate::attack::PieceSet;
-use crate::attack::is_king_in_check;
 use crate::mov::ChessMove;
 use crate::mov::MoveType;
-use crate::occupancy::OccupancyKind;
-use crate::piece::Color;
-use crate::piece::Piece;
-use crate::piece::PieceKind;
 use crate::position::MoveGenContext;
 use crate::position::Position;
 
@@ -28,52 +21,7 @@ pub trait MoveGenerator {
 
 impl MoveGenerator for SimpleMoveGen {
     fn in_check(&self, pos: &Position) -> bool {
-        let board_state = BoardState {
-            occupancy: pos.occupancy[OccupancyKind::Both],
-            white_pieces: PieceSet {
-                pawns: pos
-                    .pieces
-                    .get(Piece::from_parts(Color::White, Some(PieceKind::Pawn))),
-                knights: pos
-                    .pieces
-                    .get(Piece::from_parts(Color::White, Some(PieceKind::Knight))),
-                bishops: pos
-                    .pieces
-                    .get(Piece::from_parts(Color::White, Some(PieceKind::Bishop))),
-                rooks: pos
-                    .pieces
-                    .get(Piece::from_parts(Color::White, Some(PieceKind::Rook))),
-                queens: pos
-                    .pieces
-                    .get(Piece::from_parts(Color::White, Some(PieceKind::Queen))),
-                king: pos
-                    .pieces
-                    .get(Piece::from_parts(Color::White, Some(PieceKind::King))),
-            },
-            black_pieces: PieceSet {
-                pawns: pos
-                    .pieces
-                    .get(Piece::from_parts(Color::Black, Some(PieceKind::Pawn))),
-                knights: pos
-                    .pieces
-                    .get(Piece::from_parts(Color::Black, Some(PieceKind::Knight))),
-                bishops: pos
-                    .pieces
-                    .get(Piece::from_parts(Color::Black, Some(PieceKind::Bishop))),
-                rooks: pos
-                    .pieces
-                    .get(Piece::from_parts(Color::Black, Some(PieceKind::Rook))),
-                queens: pos
-                    .pieces
-                    .get(Piece::from_parts(Color::Black, Some(PieceKind::Queen))),
-                king: pos
-                    .pieces
-                    .get(Piece::from_parts(Color::Black, Some(PieceKind::King))),
-            },
-        };
-
-        let king_color = pos.side_to_move;
-        is_king_in_check(king_color, &board_state)
+        crate::movegen::is_in_check(pos, pos.side_to_move)
     }
 }
 
@@ -201,7 +149,7 @@ pub fn validate_legal_move_generation(pos: &Position) -> bool {
 
     // Legal move list is empty. Check if this is a valid terminal position.
     let pseudo_moves = generate_pseudo_moves(pos);
-    let in_check = is_king_in_check(pos.side_to_move, &pos.to_board_state());
+    let in_check = crate::movegen::is_in_check(pos, pos.side_to_move);
 
     // If there are ANY pseudo-legal moves that all fail the legality check,
     // and we're in check, this is (probably) checkmate. If no pseudo moves at all,
@@ -251,6 +199,7 @@ pub fn validate_legal_move_generation(pos: &Position) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::piece::Color;
 
     // Helper `move_exists` removed during refactor; tests still validate behavior
 
@@ -317,6 +266,18 @@ mod tests {
                 "Bishop should not capture own pawn"
             );
         }
+    }
+
+    #[test]
+    fn test_missing_side_to_move_king_rejects_all_legal_moves() {
+        // Regression: legality filtering must reject candidates when the side-to-move
+        // king is missing from the board.
+        let pos = Position::from_fen("8/8/8/8/8/8/2P5/2B5 w - - 0 1");
+        let moves = generate_legal_moves(&pos);
+        assert!(
+            moves.is_empty(),
+            "Positions without the side-to-move king must have no legal moves"
+        );
     }
 
     #[test]

@@ -11,6 +11,8 @@ use bitboard::position::Position;
 use smallvec::SmallVec;
 
 const MAX_QSEARCH_DEPTH: usize = 8;
+const MAX_QSEARCH_DEPTH_DENSE: usize = 6;
+const HIGH_DENSITY_PIECE_COUNT: u32 = 24;
 const DELTA_MARGIN: i32 = 200; // Queen value margin for delta pruning
 const CHECK_GEN_DEPTH_LIMIT: Option<usize> = None; // None => disable non-capture check generation in qsearch
 /// SEE threshold: prune captures with SEE worse than this value (in centipawns)
@@ -18,6 +20,15 @@ const CHECK_GEN_DEPTH_LIMIT: Option<usize> = None; // None => disable non-captur
 const SEE_QUIET_THRESHOLD: i32 = -50;
 /// SEE threshold in deeper qsearch - tighter pruning to avoid explosion
 const SEE_DEEP_THRESHOLD: i32 = 0;
+/// In very crowded boards, require captures to have clear tactical value.
+const SEE_DENSE_THRESHOLD: i32 = 100;
+
+#[inline]
+fn should_run_full_see(attacker_value: i32, victim_value: i32, threshold: i32) -> bool {
+    // If material swing already clears threshold with attacker/victim values,
+    // skip full SEE recursion and keep the move.
+    victim_value - attacker_value < threshold
+}
 
 pub fn quiescence_with_arena<M: MoveGenerator, E: Evaluator>(
     movegen: &M,
@@ -41,12 +52,18 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
 ) -> i32 {
     crate::search::core::update_seldepth(ply);
 
-    // Prevent infinite qsearch recursion
-    if qsearch_depth >= MAX_QSEARCH_DEPTH {
-        return evaluate_for_side_to_move(evaluator, &arena.get(ply).position);
-    }
-
     let pos = arena.get(ply).position;
+    let is_dense_position = pos.all_pieces().count() >= HIGH_DENSITY_PIECE_COUNT;
+    let qsearch_depth_cap = if is_dense_position {
+        MAX_QSEARCH_DEPTH_DENSE
+    } else {
+        MAX_QSEARCH_DEPTH
+    };
+
+    // Prevent infinite qsearch recursion
+    if qsearch_depth >= qsearch_depth_cap {
+        return evaluate_for_side_to_move(evaluator, &pos);
+    }
     let in_check = movegen.in_check(&pos);
 
     // When in check, we MUST search (can't stand pat), otherwise stand pat is valid
@@ -88,26 +105,36 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
 
                         // SEE pruning: skip bad captures on high-density boards
                         // Adjust threshold based on qsearch depth - tighter at depth > 2
-                        let see_threshold = if qsearch_depth >= 2 {
+                        let see_threshold = if is_dense_position {
+                            SEE_DENSE_THRESHOLD
+                        } else if qsearch_depth >= 2 {
                             SEE_DEEP_THRESHOLD
                         } else {
                             SEE_QUIET_THRESHOLD
                         };
 
-                        let see_value = compute_see(&pos, m.from, m.to);
-                        if see_value < see_threshold {
-                            return false;
+                        // Run full SEE only for likely-losing captures; this
+                        // avoids expensive recursive SEE on clearly favorable trades.
+                        if let Some(attacker) = get_piece_on_square(&pos, m.from) {
+                            let attacker_val = piece_value(attacker.kind());
+
+                            // In high-density tactical skirmishes, avoid neutral
+                            // or losing exchanges below the first qsearch layer.
+                            if is_dense_position && qsearch_depth >= 1 && victim_val <= attacker_val
+                            {
+                                return false;
+                            }
+
+                            if should_run_full_see(attacker_val, victim_val, see_threshold) {
+                                let see_value = compute_see(&pos, m.from, m.to);
+                                if see_value < see_threshold {
+                                    return false;
+                                }
+                            }
                         }
                     }
 
-                    let mut temp = pos;
-                    pos.apply_move_into(m, &mut temp);
-                    // `apply_move_into` flips side_to_move. `in_check` tests the
-                    // side to move, so temporarily restore mover-to-move to verify
-                    // we didn't leave our own king in check.
-                    let mut legal_test = temp;
-                    legal_test.side_to_move = pos.side_to_move;
-                    !movegen.in_check(&legal_test)
+                    true
                 })
                 .collect();
 
@@ -151,6 +178,16 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
         {
             let (parent, child) = arena.get_pair_mut(ply, ply + 1);
             parent.position.apply_move_into(&m, &mut child.position);
+
+            // In the non-check qsearch branch we start from pseudo-captures,
+            // so verify legality after the real move apply to avoid duplicate work.
+            if !in_check {
+                let mut legal_test = child.position;
+                legal_test.side_to_move = parent.position.side_to_move;
+                if movegen.in_check(&legal_test) {
+                    continue;
+                }
+            }
         }
 
         let score = -quiescence_internal(

@@ -646,6 +646,28 @@ mod perft_integration_tests {
     }
 
     #[test]
+    fn test_search_dense_tactical_position_returns_legal_bestmove() {
+        // Regression for dense tactical position with many mutually attacked pieces.
+        let fen = "k7/2n1n3/1nbNbn2/2NbRBn1/1nbRQR2/2NBRBN1/3N1N2/7K w - - 0 1";
+        let pos = Position::from_fen(fen);
+        let legal_moves = generate_legal_moves(&pos);
+        assert!(
+            !legal_moves.is_empty(),
+            "Dense tactical position should have legal moves"
+        );
+
+        let mut engine = Engine::new(65_536, SimpleMoveGen, MaterialEvaluator);
+        let (best_move, _score) = engine.search(&pos, 4, None, None);
+
+        assert!(!best_move.is_null(), "Search returned null move (0000)");
+        assert!(
+            legal_moves.contains(&best_move),
+            "Search returned illegal move {} in dense tactical position",
+            best_move
+        );
+    }
+
+    #[test]
     fn test_movegen_validation_normal_positions() {
         // Test diagnostic validation on various positions
         let test_positions = vec![
