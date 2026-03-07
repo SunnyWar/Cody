@@ -7,6 +7,7 @@ pub mod castling;
 pub mod constants;
 pub mod mov;
 pub mod movegen;
+pub mod movelist;
 pub mod occupancy;
 pub mod perft;
 pub mod piece;
@@ -17,6 +18,7 @@ pub mod tables;
 pub mod zobrist;
 
 pub use bitboardmask::BitBoardMask;
+pub use movelist::MoveList;
 pub use perft::perft;
 pub use perft::perft_divide;
 pub use square::Square;

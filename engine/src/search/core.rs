@@ -5,10 +5,11 @@ use crate::core::tt::TranspositionTable;
 use crate::search::evaluator::Evaluator;
 use crate::search::quiescence::quiescence_with_arena;
 use crate::util;
+use bitboard::MoveList;
 use bitboard::mov::ChessMove;
 use bitboard::mov::MoveType;
 use bitboard::movegen::MoveGenerator;
-use bitboard::movegen::generate_pseudo_moves;
+use bitboard::movegen::generate_pseudo_moves_fast;
 use bitboard::piece::Color;
 use bitboard::piece::Piece;
 use bitboard::piece::PieceKind;
@@ -157,6 +158,39 @@ pub fn order_moves_with_heuristics(
     };
 
     moves[start..].sort_unstable_by_key(|m| -heuristics.score_move(pos, m, ply));
+}
+
+/// Fast version that works with MoveList
+#[inline]
+pub fn order_moves_with_heuristics_fast(
+    pos: &bitboard::position::Position,
+    moves: &mut MoveList,
+    heuristics: &SearchHeuristics,
+    ply: usize,
+    pv_move: Option<ChessMove>,
+) {
+    if moves.len() <= 1 {
+        return;
+    }
+
+    if let Some(pv) = pv_move
+        && !pv.is_null()
+    {
+        for i in 0..moves.len() {
+            if moves[i] == pv {
+                moves.swap(0, i);
+                break;
+            }
+        }
+    }
+
+    let start = if pv_move.is_some_and(|m| !m.is_null() && moves.len() > 0 && moves[0] == m) {
+        1
+    } else {
+        0
+    };
+
+    moves.as_mut_slice()[start..].sort_unstable_by_key(|m| -heuristics.score_move(pos, m, ply));
 }
 
 fn piece_value(kind: PieceKind) -> i32 {
@@ -385,7 +419,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 
     let mut moves = {
         let (parent, _) = arena.get_pair_mut(ply, ply + 1);
-        generate_pseudo_moves(&parent.position)
+        generate_pseudo_moves_fast(&parent.position)
     };
 
     if moves.is_empty() {
@@ -399,42 +433,53 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 
     let mut best_score = i32::MIN;
     let mut best_move = bitboard::mov::ChessMove::null();
-    // Work with a local mutable vector so we can reorder based on TT best move
+    // Work with a local mutable  vector so we can reorder based on TT best move
     // Prioritize TT best move first (already at 0 if found).
     if let Some(e) = tt_exact_needs_verify
         && !e.best_move.is_null()
-        && let Some(idx) = moves.iter().position(|m| *m == e.best_move)
-        && idx != 0
     {
-        moves.swap(0, idx);
+        for i in 0..moves.len() {
+            if moves[i] == e.best_move {
+                moves.swap(0, i);
+                break;
+            }
+        }
     }
 
     let pos = arena.get(ply).position;
     // Full-list move ordering gives alpha-beta the best chance to cut early.
-    order_moves_with_heuristics(&pos, &mut moves, heuristics, ply, None);
+    order_moves_with_heuristics_fast(&pos, &mut moves, heuristics, ply, None);
 
-    let moves_vec = moves;
     if let Some(e) = tt_exact_needs_verify
         && !e.best_move.is_null()
-        && moves_vec.contains(&e.best_move)
     {
-        let mut tt_move_is_legal = false;
-        {
-            let (parent, child) = arena.get_pair_mut(ply, ply + 1);
-            parent
-                .position
-                .apply_move_into(&e.best_move, &mut child.position);
-            if !mover_left_in_check(movegen, &parent.position, &child.position) {
-                tt_move_is_legal = true;
+        let mut has_move = false;
+        for i in 0..moves.len() {
+            if moves[i] == e.best_move {
+                has_move = true;
+                break;
             }
         }
-        if tt_move_is_legal {
-            return e.value;
+        if has_move {
+            let mut tt_move_is_legal = false;
+            {
+                let (parent, child) = arena.get_pair_mut(ply, ply + 1);
+                parent
+                    .position
+                    .apply_move_into(&e.best_move, &mut child.position);
+                if !mover_left_in_check(movegen, &parent.position, &child.position) {
+                    tt_move_is_legal = true;
+                }
+            }
+            if tt_move_is_legal {
+                return e.value;
+            }
         }
     }
 
     let mut legal_move_count = 0usize;
-    for m in moves_vec.iter().cloned() {
+    for move_idx in 0..moves.len() {
+        let m = moves[move_idx];
         {
             let (parent, child) = arena.get_pair_mut(ply, ply + 1);
             parent.position.apply_move_into(&m, &mut child.position);
