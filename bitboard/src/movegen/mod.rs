@@ -18,6 +18,7 @@ pub use api::validate_legal_move_generation;
 // Re-export pawn generator to preserve the original API surface
 pub use king::generate_pseudo_king_moves;
 pub use knight::generate_pseudo_knight_moves;
+pub use legality::is_in_check;
 pub use legality::is_legal;
 pub use pawn::generate_pseudo_pawn_moves;
 pub use sliders::generate_pseudo_bishop_moves;

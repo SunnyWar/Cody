@@ -8,7 +8,7 @@ use crate::util;
 use bitboard::mov::ChessMove;
 use bitboard::mov::MoveType;
 use bitboard::movegen::MoveGenerator;
-use bitboard::movegen::generate_legal_moves;
+use bitboard::movegen::generate_pseudo_moves;
 use bitboard::piece::Color;
 use bitboard::piece::Piece;
 use bitboard::piece::PieceKind;
@@ -199,6 +199,17 @@ fn mvv_lva_score(pos: &bitboard::position::Position, mv: &ChessMove) -> i32 {
     victim_value * 100 - attacker_value
 }
 
+#[inline(always)]
+fn mover_left_in_check<M: MoveGenerator>(
+    movegen: &M,
+    parent: &bitboard::position::Position,
+    child: &bitboard::position::Position,
+) -> bool {
+    let mut legal_test = *child;
+    legal_test.side_to_move = parent.side_to_move;
+    movegen.in_check(&legal_test)
+}
+
 pub fn print_uci_info(
     depth: usize,
     seldepth: usize,
@@ -374,7 +385,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 
     let mut moves = {
         let (parent, _) = arena.get_pair_mut(ply, ply + 1);
-        generate_legal_moves(&parent.position)
+        generate_pseudo_moves(&parent.position)
     };
 
     if moves.is_empty() {
@@ -407,14 +418,34 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         && !e.best_move.is_null()
         && moves_vec.contains(&e.best_move)
     {
-        return e.value;
+        let mut tt_move_is_legal = false;
+        {
+            let (parent, child) = arena.get_pair_mut(ply, ply + 1);
+            parent
+                .position
+                .apply_move_into(&e.best_move, &mut child.position);
+            if !mover_left_in_check(movegen, &parent.position, &child.position) {
+                tt_move_is_legal = true;
+            }
+        }
+        if tt_move_is_legal {
+            return e.value;
+        }
     }
 
-    for (move_index, m) in moves_vec.iter().cloned().enumerate() {
+    let mut legal_move_count = 0usize;
+    for m in moves_vec.iter().cloned() {
         {
             let (parent, child) = arena.get_pair_mut(ply, ply + 1);
             parent.position.apply_move_into(&m, &mut child.position);
+
+            if mover_left_in_check(movegen, &parent.position, &child.position) {
+                continue;
+            }
         }
+
+        let move_index = legal_move_count;
+        legal_move_count += 1;
 
         let child_key = arena.get(ply + 1).position.zobrist_hash();
         let next_rep_len = if repetition_len < MAX_REPETITION_HISTORY {
@@ -496,6 +527,14 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
             heuristics.update_on_beta_cutoff(ply, m, remaining);
             break;
         }
+    }
+
+    if legal_move_count == 0 {
+        let pos = &arena.get(ply).position;
+        if movegen.in_check(pos) {
+            return -MATE_SCORE + ply as i32;
+        }
+        return 0;
     }
 
     // Store TT result with correct bound semantics from the original window.
