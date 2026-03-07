@@ -38,7 +38,17 @@ impl Default for CodyApi {
 
 impl CodyApi {
     pub fn new() -> Self {
-        let engine = Engine::new(65_536, SimpleMoveGen, MaterialEvaluator);
+        let mut engine = Engine::new(65_536, SimpleMoveGen, MaterialEvaluator);
+
+        // Optimize for multi-core systems: use all available threads (up to 8)
+        let num_threads = std::thread::available_parallelism()
+            .map(|p| std::cmp::min(p.get(), 8))
+            .unwrap_or(1);
+        engine.set_num_threads(num_threads);
+
+        // Allocate 256 MB hash table for better cache efficiency on 8-thread search
+        engine.set_hash_size_mb(256);
+
         // Try to open a log file in append mode; non-fatal if it fails.
         let log = OpenOptions::new()
             .create(true)
@@ -190,16 +200,17 @@ impl CodyApi {
 
         // Advertise options
         let max_threads = std::thread::available_parallelism()
-            .map(|n| n.get())
+            .map(|n| std::cmp::min(n.get(), 8))
             .unwrap_or(1);
+        let default_threads = max_threads;
 
-        self.writeln_and_log(out, "option name Hash type spin default 16 min 1 max 1024");
+        self.writeln_and_log(out, "option name Hash type spin default 256 min 1 max 1024");
         self.writeln_and_log(out, "option name Clear Hash type button");
         self.writeln_and_log(
             out,
             &format!(
-                "option name Threads type spin default 1 min 1 max {}",
-                max_threads
+                "option name Threads type spin default {} min 1 max {}",
+                default_threads, max_threads
             ),
         );
         self.writeln_and_log(out, "option name Ponder type check default false");

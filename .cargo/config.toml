@@ -1,5 +1,6 @@
 [build]
+# Optimize for AMD Ryzen 7 6800H (Zen 3+): enables AVX2, FMA3, and BMI2
 rustflags = [
-    "-C", "target-cpu=native",
-    "-C", "target-feature=+bmi2"
+    "-C", "target-cpu=znver3",
+    "-C", "target-feature=+avx2,+fma,+bmi2"
 ]
