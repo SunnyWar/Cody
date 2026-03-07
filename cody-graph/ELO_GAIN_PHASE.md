@@ -108,10 +108,7 @@ Generate a concrete, testable improvement to the engine. The LLM analyzes:
 - Expected impact (e.g., "Null Move Pruning should save ~30% at depth 8+")
 
 **Implementation Status:** ⏳ PLACEHOLDER
-- [ ] Integrate with OpenAI/Anthropic LLM
-- [ ] Provide engine code context
-- [ ] Generate and validate diff format
-- [ ] Store candidate in state
+Detailed open tasks are tracked in the root `TODO.md` document.
 
 ---
 
@@ -137,10 +134,7 @@ Ensure the candidate doesn't break the codebase. Three checks:
 ```
 
 **Implementation Status:** ⏳ PLACEHOLDER
-- [ ] Invoke cargo build with timeout handling
-- [ ] Parse perft output; compare against known node counts
-- [ ] Validate with release mode (critical for performance)
-- [ ] Return structured pass/fail result
+Detailed open tasks are tracked in the root `TODO.md` document.
 
 **Known Perft Node Counts (for validation):**
 ```
@@ -181,13 +175,7 @@ Run a match between the candidate and stable engine binaries. Output a PGN file 
 ```
 
 **Implementation Status:** ⏳ PLACEHOLDER (High Priority)
-- [ ] Integrate with **cutechess-cli** (preferred) or similar tournament tool
-- [ ] Build and locate both binaries (candidate + stable)
-- [ ] Configure UCI engine settings
-- [ ] Run match with time control + match parameters
-- [ ] Parse live/final output for statistics
-- [ ] Write PGN to disk
-- [ ] Handle timeouts and crashes gracefully
+Detailed open tasks are tracked in the root `TODO.md` document.
 
 **Tools to Consider:**
 - **cutechess-cli**: Industry standard, handles pairing, PGN writing, Bayesian ELO
@@ -234,14 +222,7 @@ Calculate the ELO difference between engines with confidence intervals. This det
 - **Example:** +40 ± 10 **is** significant (well above 0)
 
 **Implementation Status:** ⏳ PLACEHOLDER
-- [ ] Parse PGN file for game results and metadata
-- [ ] Calculate score percentages correctly
-- [ ] Implement Bayesian ELO calculation:
-  - Use scipy (preferred) or pure NumPy
-  - Beta distribution posterior sampling
-  - MCMC for higher accuracy (optional)
-- [ ] Validate against cutechess-cli if available
-- [ ] Return structured result with confidence intervals
+Detailed open tasks are tracked in the root `TODO.md` document.
 
 **References:**
 - Bayes ELO rating: [KNSB](http://rybka.net/ratings/knsb.html)
@@ -295,10 +276,7 @@ Final decision logic:
 ```
 
 **Implementation Status:** ⏳ PLACEHOLDER
-- [ ] Git operations: `add`, `commit`, `tag`, `branch update`
-- [ ] Loss analysis: Parse PGN, extract loss games, identify patterns
-- [ ] Error handling: Merge conflicts, dirty working directory
-- [ ] State persistence: Update `orchestrator_state.json` with new baseline
+Detailed open tasks are tracked in the root `TODO.md` document.
 
 ---
 
@@ -395,45 +373,7 @@ The ELO Gain phase will iterate until one of these conditions is met:
 - [x] Define state machine and integration points
 - [x] Document architecture
 
-### Phase 2: Compilation Validation (⏳ NEXT)
-- [ ] Implement `validate_compilation.py` fully
-  - [ ] Run `cargo build --release`
-  - [ ] Run `cargo run --release -- perft 5`
-  - [ ] Validate perft output against known node counts
-  - [ ] Timeout handling and error reporting
-
-### Phase 3: Gauntlet Runner (⏳ HIGH PRIORITY)
-- [ ] Implement `gauntlet_runner.py`
-  - [ ] Integrate cutechess-cli (if available on host)
-  - [ ] Or implement pure Python UCI orchestrator
-  - [ ] Handle engine startup, timeouts, crashes
-  - [ ] Write PGN output
-  - [ ] Parse match statistics
-
-### Phase 4: Statistical Analysis (⏳ MEDIUM PRIORITY)
-- [ ] Implement `analyze_statistics.py`
-  - [ ] PGN parser for game results
-  - [ ] Bayesian ELO calculation
-  - [ ] Error bar computation (95% credible interval)
-  - [ ] Significance testing
-
-### Phase 5: Commit/Revert + Loss Analysis (⏳ MEDIUM PRIORITY)
-- [ ] Implement `commit_or_revert.py`
-  - [ ] Git commit workflow
-  - [ ] Loss PGN analysis
-  - [ ] Failure mode extraction
-  - [ ] State updates
-
-### Phase 6: LLM Integration (⏳ LOWER PRIORITY)
-- [ ] Feed failure analysis back to LLM for next iteration
-- [ ] Context building: "Here's why the candidate failed..."
-- [ ] Prompt engineering for better proposals
-
-### Phase 7: Testing & Tuning (⏳ FINAL)
-- [ ] Integration tests for full loop
-- [ ] Benchmark: Can we improve from ~1000 ELO → 1200 ELO?
-- [ ] Optimize gauntlet time (shorter games, fewer iterations)
-- [ ] Fine-tune statistical thresholds
+Open roadmap tasks for Phases 2-7 are tracked in the root `TODO.md` document.
 
 ---
 
