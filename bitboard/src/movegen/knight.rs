@@ -1,9 +1,33 @@
+use crate::MoveList;
 use crate::bitboard::knight_attacks;
 use crate::mov::ChessMove;
 use crate::piece::Piece;
 use crate::piece::PieceKind;
 use crate::position::MoveGenContext;
 use crate::position::Position;
+
+#[inline(always)]
+pub fn generate_pseudo_knight_moves_fast(
+    pos: &Position,
+    context: &MoveGenContext,
+    moves: &mut MoveList,
+) {
+    let knights = pos
+        .pieces
+        .get(Piece::from_parts(context.us, Some(PieceKind::Knight)));
+
+    for from in knights.squares() {
+        let attacks = knight_attacks(from);
+        let valid_moves = attacks.and(context.not_ours);
+        crate::movegen::api::push_moves_from_valid_targets_fast(
+            pos,
+            context,
+            from,
+            valid_moves,
+            moves,
+        );
+    }
+}
 
 pub fn generate_pseudo_knight_moves(
     pos: &Position,

@@ -2,13 +2,15 @@ use crate::core::arena::Arena;
 use crate::search::evaluator::Evaluator;
 use crate::search::evaluator::evaluate_for_side_to_move;
 use crate::search::see::compute_see;
+use bitboard::MoveList;
 use bitboard::mov::ChessMove;
 use bitboard::movegen::MoveGenerator;
+use bitboard::movegen::generate_legal_moves_fast;
+use bitboard::movegen::generate_pseudo_captures_fast;
 use bitboard::piece::Color;
 use bitboard::piece::Piece;
 use bitboard::piece::PieceKind;
 use bitboard::position::Position;
-use smallvec::SmallVec;
 
 const MAX_QSEARCH_DEPTH: usize = 8;
 const MAX_QSEARCH_DEPTH_DENSE: usize = 6;
@@ -82,71 +84,76 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
 
     // If we're in check, we must consider all evasions (not just captures)
     // Otherwise, search captures and (at shallow depth) checking moves
-    // Use SmallVec to keep typical capture counts (<32) on the stack, avoiding heap
-    // allocation.
-    let mut moves: SmallVec<[ChessMove; 64]> = if in_check {
-        bitboard::movegen::generate_legal_moves(&pos)
-            .into_iter()
-            .collect()
+    // Use MoveList for stack allocation (avoids heap in hot path)
+    let mut moves = if in_check {
+        generate_legal_moves_fast(&pos)
     } else {
         // Generate captures first
-        let mut move_list: SmallVec<[ChessMove; 64]> =
-            bitboard::movegen::generate_pseudo_captures(&pos)
-                .into_iter()
-                .filter(|m| {
-                    // Delta pruning: skip captures that can't possibly improve alpha
-                    // even if we capture the target piece
-                    if let Some(victim) = get_piece_on_square(&pos, m.to) {
-                        let victim_val = piece_value(victim.kind());
-                        // If stand_pat + captured piece value + margin is still below alpha, prune
-                        if stand_pat + victim_val + DELTA_MARGIN < alpha {
-                            return false;
-                        }
+        let move_list = generate_pseudo_captures_fast(&pos);
 
-                        // SEE pruning: skip bad captures on high-density boards
-                        // Adjust threshold based on qsearch depth - tighter at depth > 2
-                        let see_threshold = if is_dense_position {
-                            SEE_DENSE_THRESHOLD
-                        } else if qsearch_depth >= 2 {
-                            SEE_DEEP_THRESHOLD
-                        } else {
-                            SEE_QUIET_THRESHOLD
-                        };
+        // Filter with delta and SEE pruning
+        let mut filtered = MoveList::new();
+        for i in 0..move_list.len() {
+            let m = move_list[i];
+            // Delta pruning: skip captures that can't possibly improve alpha
+            // even if we capture the target piece
+            if let Some(victim) = get_piece_on_square(&pos, m.to) {
+                let victim_val = piece_value(victim.kind());
+                // If stand_pat + captured piece value + margin is still below alpha, prune
+                if stand_pat + victim_val + DELTA_MARGIN < alpha {
+                    continue;
+                }
 
-                        // Run full SEE only for likely-losing captures; this
-                        // avoids expensive recursive SEE on clearly favorable trades.
-                        if let Some(attacker) = get_piece_on_square(&pos, m.from) {
-                            let attacker_val = piece_value(attacker.kind());
+                // SEE pruning: skip bad captures on high-density boards
+                // Adjust threshold based on qsearch depth - tighter at depth > 2
+                let see_threshold = if is_dense_position {
+                    SEE_DENSE_THRESHOLD
+                } else if qsearch_depth >= 2 {
+                    SEE_DEEP_THRESHOLD
+                } else {
+                    SEE_QUIET_THRESHOLD
+                };
 
-                            // In high-density tactical skirmishes, avoid neutral
-                            // or losing exchanges below the first qsearch layer.
-                            if is_dense_position && qsearch_depth >= 1 && victim_val <= attacker_val
-                            {
-                                return false;
-                            }
+                // Run full SEE only for likely-losing captures; this
+                // avoids expensive recursive SEE on clearly favorable trades.
+                if let Some(attacker) = get_piece_on_square(&pos, m.from) {
+                    let attacker_val = piece_value(attacker.kind());
 
-                            if should_run_full_see(attacker_val, victim_val, see_threshold) {
-                                let see_value = compute_see(&pos, m.from, m.to);
-                                if see_value < see_threshold {
-                                    return false;
-                                }
-                            }
-                        }
+                    // In high-density tactical skirmishes, avoid neutral
+                    // or losing exchanges below the first qsearch layer.
+                    if is_dense_position && qsearch_depth >= 1 && victim_val <= attacker_val {
+                        continue;
                     }
 
-                    true
-                })
-                .collect();
+                    if should_run_full_see(attacker_val, victim_val, see_threshold) {
+                        let see_value = compute_see(&pos, m.from, m.to);
+                        if see_value < see_threshold {
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            filtered.push(m);
+        }
 
         // At shallow qsearch depth, also generate checking moves
         // to catch tactical shots that would otherwise be over the horizon
         if let Some(limit) = CHECK_GEN_DEPTH_LIMIT
             && qsearch_depth < limit
         {
-            let all_quiet = bitboard::movegen::generate_legal_moves(&pos);
-            for m in all_quiet {
+            let all_quiet = generate_legal_moves_fast(&pos);
+            for i in 0..all_quiet.len() {
+                let m = all_quiet[i];
                 // Skip if already in move list (captures/promotions)
-                if move_list.contains(&m) {
+                let mut already_has = false;
+                for j in 0..filtered.len() {
+                    if filtered[j] == m {
+                        already_has = true;
+                        break;
+                    }
+                }
+                if already_has {
                     continue;
                 }
 
@@ -154,12 +161,12 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
                 let mut temp = pos;
                 pos.apply_move_into(&m, &mut temp);
                 if movegen.in_check(&temp) {
-                    move_list.push(m);
+                    filtered.push(m);
                 }
             }
         }
 
-        move_list
+        filtered
     };
 
     if moves.is_empty() {
@@ -171,10 +178,13 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
     }
 
     // Order captures by MVV/LVA descending
-    moves.sort_by_key(|m| -mvv_lva_score(&pos, m));
+    moves
+        .as_mut_slice()
+        .sort_by_key(|m| -mvv_lva_score(&pos, m));
 
     let mut best = i32::MIN;
-    for m in moves {
+    for i in 0..moves.len() {
+        let m = moves[i];
         {
             let (parent, child) = arena.get_pair_mut(ply, ply + 1);
             parent.position.apply_move_into(&m, &mut child.position);

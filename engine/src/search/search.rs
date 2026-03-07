@@ -7,14 +7,15 @@ use crate::search::core::MAX_REPETITION_HISTORY;
 use crate::search::core::NODE_COUNT;
 use crate::search::core::SearchHeuristics;
 use crate::search::core::current_seldepth;
-use crate::search::core::order_moves_with_heuristics;
+use crate::search::core::order_moves_with_heuristics_fast;
 use crate::search::core::reset_seldepth;
 use crate::search::core::search_node_with_arena;
 use crate::search::evaluator::Evaluator;
 use crate::search::evaluator::evaluate_for_side_to_move;
+use bitboard::MoveList;
 use bitboard::mov::ChessMove;
 use bitboard::movegen::MoveGenerator;
-use bitboard::movegen::generate_legal_moves;
+use bitboard::movegen::generate_legal_moves_fast;
 use bitboard::position::Position;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
@@ -88,7 +89,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         stop: Option<&std::sync::atomic::AtomicBool>,
     ) -> (ChessMove, i32) {
         if max_depth == 0 {
-            let moves = generate_legal_moves(root);
+            let moves = generate_legal_moves_fast(root);
             if moves.is_empty() {
                 let score = if self.movegen.in_check(root) {
                     -MATE_SCORE
@@ -120,7 +121,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
 
             let mut moves = {
                 let (parent, _) = self.arena.get_pair_mut(0, 1);
-                generate_legal_moves(&parent.position)
+                generate_legal_moves_fast(&parent.position)
             };
 
             // Diagnostic movegen validation is expensive; keep it for debug
@@ -146,7 +147,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
 
             // Probe TT and reorder instantly if match found
             self.probe_for_best_move(d, &mut moves);
-            order_moves_with_heuristics(
+            order_moves_with_heuristics_fast(
                 root,
                 &mut moves,
                 &heuristics,
@@ -255,7 +256,9 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
 
                 let results: Vec<(ChessMove, i32)> = pool.install(|| {
                     moves
-                        .into_par_iter()
+                        .as_slice()
+                        .par_iter()
+                        .copied()
                         .map(move |m| {
                             // Each thread gets its own arena to avoid synchronization
                             let mut local_arena = Arena::new(arena_cap);
@@ -352,7 +355,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         (last_completed_move, last_completed_score)
     }
 
-    fn probe_for_best_move(&mut self, d: usize, moves: &mut [ChessMove]) {
+    fn probe_for_best_move(&mut self, d: usize, moves: &mut MoveList) {
         let Some(ttref) = self.tt.as_ref() else {
             return;
         };
@@ -364,13 +367,17 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                 return;
             }
 
-            if let Some(pos) = moves.iter().position(|mm| *mm == bmove)
-                && pos != 0
-            {
-                moves.swap(0, pos);
+            for i in 0..moves.len() {
+                if moves[i] == bmove {
+                    if i != 0 {
+                        moves.swap(0, i);
+                    }
+                    return;
+                }
             }
+
             #[cfg(debug_assertions)]
-            if moves.iter().all(|mm| *mm != bmove) && crate::VERBOSE.load(Ordering::Relaxed) {
+            if crate::VERBOSE.load(Ordering::Relaxed) {
                 eprintln!(
                     "[debug] TT best move not found in root move list: move={} key={}",
                     bmove, key
@@ -391,7 +398,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         &mut self,
         root: &Position,
         d: usize,
-        moves: &[ChessMove],
+        moves: &MoveList,
         time_budget_ms: Option<u64>,
         stop: Option<&std::sync::atomic::AtomicBool>,
         start: &Instant,
@@ -416,7 +423,8 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         let mut searched_any = false;
         let mut local_alpha = alpha;
 
-        for m in moves.iter().copied() {
+        for i in 0..moves.len() {
+            let m = moves[i];
             // Check stop flag and time budget before each root move.
             let now = Instant::now();
             let elapsed = now.duration_since(*start).as_millis() as u64;
