@@ -46,30 +46,33 @@ impl Default for Position {
 impl Position {
     /// Fast, flat copy of a complete `Position`.
     ///
-    /// Even though the body is only a single assignment (lowered to a `memcpy`
-    /// because `Position: Copy`), this helper sits on the hottest path of the
-    /// search.  Forcing cross-crate inlining removes the call overhead when it
-    /// is executed millions of times per second.
+    /// Uses `core::ptr::copy_nonoverlapping` for efficient bulk memory copying.
+    /// This explicit operation allows better compiler optimization without
+    /// relying on cross-crate inlining, while executing millions of times per
+    /// second in the hot search path.
     pub fn copy_from(&mut self, other: &Position) {
-        *self = *other;
+        // Safety: self and other are both valid, properly aligned Position structs.
+        // They may not overlap since self is &mut and other is &.
+        unsafe {
+            core::ptr::copy_nonoverlapping(
+                other as *const Position as *const u8,
+                self as *mut Position as *mut u8,
+                core::mem::size_of::<Position>(),
+            );
+        }
     }
 
     // `all_pieces` is invoked in every move-generation call. Mark it
     // engine) can benefit from cross-crate inlining without relying on LTO.
     pub fn all_pieces(&self) -> BitBoardMask {
-        // `OccupancyMap::Both` already tracks the union of all piece
-        // bitboards, so we can return it directly instead of recomputing the
-        // union (which would require up to 12 OR-operations on the hot path).
-        self.occupancy[OccupancyKind::Both]
+        // Direct accessor bypasses Index trait overhead and uses cached union.
+        self.occupancy.get_both()
     }
 
     pub fn our_pieces(&self, us: Color) -> BitBoardMask {
-        // Branch-free lookup: map `Color` → `OccupancyKind` via a tiny table.
-        // The discriminants of `Color::{White, Black}` are guaranteed to be
-        // 0 and 1 respectively, so `us as usize` is always in-bounds.
-        const OCC_KIND_BY_COLOR: [OccupancyKind; 2] = [OccupancyKind::White, OccupancyKind::Black];
-
-        self.occupancy[OCC_KIND_BY_COLOR[us as usize]]
+        // Direct accessor bypasses lookup table and Index trait overhead.
+        // Uses Color discriminants (White=0, Black=1) directly as array indices.
+        self.occupancy.get_by_color(us)
     }
 
     pub fn can_castle_kingside(&self, color: Color) -> bool {

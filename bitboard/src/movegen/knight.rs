@@ -15,6 +15,10 @@ pub fn generate_pseudo_knight_moves_fast(
         .pieces
         .get(Piece::from_parts(context.us, Some(PieceKind::Knight)));
 
+    if knights.is_empty() {
+        return;
+    }
+
     for from in knights.squares() {
         let attacks = knight_attacks(from);
         let valid_moves = attacks.and(context.not_ours);

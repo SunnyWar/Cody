@@ -22,14 +22,14 @@
 | Bitboard | `bishop_attacks_from()` | Single-indexed square once; used unchecked table lookups in hot path. | ~2 cycles per call |
 | Bitboard | `occupancy_to_index()` | Added raw u64 fast-path (`occupancy_to_index_u64`); switched all hot slider/attack paths to use it. Bypasses BitBoardMask wrapper field extraction ~6 times per move. | 1-2 cycles per occupancy lookup |
 | Intrinsics | `pext()` | Added `pext_nonzero()` variant with debug_assert for guaranteed non-zero masks. Documents precondition and allows compiler optimizations in known-safe contexts. | Potential 1+ cycle in specialized paths |
+| Position | `copy_from()` | Replaced structural assignment with `core::ptr::copy_nonoverlapping()` for explicit bulk copy semantics. Allows better compiler optimization without relying on cross-crate inlining. | 2-5 cycles per search initialization |
+| OccupancyMap & Position | `all_pieces()` / `our_pieces()` | Added `get_both()` and `get_by_color()` methods to OccupancyMap; direct unchecked access bypasses Index trait overhead and lookup table. | 1-2 cycles per move generation |
+| Movegen | `generate_pseudo_{knight,bishop,rook,queen}_moves_fast()` | Added early `is_empty()` returns for piece-type iteration loops. Avoids unnecessary iterator overhead when a piece type is absent (common in endgames). | 2-4 cycles in tactical positions ~20% of moves |
 
-
+## P1: High
 
 | Priority | Module | Function | Call Freq | Impact | Primary Cost | Current Notes |
 |---|---|---|---|---|---|---|
-| 1 | Position | `copy_from()` | 100M/s | HIGH | ~100 cycles | Memcpy, Copy trait |
-| 2 | Position | `all_pieces()` / `our_pieces()` | 10M/s | HIGH | ~1 cycle | Direct lookup |
-| 3 | Movegen | `generate_pseudo_{knight,pawn,bishop,rook,queen,king}_moves_fast()` | 1M/s | HIGH | ~2-5k cycles | Piece-specific delegations |
 
 ## P2: Medium
 
@@ -52,4 +52,4 @@
 
 ## Next Target Recommendation
 
-`copy_from()` is the next highest priority because it's called ~100M/s and has ~100-cycle cost across Position objects. Potential optimizations: bulk assignment patterns, Copy trait leverage, or inline memcpy.
+P1 (HIGH) is now empty. Moving to P2 (MEDIUM). Highest impact candidates: `piece_at()` (100M/s, array access), `pawn_attacks_to()` (100M/s, table lookup), `BitBoardMask::contains_square()` (100M/s, bitwise AND), `BitBoardMask::count()` (100M/s, POPCNT), `popcnt()` (100M/s, intrinsic).
