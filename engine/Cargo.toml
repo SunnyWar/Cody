@@ -1,6 +1,6 @@
 [package]
 name = "engine"
-version = "1.11.11"
+version = "1.11.12"
 edition = "2024"
 
 [[bin]]

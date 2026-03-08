@@ -1,5 +1,5 @@
 use crate::MoveList;
-use crate::Square;
+use crate::bitboard::PAWN_ATTACKS;
 use crate::bitboard::bishop_attacks_from;
 use crate::bitboard::king_attacks;
 use crate::bitboard::knight_attacks;
@@ -18,14 +18,14 @@ pub fn generate_pseudo_captures_fast(pos: &Position) -> MoveList {
     let us = pos.side_to_move;
     let their_occ = pos.their_pieces(us);
     let occ = pos.all_pieces();
+    let promo_from_rank = if us == Color::White { 6 } else { 1 };
 
     // Pawn captures (including promotions)
     let pawn_bb = pos.pieces.get(Piece::from_parts(us, Some(PieceKind::Pawn)));
-    for to in Square::all_array() {
-        let attackers = pawn_attacks_to(to, us) & pawn_bb & their_occ;
-        for from in attackers.squares() {
-            let is_promo =
-                (us == Color::White && to.rank() == 7) || (us == Color::Black && to.rank() == 0);
+    for from in pawn_bb.squares() {
+        let attacks = PAWN_ATTACKS[us.index()][from.index()] & their_occ;
+        let is_promo = from.rank() == promo_from_rank;
+        for to in attacks.squares() {
             if is_promo {
                 for &promo in &[
                     PieceKind::Queen,
@@ -107,15 +107,15 @@ pub fn generate_pseudo_captures(pos: &Position) -> Vec<ChessMove> {
     let us = pos.side_to_move;
     let their_occ = pos.their_pieces(us);
     let occ = pos.all_pieces();
+    let promo_from_rank = if us == Color::White { 6 } else { 1 };
 
     // Pawn captures (including promotions)
     let pawn_bb = pos.pieces.get(Piece::from_parts(us, Some(PieceKind::Pawn)));
-    for to in Square::all_array() {
-        // only consider pawn attacks that actually capture an opponent piece
-        let attackers = pawn_attacks_to(to, us) & pawn_bb & their_occ;
-        for from in attackers.squares() {
-            let is_promo =
-                (us == Color::White && to.rank() == 7) || (us == Color::Black && to.rank() == 0);
+    for from in pawn_bb.squares() {
+        // Only consider target squares currently occupied by opponent pieces.
+        let attacks = PAWN_ATTACKS[us.index()][from.index()] & their_occ;
+        let is_promo = from.rank() == promo_from_rank;
+        for to in attacks.squares() {
             if is_promo {
                 for &promo in &[
                     PieceKind::Queen,
