@@ -138,14 +138,14 @@ pub fn generate_pseudo_pawn_moves_fast(
 
     // En passant
     if let Some(ep_square) = pos.ep_square {
-        let left_ep = (pawns << left_cap_dir) & ep_square.bitboard();
+        let left_ep = (pawns << left_cap_dir) & ep_square.bitboard() & left_cap_mask;
         for to in left_ep.squares() {
             if let Some(from) = to.advance(-left_cap_dir) {
                 moves.push(ChessMove::new(from, to, MoveType::EnPassant));
             }
         }
 
-        let right_ep = (pawns << right_cap_dir) & ep_square.bitboard();
+        let right_ep = (pawns << right_cap_dir) & ep_square.bitboard() & right_cap_mask;
         for to in right_ep.squares() {
             if let Some(from) = to.advance(-right_cap_dir) {
                 moves.push(ChessMove::new(from, to, MoveType::EnPassant));
@@ -265,14 +265,14 @@ pub fn generate_pseudo_pawn_moves(
 
     // En passant
     if let Some(ep_square) = pos.ep_square {
-        let left_ep = (pawns << left_cap_dir) & ep_square.bitboard();
+        let left_ep = (pawns << left_cap_dir) & ep_square.bitboard() & left_cap_mask;
         for to in left_ep.squares() {
             if let Some(from) = to.advance(-left_cap_dir) {
                 moves.push(ChessMove::new(from, to, MoveType::EnPassant));
             }
         }
 
-        let right_ep = (pawns << right_cap_dir) & ep_square.bitboard();
+        let right_ep = (pawns << right_cap_dir) & ep_square.bitboard() & right_cap_mask;
         for to in right_ep.squares() {
             if let Some(from) = to.advance(-right_cap_dir) {
                 moves.push(ChessMove::new(from, to, MoveType::EnPassant));
