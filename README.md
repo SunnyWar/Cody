@@ -213,6 +213,65 @@ cargo run -p engine
 cargo run --release -p engine -- perft 5
 ```
 
+## Change Acceptance Criteria (ELO)
+
+Use `cody-graph/tools/selfplay.py` to decide whether a code change should be accepted as an ELO improvement.
+
+### Prerequisites
+
+1. `cutechess-cli` is installed at `C:\Program Files (x86)\Cute Chess\cutechess-cli.exe`.
+2. Opening book exists at `cody-graph/tools/weak.epd`.
+3. Python env is available (`D:/Cody/.venv/Scripts/python.exe` in this repo).
+
+### Baseline vs Candidate setup (release builds)
+
+Run from repo root (`D:\Cody`):
+
+```powershell
+# Build current commit as candidate
+cargo build --release
+
+# Keep a baseline executable in the same folder as cody.exe.
+# Example: create baseline once from a known-good commit/tag, then copy it here as cody-vX.Y.exe.
+Copy-Item .\target\release\cody.exe .\target\release\cody-v1.0.exe
+```
+
+`selfplay.py` expects:
+- Candidate: `target/release/cody.exe`
+- Baseline: highest versioned `target/release/cody-v*.exe`
+
+### Run reproducible A/B selfplay
+
+```powershell
+Push-Location .\target\release
+D:/Cody/.venv/Scripts/python.exe ../../cody-graph/tools/selfplay.py --mode strict
+Pop-Location
+```
+
+If you are already in repo root (`D:\Cody`), use this equivalent command:
+
+```powershell
+D:/Cody/.venv/Scripts/python.exe .\cody-graph\tools\selfplay.py --mode strict
+```
+
+`../../cody-graph/tools/selfplay.py` is only valid when current directory is `target\release`.
+
+Strict mode pins deterministic settings (seed, threads, hash, sequential openings) and writes:
+- `target/release/temp_match.pgn`
+- `target/release/temp_match.meta.json`
+
+### Acceptance criteria for code changes
+
+1. Build and tests pass:
+  - `cargo build --release`
+  - `cargo test -p bitboard`
+  - `cargo test -p engine`
+2. Selfplay completes in `--mode strict` with no illegal move/disqualification.
+3. Candidate score is better than baseline in the strict run (`Score of Candidate vs Champion: W - L - D` with `W > L`).
+4. Keep `temp_match.meta.json` with the result so the comparison can be reproduced later.
+
+If `W <= L`, treat the change as not yet proven and iterate.
+
 ## 📊 Current Capabilities
 
 - **Full legal move generation** with proper castling and en passant handling

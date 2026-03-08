@@ -1,0 +1,65 @@
+{
+  "timestamp_utc": "2026-03-08T20:05:13.873968+00:00",
+  "cwd": "D:\\Cody",
+  "command": [
+    "C:\\Program Files (x86)\\Cute Chess\\cutechess-cli.exe",
+    "-engine",
+    "cmd=D:\\Cody\\target\\release\\cody.exe",
+    "name=Candidate",
+    "option.Threads=1",
+    "option.Hash=64",
+    "-engine",
+    "cmd=D:\\Cody\\target\\release\\cody-v1.9.3.exe",
+    "name=Champion",
+    "option.Threads=1",
+    "option.Hash=64",
+    "-each",
+    "tc=10+0.1",
+    "proto=uci",
+    "-concurrency",
+    "1",
+    "-rounds",
+    "400",
+    "-repeat",
+    "-recover",
+    "-pgnout",
+    "temp_match.pgn",
+    "-srand",
+    "1337",
+    "-openings",
+    "file=D:\\Cody\\cody-graph\\tools\\weak.epd",
+    "format=epd",
+    "order=sequential"
+  ],
+  "settings": {
+    "mode": "strict",
+    "time_control": "10+0.1",
+    "max_games": 400,
+    "concurrency": 1,
+    "seed": 1337,
+    "engine_threads": 1,
+    "engine_hash_mb": 64,
+    "opening_book": "D:\\Cody\\cody-graph\\tools\\weak.epd",
+    "book_format": "epd",
+    "book_order": "sequential",
+    "strict_opening_book": true
+  },
+  "artifacts": {
+    "temp_pgn": "D:\\Cody\\temp_match.pgn",
+    "worst_fail_pgn": "D:\\Cody\\worst_fail.pgn"
+  },
+  "engines": {
+    "candidate": {
+      "path": "D:\\Cody\\target\\release\\cody.exe",
+      "sha256": "b6960d9f75e56c91597b2c0d1b5b64dc56257bd851cd664edb9acc7d0df2b71b"
+    },
+    "baseline": {
+      "path": "D:\\Cody\\target\\release\\cody-v1.9.3.exe",
+      "sha256": "f607c59201afaf70455b05acd1a4298f0e4afaa22b54438af5a280c8c54d6ec2"
+    }
+  },
+  "environment": {
+    "git_head": "105f780416bfb6cc7b7e450b71a2d89161e013f6",
+    "cutechess_version": "cutechess-cli 1.4.0\nUsing Qt version 6.7.2\nRunning on Windows 11 Version 25H2/x86_64\n\nCopyright (C) 2008-2023 Ilari Pihlajisto, Arto Jonsson and contributors\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+  }
+}
