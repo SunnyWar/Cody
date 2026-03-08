@@ -24,7 +24,6 @@ Implement the following performance optimization:
 
 3. **Code Quality**
    - Document any `unsafe` blocks thoroughly
-   - Add inline comments for non-obvious optimizations
    - Keep code maintainable despite optimization
    - Use clear variable names even in hot paths
 

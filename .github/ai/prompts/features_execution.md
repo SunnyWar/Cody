@@ -36,7 +36,6 @@ Implement the following feature:
    - Add comprehensive doc comments
    - Include usage examples for new APIs
    - Follow existing naming conventions
-   - Add inline comments for complex logic
 
 5. **Testing Requirements**
    - Add unit tests for the feature

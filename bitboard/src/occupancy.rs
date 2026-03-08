@@ -33,7 +33,6 @@ impl OccupancyMap {
 
     /// Direct accessor for all occupied squares (White | Black).
     /// Eliminates Index trait overhead by directly returning the cached union.
-    #[inline(always)]
     pub fn get_both(&self) -> BitBoardMask {
         // Safety: OccupancyKind::Both == 2, always in-bounds.
         unsafe { *self.inner.get_unchecked(2) }
@@ -42,7 +41,6 @@ impl OccupancyMap {
     /// Direct accessor for one color's pieces.
     /// Uses Color discriminants (0=White, 1=Black) directly as array indices.
     /// Eliminates lookup table and Index trait overhead.
-    #[inline(always)]
     pub fn get_by_color(&self, color: crate::piece::Color) -> BitBoardMask {
         // Safety: Color::White=0, Color::Black=1, both in-bounds for [0..3].
         unsafe { *self.inner.get_unchecked(color as usize) }

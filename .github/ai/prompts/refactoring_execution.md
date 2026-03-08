@@ -33,7 +33,6 @@ Implement the following refactoring:
    - Verify with `cargo build --release`
 
 5. **Documentation**
-   - Update inline comments if logic changes
    - Update module-level docs if structure changes
    - Add examples for new public APIs
 
