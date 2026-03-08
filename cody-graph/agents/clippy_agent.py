@@ -241,7 +241,7 @@ STRICT RULES:
 - NEVER use @@ @@ without numbers - this is INVALID
 - Do NOT use *** markers or *** Begin Patch / *** End Patch
 - Put your diff inside a markdown code block with 'diff' language tag
-- Do not suggest external dependencies.
+- External dependencies are allowed only when they are extremely high-performance and used in performance-critical paths.
 - CRITICAL: Fix EXACTLY ONE warning/error at a time with minimal changes.
 - CRITICAL: When multiple issues exist, ALWAYS pick the SIMPLEST fix (fewest lines changed).
 - CRITICAL: NEVER add #[allow(...)], #[warn(...)], or any suppression attributes.

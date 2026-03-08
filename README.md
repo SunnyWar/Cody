@@ -70,7 +70,6 @@ Additional phases can be enabled in `cody-agent/config.json`:
 The codebase is organized as a **Cargo workspace** with two crates:
 
 - **`bitboard/`** — Pure bitboard logic, move generation, position manipulation
-  - No external dependencies (self-contained, safe to reuse)
   - Exports: `Position`, `Move`, `MoveGen`, bitboard utilities
   
 - **`engine/`** — Search engine, evaluation, UCI API, benchmarks
@@ -80,6 +79,7 @@ The codebase is organized as a **Cargo workspace** with two crates:
 
 Key constraints:
 - **Fixed-block allocator**: Search nodes are preallocated in an arena, no heap allocations in hot path
+- **External dependencies**: Allowed only when they are extremely high-performance and used in performance-critical paths
 - **Type safety**: Semantic newtypes like `Ply`, `Depth`, `NodeId` to prevent type confusion
 - **Separation of concerns**: Bitboard crate focuses on board rules; engine crate handles search/UCI
 

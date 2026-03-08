@@ -273,7 +273,7 @@ Current phase and progress saved to `orchestrator_state.json`:
 
 - **Fixed-block arena**: Search nodes preallocated, no dynamic allocation in hot path
 - **Allocation-free moves**: No Vec/String per-node in search
-- **bitboard/engine split**: bitboard has no external deps, pure logic
+- **External dependencies**: Allowed only when they are extremely high-performance and used in performance-critical paths
 - **Type safety**: Use newtypes (Ply, Depth, Square) not raw integers
 
 See [architecture.md](architecture.md) for details.
