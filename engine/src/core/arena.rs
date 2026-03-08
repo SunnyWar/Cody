@@ -26,7 +26,6 @@ impl Arena {
 
     /// Returns an immutable reference to the node at `idx`.
     /// Bounds‐check is removed in release builds for maximum speed.
-    #[inline(always)]
     pub fn get(&self, idx: usize) -> &Node {
         debug_assert!(idx < self.nodes.len());
         // SAFETY: caller guarantees `idx` is in-bounds.
@@ -34,7 +33,6 @@ impl Arena {
     }
 
     /// Mutable counterpart of `get`.
-    #[inline(always)]
     pub fn get_mut(&mut self, idx: usize) -> &mut Node {
         debug_assert!(idx < self.nodes.len());
         // SAFETY: caller guarantees `idx` is in-bounds and we have &mut self.

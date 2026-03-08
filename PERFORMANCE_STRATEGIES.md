@@ -19,7 +19,7 @@ Optimize a random function from a performance-critical file by eliminating:
 - Cache-unfriendly memory access patterns
 
 **Typical gains:** 2-10% on individual functions
-**Examples:** Inlining small operations, eliminating temporary allocations
+**Examples:** Eliminating temporary allocations, hoisting repeated computations
 
 ---
 
@@ -97,16 +97,16 @@ Reduce branch misprediction stalls by:
 
 ---
 
-### 7. **Inline Hot Functions**
-**Focus:** Reducing function call overhead
+### 7. **Hot Path Dataflow Simplification**
+**Focus:** Reducing redundant work in critical call chains
 
-Mark currently-uninlined hot functions for forced inlining:
-- Add `#[inline]` to small utility functions in hot paths
-- Add `#[inline(always)]` only to the *very* hottest functions (1-2 per phase)
-- Avoid inflating binary size with large function inlining
+Simplify hot-path dataflow without relying on forced inlining:
+- Fold repeated index/mask/address computations into single computed values per iteration
+- Replace copy-modify-writeback patterns with direct in-place mutation where safe
+- Collapse thin wrappers into direct call paths only when it reduces duplicated work
 
-**Typical gains:** 1-3% per function
-**Caution:** Binary size trade-off; only for true hot path functions
+**Typical gains:** 1-5% per function
+**Caution:** Preserve readability and verify correctness with full test/bench runs
 
 ---
 

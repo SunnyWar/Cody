@@ -19,7 +19,6 @@ pub struct MoveList {
 }
 
 impl MoveList {
-    #[inline]
     pub fn new() -> Self {
         Self {
             moves: [ChessMove::null(); MAX_MOVES],
@@ -27,44 +26,37 @@ impl MoveList {
         }
     }
 
-    #[inline]
     pub fn push(&mut self, mv: ChessMove) {
         debug_assert!(self.len < MAX_MOVES, "MoveList overflow");
         self.moves[self.len] = mv;
         self.len += 1;
     }
 
-    #[inline]
     pub fn len(&self) -> usize {
         self.len
     }
 
-    #[inline]
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
 
-    #[inline]
     pub fn clear(&mut self) {
         self.len = 0;
     }
 
-    #[inline]
+
     pub fn as_slice(&self) -> &[ChessMove] {
         &self.moves[..self.len]
     }
 
-    #[inline]
     pub fn as_mut_slice(&mut self) -> &mut [ChessMove] {
         &mut self.moves[..self.len]
     }
 
-    #[inline]
     pub fn iter(&self) -> impl Iterator<Item = &ChessMove> {
         self.moves[..self.len].iter()
     }
 
-    #[inline]
     pub fn get(&self, index: usize) -> Option<&ChessMove> {
         if index < self.len {
             Some(&self.moves[index])
@@ -74,7 +66,6 @@ impl MoveList {
     }
 
     /// Swap two moves by index (used for move ordering)
-    #[inline]
     pub fn swap(&mut self, a: usize, b: usize) {
         if a < self.len && b < self.len {
             self.moves.swap(a, b);
@@ -83,13 +74,11 @@ impl MoveList {
 
     /// Convert to Vec for compatibility with existing code
     /// This allocates but allows gradual migration
-    #[inline]
     pub fn to_vec(&self) -> Vec<ChessMove> {
         self.moves[..self.len].to_vec()
     }
 
     /// Create from Vec (for tests and compatibility)
-    #[inline]
     pub fn from_vec(vec: Vec<ChessMove>) -> Self {
         let mut list = Self::new();
         for mv in vec {
@@ -100,7 +89,6 @@ impl MoveList {
 
     /// Hint the CPU to prefetch a future move entry into cache.
     /// On unsupported targets this is intentionally a no-op.
-    #[inline]
     pub fn prefetch_next_batch(&self, current_index: usize) {
         // Prefetch 2 cache lines ahead (128 bytes ~= 16 ChessMove entries).
         let prefetch_idx = current_index.saturating_add(16).min(self.len);

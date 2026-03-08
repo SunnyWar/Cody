@@ -37,7 +37,6 @@ Implement the following performance optimization:
 5. **Optimization Techniques**
    - Prefer algorithmic improvements over micro-optimizations
    - Use profiling to guide decisions
-   - Consider compiler optimization hints (`#[inline]`, `#[cold]`, etc.)
    - Leverage Rust zero-cost abstractions
    - Add `const` where applicable
 

@@ -6,7 +6,6 @@ use crate::piece::PieceKind;
 use crate::position::MoveGenContext;
 use crate::position::Position;
 
-#[inline(always)]
 pub fn generate_pseudo_knight_moves_fast(
     pos: &Position,
     context: &MoveGenContext,

@@ -53,7 +53,6 @@ impl TranspositionTable {
         }
     }
 
-    #[inline(always)]
     pub fn probe(&self, key: u64, depth: i8, alpha: i32, beta: i32) -> Option<TTEntry> {
         let idx = (key as usize) & self.mask;
         let e = self.entries[idx];
@@ -79,7 +78,6 @@ impl TranspositionTable {
         None
     }
 
-    #[inline]
     pub fn store(&mut self, key: u64, value: i32, depth: i8, flag: TTFlag, best_move: ChessMove) {
         let idx = (key as usize) & self.mask;
         let e = &mut self.entries[idx];

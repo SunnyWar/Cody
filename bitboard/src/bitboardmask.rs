@@ -63,89 +63,72 @@ use std::ops::Shr;
 pub struct BitBoardMask(pub u64);
 
 impl BitBoardMask {
-    #[inline]
     pub fn and(self, rhs: Self) -> Self {
         self & rhs
     }
 
-    #[inline]
     pub fn or(self, rhs: Self) -> Self {
         self | rhs
     }
 
-    #[inline]
     pub fn shift_left(self, n: u8) -> Self {
         BitBoardMask(self.0 << n)
     }
 
-    #[inline]
     pub fn shift_right(self, n: u8) -> Self {
         BitBoardMask(self.0 >> n)
     }
 
-    #[inline]
     pub fn contains(&self, sq: Square) -> bool {
         self.contains_square(sq)
     }
 
-    #[inline]
     pub const fn empty() -> Self {
         Self(0)
     }
 
-    #[inline]
     pub const fn from_square(sq: Square) -> Self {
         Self(1u64 << (sq as u8))
     }
 
-    #[inline]
     pub fn set(&mut self, sq: Square) {
         self.0 |= 1u64 << sq.index();
     }
 
-    #[inline]
     pub fn clear(&mut self, sq: Square) {
         self.0 &= !(1u64 << sq.index());
     }
 
-    #[inline]
     pub const fn is_empty(self) -> bool {
         self.0 == 0
     }
 
-    #[inline]
     pub const fn count(self) -> u32 {
         self.0.count_ones()
     }
 
-    #[inline]
     pub const fn count_ones(self) -> u32 {
         self.0.count_ones()
     }
 
-    #[inline]
     pub const fn is_singleton(self) -> bool {
         // Faster than count_ones() == 1
         self.0 != 0 && (self.0 & (self.0 - 1)) == 0
     }
 
-    #[inline]
     pub const fn is_nonempty(self) -> bool {
         self.0 != 0
     }
 
-    #[inline]
     pub fn contains_square(self, sq: Square) -> bool {
         (self.0 & (1u64 << sq.index())) != 0
     }
 
     /// Returns an iterator over all set squares in this bitboard.
-    #[inline]
     pub fn squares(self) -> SquaresIter {
         SquaresIter { bb: self.0 }
     }
 
-    #[inline]
     pub fn first_square(self) -> Option<Square> {
         if self.0 == 0 {
             None
@@ -159,12 +142,10 @@ impl BitBoardMask {
 
     // Move test module to bottom of file at module scope
 
-    #[inline]
     pub const fn not(self) -> Self {
         BitBoardMask(!self.0)
     }
 
-    #[inline]
     pub const fn from_squares(squares: &[Square]) -> Self {
         let mut mask = 0u64;
         let mut i = 0;
@@ -180,7 +161,6 @@ impl BitBoardMask {
 impl Shl<i8> for BitBoardMask {
     type Output = Self;
 
-    #[inline]
     fn shl(self, rhs: i8) -> Self::Output {
         if rhs >= 0 {
             BitBoardMask(self.0 << rhs)
@@ -193,7 +173,6 @@ impl Shl<i8> for BitBoardMask {
 impl Shr<i8> for BitBoardMask {
     type Output = Self;
 
-    #[inline]
     fn shr(self, rhs: i8) -> Self::Output {
         if rhs >= 0 {
             BitBoardMask(self.0 >> rhs)
@@ -206,14 +185,12 @@ impl Shr<i8> for BitBoardMask {
 impl BitAnd for BitBoardMask {
     type Output = Self;
 
-    #[inline]
     fn bitand(self, rhs: Self) -> Self::Output {
         BitBoardMask(self.0 & rhs.0)
     }
 }
 
 impl BitAndAssign for BitBoardMask {
-    #[inline]
     fn bitand_assign(&mut self, rhs: Self) {
         self.0 &= rhs.0;
     }
@@ -222,14 +199,12 @@ impl BitAndAssign for BitBoardMask {
 impl BitOr for BitBoardMask {
     type Output = Self;
 
-    #[inline]
     fn bitor(self, rhs: Self) -> Self::Output {
         BitBoardMask(self.0 | rhs.0)
     }
 }
 
 impl BitOrAssign for BitBoardMask {
-    #[inline]
     fn bitor_assign(&mut self, rhs: Self) {
         self.0 |= rhs.0;
     }
@@ -238,21 +213,18 @@ impl BitOrAssign for BitBoardMask {
 impl Not for BitBoardMask {
     type Output = Self;
 
-    #[inline]
     fn not(self) -> Self::Output {
         BitBoardMask(!self.0)
     }
 }
 
 impl From<Square> for BitBoardMask {
-    #[inline]
     fn from(sq: Square) -> Self {
         BitBoardMask::from_square(sq)
     }
 }
 
 impl From<u64> for BitBoardMask {
-    #[inline]
     fn from(bits: u64) -> Self {
         BitBoardMask(bits)
     }
@@ -264,7 +236,6 @@ impl From<u64> for BitBoardMask {
 
 // Optimized ray casting functions
 impl BitBoardMask {
-    #[inline]
     pub fn subray_left_optimized(self, origin_sq: u8) -> BitBoardMask {
         // Use bit manipulation for horizontal rays
         let rank_mask = 0xFFu64 << (origin_sq & 56); // Get rank mask
@@ -474,7 +445,6 @@ impl BitBoardMask {
 
     // BMI2 optimized version for runtime use
     #[cfg(target_arch = "x86_64")]
-    #[inline]
     pub fn subray_horizontal_bmi2(self, origin_sq: u8, direction: bool) -> BitBoardMask {
         if std::arch::is_x86_feature_detected!("bmi2") {
             let rank = (origin_sq / 8) as u64;

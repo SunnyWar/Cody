@@ -25,7 +25,6 @@ const SEE_DEEP_THRESHOLD: i32 = 0;
 /// In very crowded boards, require captures to have clear tactical value.
 const SEE_DENSE_THRESHOLD: i32 = 100;
 
-#[inline]
 fn should_run_full_see(attacker_value: i32, victim_value: i32, threshold: i32) -> bool {
     // If material swing already clears threshold with attacker/victim values,
     // skip full SEE recursion and keep the move.

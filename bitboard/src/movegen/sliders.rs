@@ -7,7 +7,6 @@ use crate::piece::PieceKind;
 use crate::position::MoveGenContext;
 use crate::position::Position;
 
-#[inline(always)]
 pub fn generate_pseudo_bishop_moves_fast(
     pos: &Position,
     context: &MoveGenContext,
@@ -30,7 +29,6 @@ pub fn generate_pseudo_bishop_moves_fast(
     }
 }
 
-#[inline(always)]
 pub fn generate_pseudo_rook_moves_fast(
     pos: &Position,
     context: &MoveGenContext,
@@ -52,7 +50,6 @@ pub fn generate_pseudo_rook_moves_fast(
     }
 }
 
-#[inline(always)]
 pub fn generate_pseudo_queen_moves_fast(
     pos: &Position,
     context: &MoveGenContext,
@@ -77,7 +74,6 @@ pub fn generate_pseudo_queen_moves_fast(
     }
 }
 
-#[inline(always)]
 pub fn generate_pseudo_bishop_moves(
     pos: &Position,
     context: &MoveGenContext,
@@ -94,7 +90,6 @@ pub fn generate_pseudo_bishop_moves(
     }
 }
 
-#[inline(always)]
 pub fn generate_pseudo_rook_moves(
     pos: &Position,
     context: &MoveGenContext,
@@ -111,7 +106,6 @@ pub fn generate_pseudo_rook_moves(
 }
 
 /// Optimized queen move generation - now benefits from fast bishop_attacks_from
-#[inline(always)]
 pub fn generate_pseudo_queen_moves(
     pos: &Position,
     context: &MoveGenContext,

@@ -33,7 +33,6 @@ pub struct PieceSet {
 }
 
 /// Check if a square is attacked by the given color
-#[inline]
 pub fn is_square_attacked(square: Square, by_color: Color, board: &BoardState) -> bool {
     let sq_index = square.index();
     let king_color_mask = square.color_mask();
@@ -117,7 +116,6 @@ pub fn is_square_attacked(square: Square, by_color: Color, board: &BoardState) -
 }
 
 /// Check if the king of the given color is in check
-#[inline]
 pub fn is_king_in_check(king_color: Color, board: &BoardState) -> bool {
     // Fetch the king bitboard for the required colour.
     let king_bb = match king_color {

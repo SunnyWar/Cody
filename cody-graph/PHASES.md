@@ -164,8 +164,7 @@ If any step fails:
 4. Cache locality improvement (optimize memory access patterns and struct layout)
 5. Hot path allocation reduction (eliminate heap allocations from critical paths)
 6. Branching and prediction optimization (reduce CPU pipeline stalls)
-7. Inline hot functions (mark functions for inlining to reduce call overhead)
-8. Loop optimization and iteration (hoist invariants, combine passes, unroll)
+7. Loop optimization and iteration (hoist invariants, combine passes, unroll)
 
 **Target Files** (in priority order):
 - `bitboard/src/movegen.rs` - Move generation (1M+ calls/search)

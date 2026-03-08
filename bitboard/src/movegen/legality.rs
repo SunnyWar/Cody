@@ -34,7 +34,6 @@ pub fn is_legal(pos: &Position, m: &ChessMove) -> bool {
 
 /// Fast legality check when position after move is already computed
 /// This avoids redundant position copies in tight loops
-#[inline]
 pub fn is_legal_fast(original_pos: &Position, pos_after_move: &Position) -> bool {
     // Check if the mover's king is missing after make-move
     if pos_after_move
@@ -52,7 +51,6 @@ pub fn is_legal_fast(original_pos: &Position, pos_after_move: &Position) -> bool
     !is_in_check(pos_after_move, original_pos.side_to_move)
 }
 
-#[inline(always)]
 pub fn is_in_check(pos: &Position, color: Color) -> bool {
     let king_sq = match pos
         .pieces
@@ -66,7 +64,6 @@ pub fn is_in_check(pos: &Position, color: Color) -> bool {
     is_square_attacked_by(pos, king_sq, color.opposite())
 }
 
-#[inline(always)]
 fn is_square_attacked_by(pos: &Position, sq: Square, attacker_color: Color) -> bool {
     // Pawn attacks
     if pawn_attacks_to(sq, attacker_color)

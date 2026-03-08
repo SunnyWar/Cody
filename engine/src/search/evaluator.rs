@@ -61,7 +61,6 @@ pub trait Evaluator {
 ///
 /// Negamax expects every node score to be from the perspective of the player
 /// to move in `pos`.
-#[inline(always)]
 pub fn evaluate_for_side_to_move<E: Evaluator>(evaluator: &E, pos: &Position) -> i32 {
     let white_centric = evaluator.evaluate(pos);
     // Branchless conditional negation:
@@ -332,7 +331,6 @@ fn blend_tables(mid: i32, end: i32, phase: i32) -> i32 {
 ///
 /// Process up to 8 pieces at once using AVX2 SIMD operations.
 /// Returns the sum of all piece values + PST bonuses.
-#[inline]
 fn evaluate_pieces_batch_simd(
     indices: &[usize],
     mid_table: &[i32; 64],

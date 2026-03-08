@@ -11,7 +11,6 @@
 ///
 /// # Arguments
 /// * `addr` - Pointer to memory location to prefetch
-#[inline(always)]
 pub fn prefetch_read<T>(addr: *const T) {
     #[cfg(target_arch = "x86_64")]
     unsafe {
@@ -37,7 +36,6 @@ pub fn prefetch_read<T>(addr: *const T) {
 ///
 /// Similar to `prefetch_read` but targets L2 cache instead of L1.
 /// Useful for data that will be accessed soon but not immediately.
-#[inline(always)]
 #[allow(dead_code)]
 pub fn prefetch_read_l2<T>(addr: *const T) {
     #[cfg(target_arch = "x86_64")]
@@ -63,7 +61,6 @@ pub fn prefetch_read_l2<T>(addr: *const T) {
 ///
 /// Hints that the cache line will be modified soon. On x86 this may use
 /// prefetchw if available, otherwise falls back to regular prefetch.
-#[inline(always)]
 #[allow(dead_code)]
 pub fn prefetch_write<T>(addr: *const T) {
     // For now, use the same as prefetch_read since _mm_prefetch doesn't
@@ -81,7 +78,6 @@ pub fn prefetch_write<T>(addr: *const T) {
 /// Critical for chess engines: counting pieces, mobility, control, etc.
 /// Uses hardware POPCNT instruction when available, software fallback
 /// otherwise.
-#[inline(always)]
 pub fn popcnt(x: u64) -> u32 {
     #[cfg(target_arch = "x86_64")]
     {
@@ -116,7 +112,6 @@ pub fn popcnt(x: u64) -> u32 {
 ///
 /// Used for: extracting square indices from bitboards, iterating pieces.
 /// Returns 64 if x == 0.
-#[inline(always)]
 pub fn trailing_zeros(x: u64) -> u32 {
     #[cfg(target_arch = "x86_64")]
     {
@@ -141,7 +136,6 @@ pub fn trailing_zeros(x: u64) -> u32 {
 ///
 /// Used for: determining board regions, high-priority pieces.
 /// Returns 64 if x == 0.
-#[inline(always)]
 pub fn leading_zeros(x: u64) -> u32 {
     #[cfg(target_arch = "x86_64")]
     {
@@ -166,7 +160,6 @@ pub fn leading_zeros(x: u64) -> u32 {
 ///
 /// Critical for fast bitboard iteration: repeatedly extract and clear LSB.
 /// Example: while bb != 0 { let sq = trailing_zeros(bb); bb = blsr(bb); ... }
-#[inline(always)]
 pub fn blsr(x: u64) -> u64 {
     #[cfg(target_arch = "x86_64")]
     {
@@ -191,7 +184,6 @@ pub fn blsr(x: u64) -> u64 {
 ///
 /// Isolates a single bit for masking operations.
 /// Example: get the lowest piece on a bitboard without removing it.
-#[inline(always)]
 pub fn blsi(x: u64) -> u64 {
     #[cfg(target_arch = "x86_64")]
     {
@@ -224,7 +216,6 @@ pub fn blsi(x: u64) -> u64 {
 ///
 /// Note: AMD Zen 1/2 have slow microcode PEXT (~18 cycles), prefer fallback
 /// there.
-#[inline(always)]
 pub fn pext(src: u64, mask: u64) -> u64 {
     #[cfg(target_arch = "x86_64")]
     {
@@ -249,7 +240,6 @@ pub fn pext(src: u64, mask: u64) -> u64 {
 /// Software fallback for PEXT (used when BMI2 not available).
 ///
 /// This is the "Kindergarten" bitboard approach - slower but portable.
-#[inline(always)]
 #[allow(dead_code)]
 fn pext_software(src: u64, mut mask: u64) -> u64 {
     let mut result = 0u64;
@@ -270,7 +260,6 @@ fn pext_software(src: u64, mut mask: u64) -> u64 {
 ///
 /// Inverse of PEXT: deposits bits from `src` into positions specified by
 /// `mask`. Less commonly used in chess engines but available for completeness.
-#[inline(always)]
 #[allow(dead_code)]
 pub fn pdep(src: u64, mask: u64) -> u64 {
     #[cfg(target_arch = "x86_64")]
@@ -293,7 +282,6 @@ pub fn pdep(src: u64, mask: u64) -> u64 {
 }
 
 /// Software fallback for PDEP.
-#[inline(always)]
 #[allow(dead_code)]
 fn pdep_software(mut src: u64, mut mask: u64) -> u64 {
     let mut result = 0u64;
@@ -329,13 +317,11 @@ pub struct SimdU64x4 {
 
 impl SimdU64x4 {
     /// Create a new SIMD vector from 4 u64 values.
-    #[inline(always)]
     pub fn new(a: u64, b: u64, c: u64, d: u64) -> Self {
         Self { data: [a, b, c, d] }
     }
 
     /// Create a SIMD vector with all elements set to the same value.
-    #[inline(always)]
     pub fn splat(value: u64) -> Self {
         Self { data: [value; 4] }
     }
@@ -344,7 +330,6 @@ impl SimdU64x4 {
     ///
     /// Returns an array of 4 population counts.
     /// Uses AVX2 when available for maximum throughput.
-    #[inline(always)]
     pub fn popcnt_parallel(self) -> [u32; 4] {
         #[cfg(all(
             target_arch = "x86_64",
@@ -377,7 +362,6 @@ impl SimdU64x4 {
     }
 
     /// Parallel bitwise AND: compute self & other for all 4 elements.
-    #[inline(always)]
     pub fn and(self, other: Self) -> Self {
         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
         unsafe {
@@ -404,7 +388,6 @@ impl SimdU64x4 {
     }
 
     /// Parallel bitwise OR: compute self | other for all 4 elements.
-    #[inline(always)]
     pub fn or(self, other: Self) -> Self {
         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
         unsafe {
@@ -431,7 +414,6 @@ impl SimdU64x4 {
     }
 
     /// Parallel bitwise XOR: compute self ^ other for all 4 elements.
-    #[inline(always)]
     pub fn xor(self, other: Self) -> Self {
         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
         unsafe {
@@ -458,7 +440,6 @@ impl SimdU64x4 {
     }
 
     /// Parallel bitwise NOT: compute !self for all 4 elements.
-    #[inline(always)]
     pub fn not(self) -> Self {
         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
         unsafe {
@@ -480,13 +461,11 @@ impl SimdU64x4 {
     }
 
     /// Test if any element is non-zero.
-    #[inline(always)]
     pub fn any_nonzero(self) -> bool {
         self.data[0] != 0 || self.data[1] != 0 || self.data[2] != 0 || self.data[3] != 0
     }
 
     /// Test if all elements are zero.
-    #[inline(always)]
     pub fn all_zero(self) -> bool {
         !self.any_nonzero()
     }
@@ -503,19 +482,16 @@ pub struct SimdI32x8 {
 
 impl SimdI32x8 {
     /// Create a new SIMD vector from 8 i32 values.
-    #[inline(always)]
     pub fn new(data: [i32; 8]) -> Self {
         Self { data }
     }
 
     /// Create a SIMD vector with all elements set to the same value.
-    #[inline(always)]
     pub fn splat(value: i32) -> Self {
         Self { data: [value; 8] }
     }
 
     /// Parallel addition: add 8 integers simultaneously.
-    #[inline(always)]
     fn add_impl(self, other: Self) -> Self {
         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
         unsafe {
@@ -546,7 +522,6 @@ impl SimdI32x8 {
     }
 
     /// Parallel subtraction: subtract 8 integers simultaneously.
-    #[inline(always)]
     fn sub_impl(self, other: Self) -> Self {
         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
         unsafe {
@@ -577,7 +552,6 @@ impl SimdI32x8 {
     }
 
     /// Horizontal sum: add all 8 elements together.
-    #[inline(always)]
     pub fn horizontal_sum(self) -> i32 {
         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
         unsafe {
@@ -601,7 +575,6 @@ impl SimdI32x8 {
     }
 
     /// Parallel maximum: find max of corresponding elements.
-    #[inline(always)]
     pub fn max(self, other: Self) -> Self {
         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
         unsafe {
@@ -632,7 +605,6 @@ impl SimdI32x8 {
     }
 
     /// Parallel minimum: find min of corresponding elements.
-    #[inline(always)]
     pub fn min(self, other: Self) -> Self {
         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
         unsafe {
@@ -666,7 +638,6 @@ impl SimdI32x8 {
 impl std::ops::Add for SimdI32x8 {
     type Output = Self;
 
-    #[inline(always)]
     fn add(self, other: Self) -> Self {
         self.add_impl(other)
     }
@@ -675,7 +646,6 @@ impl std::ops::Add for SimdI32x8 {
 impl std::ops::Sub for SimdI32x8 {
     type Output = Self;
 
-    #[inline(always)]
     fn sub(self, other: Self) -> Self {
         self.sub_impl(other)
     }

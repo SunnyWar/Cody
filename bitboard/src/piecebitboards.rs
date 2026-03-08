@@ -16,7 +16,6 @@ impl PieceBitboards {
         }
     }
 
-    #[inline]
     /// Hot-path accessor: force inlining, strip runtime checks and
     /// bounds-checks.
 
@@ -35,7 +34,6 @@ impl PieceBitboards {
     /// `fold`, giving the compiler freedom to unroll/vectorise this fixed
     /// 12-element scan.  This shaves a few instructions off a call that is
     /// executed millions of times per search.
-    #[inline(always)]
     pub fn all(&self) -> BitBoardMask {
         let mut acc = 0u64;
         for bb in &self.inner {

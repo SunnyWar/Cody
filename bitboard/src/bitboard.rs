@@ -30,37 +30,31 @@ impl Iterator for BitIter {
 }
 
 #[cfg(all(target_arch = "x86_64", target_feature = "bmi2"))]
-#[inline]
 pub fn occupancy_to_index(occupancy: BitBoardMask, mask: BitBoardMask) -> usize {
     // Use PEXT (Parallel Bits Extract) via our intrinsics module
     crate::intrinsics::pext(occupancy.0, mask.0) as usize
 }
 
-#[inline]
 pub fn king_attacks(square: Square) -> BitBoardMask {
     KING_ATTACKS[square.index()]
 }
 
-#[inline]
 pub fn knight_attacks(square: Square) -> BitBoardMask {
     KNIGHT_ATTACKS[square.index()]
 }
 
-#[inline]
 pub fn rook_attacks(sq: Square, occ_bb: BitBoardMask) -> BitBoardMask {
     let mask_bb = ROOK_MASKS[sq.index()];
     let idx = occupancy_to_index(occ_bb, mask_bb);
     ROOK_ATTACKS[sq.index()][idx]
 }
 
-#[inline]
 pub fn bishop_attacks(sq: Square, occ_bb: BitBoardMask) -> BitBoardMask {
     let mask_bb = BISHOP_MASKS[sq.index()];
     let idx = occupancy_to_index(occ_bb, mask_bb);
     BISHOP_ATTACKS[sq.index()][idx]
 }
 
-#[inline]
 const fn rook_mask(square: Square) -> BitBoardMask {
     let rank_mask = square.rank_mask();
     let file_mask = square.file_mask();
@@ -80,7 +74,6 @@ pub const ROOK_MASKS: [BitBoardMask; NUM_SQUARES] = {
     table
 };
 
-#[inline]
 pub fn rook_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
     let mask = ROOK_MASKS[square.index()];
     let index = occupancy_to_index(occupancy, mask);
@@ -111,7 +104,6 @@ impl BitBoardMask {
     }
 }
 
-#[inline]
 const fn bishop_mask(square: Square) -> BitBoardMask {
     let d = BitBoardMask::diagonal_for(square);
     let a = BitBoardMask::antidiagonal_for(square);
@@ -120,7 +112,6 @@ const fn bishop_mask(square: Square) -> BitBoardMask {
 
 /// Fast bishop attacks using magic bitboard lookup tables.
 /// This is the hot-path version used in move generation.
-#[inline]
 pub fn bishop_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
     let mask = BISHOP_MASKS[square.index()];
     let index = occupancy_to_index(occupancy, mask);
@@ -129,7 +120,6 @@ pub fn bishop_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardM
 
 /// Const version for compile-time bishop attack computation.
 /// Kept for initializing const tables but not used in hot path.
-#[inline]
 pub const fn bishop_attacks_from_const(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
     let origin = square.bitboard();
     // Diagonal directions
@@ -147,7 +137,6 @@ pub const fn bishop_attacks_from_const(square: Square, occupancy: BitBoardMask) 
     BitBoardMask(diag_attacks.0 | anti_attacks.0)
 }
 
-#[inline]
 const fn pawn_attacks_from(square: Square, color: Color) -> BitBoardMask {
     let bb = square.bitboard();
     match color {
@@ -164,7 +153,6 @@ const fn pawn_attacks_from(square: Square, color: Color) -> BitBoardMask {
     }
 }
 
-#[inline]
 pub fn pawn_attacks_to(sq: Square, attacker_color: Color) -> BitBoardMask {
     // Reverse the direction: squares that can attack `sq` for this color.
     PAWN_ATTACKS[attacker_color.opposite().index()][sq.index()]

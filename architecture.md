@@ -78,7 +78,6 @@ impl Arena {
         }
     }
 
-    #[inline]
     pub fn alloc(&mut self) -> Option<NodeId> {
         if let Some(idx) = self.free_list.pop() {
             return Some(NodeId(idx as u32));
@@ -93,22 +92,19 @@ impl Arena {
         }
     }
 
-    #[inline]
+
     pub fn free(&mut self, id: NodeId) {
         self.free_list.push(id.0 as usize);
     }
 
-    #[inline]
     pub fn get(&self, id: NodeId) -> &Node {
         &self.nodes[id.0 as usize]
     }
-
-    #[inline]
+   
     pub fn get_mut(&mut self, id: NodeId) -> &mut Node {
         &mut self.nodes[id.0 as usize]
     }
 
-    #[inline]
     pub fn high_water_mark(&self) -> usize {
         self.high_water
     }
