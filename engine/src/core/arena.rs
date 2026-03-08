@@ -15,7 +15,7 @@ impl Arena {
         }
     }
 
-    pub fn alloc(&mut self) -> Option<usize> {
+    pub const fn alloc(&mut self) -> Option<usize> {
         if self.next_free >= self.nodes.len() {
             return None;
         }
@@ -39,7 +39,7 @@ impl Arena {
         unsafe { &mut *self.nodes.as_mut_ptr().add(idx) }
     }
 
-    pub fn reset(&mut self) {
+    pub const fn reset(&mut self) {
         self.next_free = 0;
     }
 

@@ -43,7 +43,7 @@ impl TranspositionTable {
         }
     }
 
-    fn index(&self, key: u64) -> usize {
+    const fn index(&self, key: u64) -> usize {
         (key as usize) & self.mask
     }
 

@@ -27,7 +27,7 @@ impl OccupancyMap {
         self.inner[kind as usize] |= mask;
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.inner[0].is_empty() && self.inner[1].is_empty() && self.inner[2].is_empty()
     }
 

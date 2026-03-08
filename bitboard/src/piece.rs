@@ -17,7 +17,7 @@ pub enum Color {
 }
 
 impl Color {
-    pub fn opposite(self) -> Color {
+    pub const fn opposite(self) -> Color {
         match self {
             Color::White => Color::Black,
             Color::Black => Color::White,
@@ -119,7 +119,7 @@ impl Piece {
 }
 
 impl Piece {
-    pub fn from_char(c: char) -> Option<Self> {
+    pub const fn from_char(c: char) -> Option<Self> {
         use Piece::*;
         match c {
             'P' => Some(WhitePawn),
@@ -141,7 +141,7 @@ impl Piece {
 
 impl PieceKind {
     /// Parse from a promotion character in UCI notation ('q','r','b','n')
-    pub fn from_uci(ch: char) -> Option<Self> {
+    pub const fn from_uci(ch: char) -> Option<Self> {
         match ch {
             'q' => Some(PieceKind::Queen),
             'r' => Some(PieceKind::Rook),

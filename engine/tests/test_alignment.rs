@@ -70,7 +70,7 @@ fn print_info<T>(name: &str) {
 fn cache_analysis<T>(name: &str) {
     let size = size_of::<T>();
     let align = align_of::<T>();
-    let cache_lines = (size + 63) / 64;
+    let cache_lines = size.div_ceil(64);
     let waste = cache_lines * 64 - size;
     let efficiency = 100.0 * (size as f64) / (cache_lines as f64 * 64.0);
 

@@ -19,7 +19,7 @@ pub struct MoveList {
 }
 
 impl MoveList {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             moves: [ChessMove::null(); MAX_MOVES],
             len: 0,
@@ -32,15 +32,15 @@ impl MoveList {
         self.len += 1;
     }
 
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.len
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.len == 0
     }
 
-    pub fn clear(&mut self) {
+    pub const fn clear(&mut self) {
         self.len = 0;
     }
 
@@ -57,7 +57,7 @@ impl MoveList {
         self.moves[..self.len].iter()
     }
 
-    pub fn get(&self, index: usize) -> Option<&ChessMove> {
+    pub const fn get(&self, index: usize) -> Option<&ChessMove> {
         if index < self.len {
             Some(&self.moves[index])
         } else {
@@ -66,7 +66,7 @@ impl MoveList {
     }
 
     /// Swap two moves by index (used for move ordering)
-    pub fn swap(&mut self, a: usize, b: usize) {
+    pub const fn swap(&mut self, a: usize, b: usize) {
         if a < self.len && b < self.len {
             self.moves.swap(a, b);
         }

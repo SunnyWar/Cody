@@ -20,7 +20,7 @@ use crate::tables::file_masks::FILE_H;
 use crate::tables::rank_masks::RANK_4;
 use crate::tables::rank_masks::RANK_5;
 
-fn is_promotion_rank(square: Square, color: Color) -> bool {
+const fn is_promotion_rank(square: Square, color: Color) -> bool {
     match color {
         Color::White => square.rank() == 7,
         Color::Black => square.rank() == 0,
