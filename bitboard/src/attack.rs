@@ -6,7 +6,6 @@ use crate::bitboard::BISHOP_MASKS;
 use crate::bitboard::DIAGONAL_MASKS;
 use crate::bitboard::PAWN_ATTACKS;
 use crate::bitboard::ROOK_MASKS;
-#[cfg(all(target_arch = "x86_64", target_feature = "bmi2"))]
 use crate::bitboard::occupancy_to_index;
 use crate::piece::Color;
 use crate::tables::bishop_attack::BISHOP_ATTACKS;

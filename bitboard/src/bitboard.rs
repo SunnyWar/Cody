@@ -29,9 +29,9 @@ impl Iterator for BitIter {
     }
 }
 
-#[cfg(all(target_arch = "x86_64", target_feature = "bmi2"))]
 pub fn occupancy_to_index(occupancy: BitBoardMask, mask: BitBoardMask) -> usize {
     // Use PEXT (Parallel Bits Extract) via our intrinsics module
+    // This will use hardware BMI2 when available, software fallback otherwise
     crate::intrinsics::pext(occupancy.0, mask.0) as usize
 }
 
