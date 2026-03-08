@@ -28,6 +28,9 @@
 | Position | `piece_at()` | Added `piece_at_square()` direct accessor returning raw `Piece` (no Option wrapping). Updated hot-path callers in SEE and quiescence to avoid Option overhead. | 1-2 cycles per call in SEE/quiescence |
 | Bitboard | `pawn_attacks_to()` | Eliminated `attacker_color.opposite().index()` call using direct Color enum XOR; Color variants are 0 (White) and 1 (Black), XOR with 1 flips the color. | ~1 cycle per lookup |
 | Position | `to_board_state()` | Replaced 12 `Piece::from_parts()` constructor calls with direct Piece enum variants (WhitePawn, BlackQueen, etc.). Each variant is already a compiled discriminant value. | ~5k cycles per call (eliminated 12 branches/function calls per 10M/s invocations) |
+| Bitboards | `BitBoardMask::contains_square()` | Made `contains()` and `contains_square()` `const`, and switched to direct square discriminant bit test (`sq as u8`) to avoid extra accessor path in the 100M/s hot lookup. | ~1 cycle per lookup |
+| Intrinsics | `popcnt()` | Added runtime x86/x86_64 POPCNT dispatch for builds without compile-time `target_feature=popcnt`, while preserving software fallback for unsupported CPUs. | ~1 cycle per call when hardware POPCNT is available at runtime |
+| Bitboards | `BitBoardMask::count()` | Routed `count()` through `intrinsics::popcnt()` to reuse compile-time/runtime hardware POPCNT dispatch while keeping `count_ones()` as const fallback. | ~1 cycle per call in 100M/s population-count paths |
 
 ## P1: High
 
@@ -38,18 +41,15 @@
 
 | Priority | Module | Function | Call Freq | Impact | Primary Cost | Current Notes |
 |---|---|---|---|---|---|---|
-| 1 | Bitboards | `BitBoardMask::contains_square()` | 100M/s | MEDIUM | ~1 cycle | Bitwise AND |
-| 2 | Bitboards | `BitBoardMask::count()` | 100M/s | MEDIUM | ~1 cycle | POPCNT |
-| 3 | Intrinsics | `popcnt()` | 100M/s | MEDIUM | ~1 cycle | POPCNT instruction |
-| 4 | Eval | Mobility/King Safety/Rook Activity | 10M/s | MEDIUM | ~100-200 cycles | Bitboard iteration |
-| 5 | SEE | `find_least_valuable_attacker()` | 10M/s | MEDIUM | ~100-1k cycles | Early exit on pawn |
-| 6 | Bitboard | `king_attacks()` | 1M/s | MEDIUM | ~1 cycle | Table lookup |
-| 7 | Bitboard | `knight_attacks()` | 1M/s | MEDIUM | ~1 cycle | Table lookup |
-| 8 | SEE | `compute_see()` | 1M/s | MEDIUM | ~1-10k cycles | Recursive exchange |
-| 9 | Zobrist | `compute_zobrist()` | 1M/s | MEDIUM | ~100-300 cycles | XOR piece keys |
+| 1 | Eval | Mobility/King Safety/Rook Activity | 10M/s | MEDIUM | ~100-200 cycles | Bitboard iteration |
+| 2 | SEE | `find_least_valuable_attacker()` | 10M/s | MEDIUM | ~100-1k cycles | Early exit on pawn |
+| 3 | Bitboard | `king_attacks()` | 1M/s | MEDIUM | ~1 cycle | Table lookup |
+| 4 | Bitboard | `knight_attacks()` | 1M/s | MEDIUM | ~1 cycle | Table lookup |
+| 5 | SEE | `compute_see()` | 1M/s | MEDIUM | ~1-10k cycles | Recursive exchange |
+| 6 | Zobrist | `compute_zobrist()` | 1M/s | MEDIUM | ~100-300 cycles | XOR piece keys |
 
 ---
 
 ## Next Target Recommendation
 
-P2 (MEDIUM) now active. Highest-frequency targets: `pawn_attacks_to()` (100M/s), `BitBoardMask::contains_square()` (100M/s), `BitBoardMask::count()` (100M/s), `popcnt()` (100M/s). All involve simple bitboard operations that may benefit from direct accessors or intrinsic routing.
+P2 (MEDIUM) now active. Remaining wins are concentrated in eval/SEE logic, where function-level and early-exit optimizations should have higher impact than additional single-instruction table lookups.

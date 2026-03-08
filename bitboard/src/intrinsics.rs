@@ -81,7 +81,7 @@ pub fn prefetch_write<T>(addr: *const T) {
 pub fn popcnt(x: u64) -> u32 {
     #[cfg(target_arch = "x86_64")]
     {
-        // x86_64 may have popcnt (SSE4.2+). Use feature detection at compile time.
+        // Use compile-time POPCNT when available.
         #[cfg(target_feature = "popcnt")]
         unsafe {
             return core::arch::x86_64::_popcnt64(x as i64) as u32;
@@ -89,6 +89,12 @@ pub fn popcnt(x: u64) -> u32 {
 
         #[cfg(not(target_feature = "popcnt"))]
         {
+            // Fall back to runtime dispatch so generic binaries can still use
+            // hardware POPCNT when the CPU supports it.
+            if std::arch::is_x86_feature_detected!("popcnt") {
+                // SAFETY: guarded by runtime feature detection.
+                return unsafe { popcnt_x86_64_runtime(x) };
+            }
             x.count_ones()
         }
     }
@@ -99,13 +105,32 @@ pub fn popcnt(x: u64) -> u32 {
             + core::arch::x86::_popcnt32((x >> 32) as i32) as u32
     }
 
-    #[cfg(not(any(
-        target_arch = "x86_64",
-        all(target_arch = "x86", target_feature = "popcnt")
-    )))]
+    #[cfg(all(target_arch = "x86", not(target_feature = "popcnt")))]
+    {
+        if std::arch::is_x86_feature_detected!("popcnt") {
+            // SAFETY: guarded by runtime feature detection.
+            return unsafe { popcnt_x86_runtime(x) };
+        }
+        x.count_ones()
+    }
+
+    #[cfg(not(any(target_arch = "x86_64", target_arch = "x86")))]
     {
         x.count_ones()
     }
+}
+
+#[cfg(all(target_arch = "x86_64", not(target_feature = "popcnt")))]
+#[target_feature(enable = "popcnt")]
+unsafe fn popcnt_x86_64_runtime(x: u64) -> u32 {
+    core::arch::x86_64::_popcnt64(x as i64) as u32
+}
+
+#[cfg(all(target_arch = "x86", not(target_feature = "popcnt")))]
+#[target_feature(enable = "popcnt")]
+unsafe fn popcnt_x86_runtime(x: u64) -> u32 {
+    core::arch::x86::_popcnt32(x as i32) as u32
+        + core::arch::x86::_popcnt32((x >> 32) as i32) as u32
 }
 
 /// Count trailing zeros (find index of least significant set bit).
