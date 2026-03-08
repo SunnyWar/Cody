@@ -171,14 +171,15 @@ pub fn order_moves_with_heuristics_fast(
     ply: usize,
     pv_move: Option<ChessMove>,
 ) {
-    if moves.len() <= 1 {
+    let len = moves.len();
+    if len <= 1 {
         return;
     }
 
     if let Some(pv) = pv_move
         && !pv.is_null()
     {
-        for i in 0..moves.len() {
+        for i in 0..len {
             if moves[i] == pv {
                 moves.swap(0, i);
                 break;
@@ -192,7 +193,34 @@ pub fn order_moves_with_heuristics_fast(
         0
     };
 
-    moves.as_mut_slice()[start..].sort_unstable_by_key(|m| -heuristics.score_move(pos, m, ply));
+    if start + 1 >= len {
+        return;
+    }
+
+    let slice = moves.as_mut_slice();
+
+    // Cache heuristic scores once and perform in-place insertion sort by score
+    // (descending). This avoids repeated score recomputation in comparator-based
+    // sorting on the hot path.
+    let mut scores = [0i32; 256];
+    for i in start..len {
+        scores[i] = heuristics.score_move(pos, &slice[i], ply);
+    }
+
+    for i in (start + 1)..len {
+        let key_move = slice[i];
+        let key_score = scores[i];
+        let mut j = i;
+
+        while j > start && scores[j - 1] < key_score {
+            slice[j] = slice[j - 1];
+            scores[j] = scores[j - 1];
+            j -= 1;
+        }
+
+        slice[j] = key_move;
+        scores[j] = key_score;
+    }
 }
 
 fn piece_value(kind: PieceKind) -> i32 {
