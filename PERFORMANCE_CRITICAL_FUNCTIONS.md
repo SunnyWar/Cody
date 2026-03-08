@@ -1508,8 +1508,8 @@ impl Square {
 | **Position** | `all_pieces()` / `our_pieces()` | 10M/s | HIGH | ~1 cycle | Direct lookup | No | - |
 | **Position** | `piece_at()` | 100M/s | MEDIUM | ~1 cycle | Array indexing | No | - |
 | **Position** | `to_board_state()` | 10M/s | MEDIUM | ~5k cycles | Piece reorganization | No | - |
-| **Attack** | `is_square_attacked()` | 10M/s | HIGH | ~100-1k cycles | Early returns, lookup tables | No | - |
-| **Attack** | `is_king_in_check()` | 1M/s | MEDIUM | ~100 cycles | Direct king lookup | No | - |
+| **Attack** | `is_square_attacked()` | 10M/s | HIGH | ~100-1k cycles | Early returns, lookup tables, unchecked array access, #[inline] | Yes | 2026-03-07 |
+| **Attack** | `is_king_in_check()` | 1M/s | MEDIUM | ~100 cycles | Direct king lookup, #[inline], cleaner match | Yes | 2026-03-07 |
 | **Attack** | `is_in_check()` | 1M/s | MEDIUM | ~1k cycles | Wrapper + board state | No | - |
 | **Bitboard** | `rook_attacks_from()` | 100M/s | HIGH | ~3 cycles | Magic bitboard + PEXT | No | - |
 | **Bitboard** | `bishop_attacks_from()` | 100M/s | HIGH | ~3 cycles | Magic bitboard + PEXT | No | - |
