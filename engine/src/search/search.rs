@@ -279,8 +279,8 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
 
                 // Use thread-local storage to reuse arenas and TTs across moves
                 thread_local! {
-                    static THREAD_ARENA: RefCell<Option<Arena>> = RefCell::new(None);
-                    static THREAD_TT: RefCell<Option<crate::core::tt::TranspositionTable>> = RefCell::new(None);
+                    static THREAD_ARENA: RefCell<Option<Arena>> = const { RefCell::new(None) };
+                    static THREAD_TT: RefCell<Option<crate::core::tt::TranspositionTable>> = const { RefCell::new(None) };
                 }
 
                 let results: Vec<(ChessMove, i32)> = pool.install(|| {
@@ -472,7 +472,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
     ) -> (ChessMove, i32, bool) {
         // Serial path: get exclusive access to the TT
         let mut tt_guard = self.tt.write().unwrap();
-        let tt_ref: &mut crate::core::tt::TranspositionTable = &mut *tt_guard;
+        let tt_ref: &mut crate::core::tt::TranspositionTable = &mut tt_guard;
 
         let mut best_score = i32::MIN;
         let mut best_move = moves[0];
