@@ -84,7 +84,10 @@ impl Evaluator for MaterialEvaluator {
             {
                 let piece = Piece::from_parts(color, Some(PieceKind::Pawn));
                 let bb = pos.pieces.get(piece);
-                let mut indices = Vec::with_capacity(16);
+                // Pawns are bounded (max 8 per side), so stack storage avoids
+                // per-evaluation heap allocation in this hot path.
+                let mut indices = [0usize; 16];
+                let mut count = 0usize;
 
                 for sq in bb.squares() {
                     let idx = if color == Color::White {
@@ -92,12 +95,13 @@ impl Evaluator for MaterialEvaluator {
                     } else {
                         63 - sq.index()
                     };
-                    indices.push(idx);
+                    indices[count] = idx;
+                    count += 1;
                 }
 
-                if !indices.is_empty() {
+                if count != 0 {
                     score += evaluate_pieces_batch_simd(
-                        &indices,
+                        &indices[..count],
                         &PAWN_SQUARE_TABLE,
                         &PAWN_ENDGAME_TABLE,
                         PIECE_VALUES[PieceKind::Pawn as usize],
