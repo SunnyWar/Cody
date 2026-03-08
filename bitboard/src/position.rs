@@ -50,15 +50,12 @@ impl Position {
     /// because `Position: Copy`), this helper sits on the hottest path of the
     /// search.  Forcing cross-crate inlining removes the call overhead when it
     /// is executed millions of times per second.
-    #[inline(always)]
     pub fn copy_from(&mut self, other: &Position) {
         *self = *other;
     }
 
     // `all_pieces` is invoked in every move-generation call. Mark it
-    // `#[inline(always)]` so that callers in other crates (e.g. the search
     // engine) can benefit from cross-crate inlining without relying on LTO.
-    #[inline(always)]
     pub fn all_pieces(&self) -> BitBoardMask {
         // `OccupancyMap::Both` already tracks the union of all piece
         // bitboards, so we can return it directly instead of recomputing the
@@ -66,7 +63,6 @@ impl Position {
         self.occupancy[OccupancyKind::Both]
     }
 
-    #[inline(always)]
     pub fn our_pieces(&self, us: Color) -> BitBoardMask {
         // Branch-free lookup: map `Color` → `OccupancyKind` via a tiny table.
         // The discriminants of `Color::{White, Black}` are guaranteed to be
@@ -121,12 +117,10 @@ impl Position {
             && !is_square_attacked(c_sq, color.opposite(), &board_state)
     }
 
-    #[inline]
     pub fn their_pieces(&self, us: Color) -> BitBoardMask {
         self.our_pieces(us.opposite())
     }
 
-    #[inline]
     fn set_piece(&mut self, sq: Square, piece: Piece) {
         let bit = BitBoardMask::from_square(sq);
         *self.pieces.get_mut(piece) |= bit;
@@ -154,7 +148,6 @@ impl Position {
         }
     }
 
-    #[inline(always)]
     pub fn piece_at(&self, sq: Square) -> Option<Piece> {
         let piece = self.piece_on[sq.index()];
         if piece == Piece::None {
@@ -586,7 +579,6 @@ impl Position {
     }
 }
 
-#[inline]
 fn or_color(pieces: &PieceBitboards, c: Color) -> BitBoardMask {
     let mut acc = BitBoardMask::empty();
     acc |= pieces.get(Piece::from_parts(c, Some(PieceKind::Pawn)));
@@ -598,7 +590,6 @@ fn or_color(pieces: &PieceBitboards, c: Color) -> BitBoardMask {
     acc
 }
 
-#[inline]
 fn is_pawn_double_push(piece: Piece, from: Square, to: Square, side: Color) -> bool {
     if piece.kind() != PieceKind::Pawn {
         return false;

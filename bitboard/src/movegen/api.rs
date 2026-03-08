@@ -27,7 +27,6 @@ impl MoveGenerator for SimpleMoveGen {
 }
 
 /// Fast zero-allocation move generation using stack-allocated MoveList
-#[inline]
 pub fn generate_pseudo_moves_fast(pos: &Position) -> MoveList {
     let mut moves = MoveList::new();
     let context = MoveGenContext {
@@ -53,7 +52,6 @@ pub fn generate_pseudo_moves(pos: &Position) -> Vec<ChessMove> {
 }
 
 /// Fast zero-allocation legal move generation with reused position buffer
-#[inline]
 pub fn generate_legal_moves_fast(pos: &Position) -> MoveList {
     let pseudo = generate_pseudo_moves_fast(pos);
     let mut legal = MoveList::new();
@@ -79,7 +77,6 @@ pub fn generate_legal_moves(pos: &Position) -> Vec<ChessMove> {
 }
 
 /// Fast zero-allocation pseudo capture generation
-#[inline]
 pub fn generate_pseudo_captures_fast(pos: &Position) -> MoveList {
     crate::movegen::captures::generate_pseudo_captures_fast(pos)
 }
@@ -130,7 +127,6 @@ fn generate_pseudo_king_moves_fast(pos: &Position, context: &MoveGenContext, mov
     crate::movegen::generate_pseudo_king_moves_fast(pos, context, moves);
 }
 
-#[inline]
 pub(crate) fn push_moves_from_valid_targets_fast(
     pos: &Position,
     context: &MoveGenContext,
@@ -148,7 +144,6 @@ pub(crate) fn push_moves_from_valid_targets_fast(
     }
 }
 
-#[inline]
 pub(crate) fn push_moves_from_valid_targets(
     pos: &Position,
     context: &MoveGenContext,

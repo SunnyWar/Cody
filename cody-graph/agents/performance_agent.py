@@ -114,18 +114,6 @@ PERFORMANCE_STRATEGIES = [
         ),
     },
     {
-        "name": "Inline hot functions",
-        "instruction": (
-            "Mark currently-uninlined hot functions for inlining:\n"
-            "1. Identify frequently-called functions that are currently not inlined\n"
-            "2. Check if #[inline] or #[inline(always)] would help\n"
-            "3. Focus on small utility functions in hot paths\n"
-            "4. Avoid inflating binary size for large functions\n"
-            "Add ONE #[inline] annotation to a hot function that would benefit. "
-            "If functions are already properly inlined, explain why."
-        ),
-    },
-    {
         "name": "Loop optimization and iteration",
         "instruction": (
             "Optimize loops in performance-critical code:\n"

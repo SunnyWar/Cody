@@ -17,7 +17,6 @@ pub enum Color {
 }
 
 impl Color {
-    #[inline]
     pub fn opposite(self) -> Color {
         match self {
             Color::White => Color::Black,
@@ -52,12 +51,10 @@ pub enum Piece {
 }
 
 impl Piece {
-    #[inline]
     pub const fn index(self) -> usize {
         self as usize
     }
 
-    #[inline]
     pub const fn from_parts(color: Color, kind: Option<PieceKind>) -> Self {
         match kind {
             Some(k) => {
@@ -68,7 +65,6 @@ impl Piece {
         }
     }
 
-    #[inline]
     const fn from_index(idx: u8) -> Self {
         match idx {
             0 => Self::WhitePawn,
@@ -88,7 +84,6 @@ impl Piece {
         }
     }
 
-    #[inline]
     pub const fn color(self) -> Color {
         if (self as u8) < 6 {
             Color::White
@@ -97,14 +92,12 @@ impl Piece {
         }
     }
 
-    #[inline]
     pub const fn kind(self) -> PieceKind {
         unsafe { std::mem::transmute((self as u8) % 6) }
     }
 }
 
 impl Piece {
-    #[inline]
     pub const fn to_char(self) -> char {
         use Piece::*;
         match self {

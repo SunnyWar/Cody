@@ -26,7 +26,6 @@ With 30+ pieces where almost everything is capturable, naive Q-search explores 2
 **Impact**:
 - Bishop attacks: **10-15x faster** (eliminated ~28 loop iterations per bishop)
 - Queen attacks: **2-3x faster** (bishop half now fast)
-- Hot path avoids function calls with `#[inline(always)]`
 
 **Files Modified**:
 - [bitboard/src/bitboard.rs](bitboard/src/bitboard.rs) - Added fast bishop lookup

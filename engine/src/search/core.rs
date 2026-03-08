@@ -44,7 +44,6 @@ const NULL_MOVE_STATIC_MARGIN_CP: i32 = 120;
 const MAX_SEARCH_PLY: usize = 128;
 pub const MAX_REPETITION_HISTORY: usize = MAX_SEARCH_PLY + 4;
 
-#[inline]
 fn is_threefold_repetition(
     key: u64,
     repetition_history: &[u64; MAX_REPETITION_HISTORY],
@@ -163,7 +162,6 @@ pub fn order_moves_with_heuristics(
 }
 
 /// Fast version that works with MoveList
-#[inline]
 pub fn order_moves_with_heuristics_fast(
     pos: &bitboard::position::Position,
     moves: &mut MoveList,
@@ -257,7 +255,6 @@ fn mvv_lva_score(pos: &bitboard::position::Position, mv: &ChessMove) -> i32 {
     victim_value * 100 - attacker_value
 }
 
-#[inline(always)]
 fn mover_left_in_check<M: MoveGenerator>(
     movegen: &M,
     parent: &bitboard::position::Position,

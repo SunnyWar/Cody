@@ -27,7 +27,6 @@ The move generation layer is called once per node and is critical for search bre
 **Location**: `bitboard/src/movegen/api.rs` (line ~30)
 
 ```rust
-#[inline]
 pub fn generate_pseudo_moves_fast(pos: &Position) -> MoveList
 ```
 
@@ -47,7 +46,6 @@ pub fn generate_pseudo_moves_fast(pos: &Position) -> MoveList
 **Location**: `bitboard/src/movegen/api.rs` (line ~43)
 
 ```rust
-#[inline]
 pub fn generate_legal_moves_fast(pos: &Position) -> MoveList
 ```
 
@@ -174,7 +172,6 @@ fn generate_pseudo_king_moves_fast(pos: &Position, context: &MoveGenContext, mov
 **Location**: `bitboard/src/movegen/api.rs` (line ~61)
 
 ```rust
-#[inline]
 pub fn generate_pseudo_captures_fast(pos: &Position) -> MoveList
 ```
 
@@ -192,7 +189,6 @@ pub fn generate_pseudo_captures_fast(pos: &Position) -> MoveList
 **Location**: `bitboard/src/movegen/api.rs` (line ~127)
 
 ```rust
-#[inline]
 pub(crate) fn push_moves_from_valid_targets_fast(
     pos: &Position,
     context: &MoveGenContext,
@@ -209,7 +205,7 @@ pub(crate) fn push_moves_from_valid_targets_fast(
   - Determines move type (capture vs quiet) via `contains()` check
   - Called per square that can attack (e.g., 8 times for king, ~8 for knight per piece)
 - **Optimizations**:
-  - Inlined for cross-crate optimization
+  - Tight iteration over `valid_targets.squares()` (iterator with `trailing_zeros`)
   - Simple iteration over `valid_targets.squares()` (iterator with `trailing_zeros`)
 
 ---
@@ -243,7 +239,6 @@ pub fn apply_move_into(&self, mv: &ChessMove, out: &mut Position)
 **Location**: `bitboard/src/position.rs` (line ~50)
 
 ```rust
-#[inline]
 pub fn copy_from(&mut self, other: &Position) {
     *self = *other;
 }
@@ -255,9 +250,9 @@ pub fn copy_from(&mut self, other: &Position) {
   - Simple `Position` copy due to `Position: Copy`
   - Lowered to `memcpy` by Rust compiler
   - Placed in search root to copy starting position
-  - Explicit function forces cross-crate inlining (critical for extern calls)
+  - Keeps copy semantics explicit at call sites in search code
 - **Optimizations**:
-  - `#[inline]` and `#[inline(always)]` directives at call sites
+  - Single assignment lowers to `memcpy` in optimized builds
   - `Copy` trait allows stack-based moves instead of heap allocation
   - 64-byte alignment of `Position` (via `#[repr(align(64))]`) improves memcpy performance
 
@@ -265,7 +260,6 @@ pub fn copy_from(&mut self, other: &Position) {
 **Location**: `bitboard/src/position.rs` (line ~60)
 
 ```rust
-#[inline(always)]
 pub fn all_pieces(&self) -> BitBoardMask {
     self.occupancy[OccupancyKind::Both]
 }
@@ -279,13 +273,12 @@ pub fn all_pieces(&self) -> BitBoardMask {
   - Called in `MoveGenContext` setup which happens once per node
 - **Optimizations**:
   - Returns precomputed `OccupancyMap::Both` (no computation)
-  - `#[inline(always)]` forces cross-crate inlining
+  - Avoids 11 OR operations per call versus recomputing a full union
 
 ### 2.4 `our_pieces()`
 **Location**: `bitboard/src/position.rs` (line ~65)
 
 ```rust
-#[inline(always)]
 pub fn our_pieces(&self, us: Color) -> BitBoardMask
 ```
 
@@ -297,13 +290,12 @@ pub fn our_pieces(&self, us: Color) -> BitBoardMask
   - Avoids match-statement overhead
 - **Optimizations**:
   - Constant lookup table by discriminant (guaranteed 0/1 for White/Black)
-  - `#[inline(always)]` for cross-crate inlining
+  - Branch-free color-to-occupancy mapping via table lookup
 
 ### 2.5 `piece_at()`
 **Location**: `bitboard/src/position.rs` (line ~150)
 
 ```rust
-#[inline(always)]
 pub fn piece_at(&self, sq: Square) -> Option<Piece> {
     let piece = self.piece_on[sq.index()];
     if piece == Piece::None { None } else { Some(piece) }
@@ -436,7 +428,7 @@ pub fn is_in_check(pos: &Position, color: Color) -> bool
   - Calls `to_board_state()` + `is_king_in_check()`
   - Used for: deciding between all-move vs capturing-move generation, quiescence strategy
 - **Optimizations**:
-  - Inlined for cross-module optimization
+  - Thin wrapper over `to_board_state()` + `is_king_in_check()` to keep callsites simple
 
 ### 3.4 `is_legal_fast()`
 **Location**: `bitboard/src/movegen/legality.rs`
@@ -466,7 +458,6 @@ Bitboard operations are fundamental to every move generation and attack check. M
 **Location**: `bitboard/src/bitboard.rs` (line ~43, ~95)
 
 ```rust
-#[inline]
 pub fn rook_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
     let mask = ROOK_MASKS[square.index()];
     let index = occupancy_to_index(occupancy, mask);
@@ -484,13 +475,12 @@ pub fn rook_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMas
 - **Optimizations**:
   - `ROOK_ATTACKS[64][4096]` precomputed table (~2 MB in memory, ~1-2 MB in cache)
   - PEXT instruction (`occupancy_to_index`) is single-cycle on BMI2 x86
-  - Inlined for cross-crate optimization
+  - Direct table-indexing pipeline (mask -> PEXT -> lookup)
 
 ### 4.2 `bishop_attacks_from()` & `bishop_attacks()`
 **Location**: `bitboard/src/bitboard.rs` (line ~71, ~115)
 
 ```rust
-#[inline]
 pub fn bishop_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
     let mask = BISHOP_MASKS[square.index()];
     let index = occupancy_to_index(occupancy, mask);
@@ -507,13 +497,12 @@ pub fn bishop_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardM
 - **Optimizations**:
   - `BISHOP_ATTACKS[64][512]` precomputed table (~256 KB, fits in L2 cache)
   - PEXT instruction single-cycle
-  - Inlined for cross-crate optimization
+  - Direct table-indexing pipeline (mask -> PEXT -> lookup)
 
 ### 4.3 `king_attacks()`
 **Location**: `bitboard/src/bitboard.rs` (line ~30)
 
 ```rust
-#[inline]
 pub fn king_attacks(square: Square) -> BitBoardMask {
     KING_ATTACKS[square.index()]
 }
@@ -527,13 +516,12 @@ pub fn king_attacks(square: Square) -> BitBoardMask {
   - Kings have fixed 8-square neighborhood; table is trivial (512 B)
 - **Optimizations**:
   - Precomputed `KING_ATTACKS[64]` (512 bytes; fits in cache line)
-  - Inlined
+  - Direct table lookup with fixed-size neighborhood
 
 ### 4.4 `knight_attacks()`
 **Location**: `bitboard/src/bitboard.rs` (line ~35)
 
 ```rust
-#[inline]
 pub fn knight_attacks(square: Square) -> BitBoardMask {
     KNIGHT_ATTACKS[square.index()]
 }
@@ -547,13 +535,11 @@ pub fn knight_attacks(square: Square) -> BitBoardMask {
   - Smaller table than rook/bishop (~8.5 KB)
 - **Optimizations**:
   - Precomputed `KNIGHT_ATTACKS[64]` (8.5 KB)
-  - Inlined
 
 ### 4.5 `pawn_attacks_to()` & `pawn_attacks_from()`
 **Location**: `bitboard/src/bitboard.rs` (line ~63, ~135)
 
 ```rust
-#[inline]
 pub fn pawn_attacks_to(sq: Square, attacker_color: Color) -> BitBoardMask {
     // Reverse direction: squares that can attack `sq` for this color.
     PAWN_ATTACKS[attacker_color.opposite().index()][sq.index()]
@@ -570,14 +556,13 @@ pub fn pawn_attacks_to(sq: Square, attacker_color: Color) -> BitBoardMask {
 - **Optimizations**:
   - Precomputed `PAWN_ATTACKS[2][64]` (1 KB total)
   - Direction-reversed for "attacks to" semantics (cleaner code)
-  - Inlined
+  - Pure table lookup with color-indexed access
 
 ### 4.6 `occupancy_to_index()` (PEXT)
 **Location**: `bitboard/src/bitboard.rs` (line ~24)
 
 ```rust
 #[cfg(all(target_arch = "x86_64", target_feature = "bmi2"))]
-#[inline]
 pub fn occupancy_to_index(occupancy: BitBoardMask, mask: BitBoardMask) -> usize {
     crate::intrinsics::pext(occupancy.0, mask.0) as usize
 }
@@ -598,13 +583,12 @@ pub fn occupancy_to_index(occupancy: BitBoardMask, mask: BitBoardMask) -> usize 
 
 ## 5. BITBOARD MASK OPERATIONS (bitboardmask.rs)
 
-Low-level bitboard operations. Frequently inlined and combined with other operations.
+Low-level bitboard operations composed from single-instruction bitwise primitives.
 
 ### 5.1 `BitBoardMask::squares()` Iterator
 **Location**: `bitboard/src/bitboardmask.rs` (line ~5)
 
 ```rust
-#[inline]
 pub fn squares(self) -> SquaresIter {
     SquaresIter { bb: self.0 }
 }
@@ -621,13 +605,12 @@ pub fn squares(self) -> SquaresIter {
   - Uses `trailing_zeros()` with BMI1 instruction (single cycle)
   - Uses `blsr()` to clear lowest set bit (single cycle if BMI1 available)
   - No allocation; iterator is zero-cost
-  - Inlined for cross-crate optimization
+  - Iterates only set bits (no full-board scan)
 
 ### 5.2 `BitBoardMask::contains_square()`
 **Location**: `bitboard/src/bitboardmask.rs`
 
 ```rust
-#[inline]
 pub fn contains_square(self, sq: Square) -> bool {
     (self.0 & (1u64 << sq.index())) != 0
 }
@@ -641,13 +624,11 @@ pub fn contains_square(self, sq: Square) -> bool {
   - No branching; single instruction on modern CPUs
 - **Optimizations**:
   - Single bitwise AND + comparison
-  - Inlined
 
 ### 5.3 `BitBoardMask::count()` / `count_ones()`
 **Location**: `bitboard/src/bitboardmask.rs`
 
 ```rust
-#[inline]
 pub const fn count(self) -> u32 {
     self.0.count_ones()
 }
@@ -667,7 +648,6 @@ pub const fn count(self) -> u32 {
 **Location**: `bitboard/src/bitboardmask.rs`
 
 ```rust
-#[inline]
 pub fn first_square(self) -> Option<Square> {
     if self.0 == 0 { None } else {
         let tz = crate::intrinsics::trailing_zeros(self.0);
@@ -702,7 +682,7 @@ impl Not for BitBoardMask { ... }
   - Dominates bitboard operation cost
 - **Optimizations**:
   - Trivial Rust trait implementations; compiled to single instructions
-  - Inlined everywhere
+  - Operator composition stays in registers on optimized builds
 
 ---
 
@@ -714,7 +694,6 @@ CPU-level operations used throughout the engine. Performance-critical and platfo
 **Location**: `bitboard/src/intrinsics.rs` (line ~65)
 
 ```rust
-#[inline(always)]
 pub fn trailing_zeros(x: u64) -> u32 {
     #[cfg(target_feature = "bmi1")]
     unsafe { core::arch::x86_64::_tzcnt_u64(x) as u32 }
@@ -737,7 +716,6 @@ pub fn trailing_zeros(x: u64) -> u32 {
 **Location**: `bitboard/src/intrinsics.rs` (line ~95)
 
 ```rust
-#[inline(always)]
 pub fn leading_zeros(x: u64) -> u32 {
     #[cfg(target_feature = "lzcnt")]
     unsafe { core::arch::x86_64::_lzcnt_u64(x) as u32 }
@@ -757,7 +735,6 @@ pub fn leading_zeros(x: u64) -> u32 {
 **Location**: `bitboard/src/intrinsics.rs` (line ~45)
 
 ```rust
-#[inline(always)]
 pub fn popcnt(x: u64) -> u32 {
     #[cfg(target_feature = "popcnt")]
     unsafe { core::arch::x86_64::_popcnt64(x as i64) as u32 }
@@ -780,7 +757,6 @@ pub fn popcnt(x: u64) -> u32 {
 **Location**: `bitboard/src/intrinsics.rs` (line ~120)
 
 ```rust
-#[inline(always)]
 pub fn blsr(x: u64) -> u64 {
     #[cfg(target_feature = "bmi1")]
     unsafe { core::arch::x86_64::_blsr_u64(x) }
@@ -803,7 +779,6 @@ pub fn blsr(x: u64) -> u64 {
 **Location**: `bitboard/src/intrinsics.rs` (line ~140)
 
 ```rust
-#[inline(always)]
 pub fn pext(x: u64, mask: u64) -> u64 {
     #[cfg(target_feature = "bmi2")]
     unsafe { core::arch::x86_64::_pext_u64(x, mask) }
@@ -826,7 +801,6 @@ pub fn pext(x: u64, mask: u64) -> u64 {
 **Location**: `bitboard/src/intrinsics.rs` (line ~8)
 
 ```rust
-#[inline(always)]
 pub fn prefetch_read<T>(addr: *const T) {
     #[cfg(target_arch = "x86_64")]
     unsafe { core::arch::x86_64::_mm_prefetch(addr as *const i8, _MM_HINT_T0) }
@@ -898,7 +872,6 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 **Location**: `engine/src/search/core.rs` (line ~151)
 
 ```rust
-#[inline]
 pub fn order_moves_with_heuristics_fast(
     pos: &bitboard::position::Position,
     moves: &mut MoveList,
@@ -959,7 +932,6 @@ Evaluation is called millions of times (in qsearch, null move pruning, leaf node
 **Location**: `engine/src/search/evaluator.rs` (line ~45)
 
 ```rust
-#[inline]
 pub fn evaluate_for_side_to_move<E: Evaluator>(evaluator: &E, pos: &Position) -> i32 {
     let white_centric = evaluator.evaluate(pos);
     if pos.side_to_move == Color::White {
@@ -977,7 +949,6 @@ pub fn evaluate_for_side_to_move<E: Evaluator>(evaluator: &E, pos: &Position) ->
   - Trivial operation: conditional negation
   - Needed because search is negamax (always from current player's perspective)
 - **Optimizations**:
-  - `#[inline]` for cross-crate optimization
   - Branch-free pattern: `white_centric * (1 - 2 * (side != White))`
 
 ### 8.2 `MaterialEvaluator::evaluate()`
@@ -1321,7 +1292,6 @@ Arena provides fixed allocation for search nodes without heap fragmentation.
 **Location**: `engine/src/core/arena.rs` (line ~20)
 
 ```rust
-#[inline(always)]
 pub fn get(&self, idx: usize) -> &Node {
     debug_assert!(idx < self.nodes.len());
     unsafe { self.nodes.get_unchecked(idx) }
@@ -1333,10 +1303,8 @@ pub fn get(&self, idx: usize) -> &Node {
 - **Why It Matters**:
   - Provides O(1) access to pre-allocated search nodes
   - Bounds check removed in release builds (`get_unchecked`)
-  - `#[inline(always)]` forces cross-crate inlining
   - Returns node at position (ply) in search tree
 - **Optimizations**:
-  - `#[inline(always)]` mandatory for millions of calls/second
   - Bounds check only in debug (assertion); removed in release
   - Unchecked access (unsafe but guaranteed safe by caller contract)
 
@@ -1344,7 +1312,6 @@ pub fn get(&self, idx: usize) -> &Node {
 **Location**: `engine/src/core/arena.rs` (line ~30)
 
 ```rust
-#[inline(always)]
 pub fn get_mut(&mut self, idx: usize) -> &mut Node {
     debug_assert!(idx < self.nodes.len());
     unsafe { self.nodes.get_unchecked_mut(idx) }
@@ -1357,7 +1324,6 @@ pub fn get_mut(&mut self, idx: usize) -> &mut Node {
   - Mutable access to node for storing position during search
   - Called before `apply_move_into()` to store resulting position
   - Unchecked for speed (release build optimization)
-  - `#[inline(always)]` critical
 - **Optimizations**:
   - Same as `get()` but for mutable access
 
@@ -1408,7 +1374,6 @@ pub fn reset(&mut self) {
 **Location**: `bitboard/src/piecebitboards.rs` (line ~20)
 
 ```rust
-#[inline]
 pub fn get(&self, piece: Piece) -> BitBoardMask {
     debug_assert!(piece != Piece::None, "Tried to get() a None piece");
     unsafe { *self.inner.get_unchecked(piece.index()) }
@@ -1422,14 +1387,12 @@ pub fn get(&self, piece: Piece) -> BitBoardMask {
   - Assertion in debug, unchecked in release
   - Used thousands of times during move generation
 - **Optimizations**:
-  - `#[inline]` for cross-crate optimization
   - Unchecked access (bounds check removed in release)
 
 ### 14.2 `PieceBitboards::all()`
 **Location**: `bitboard/src/piecebitboards.rs` (line ~31)
 
 ```rust
-#[inline(always)]
 pub fn all(&self) -> BitBoardMask {
     let mut acc = 0u64;
     for bb in &self.inner {
@@ -1448,7 +1411,6 @@ pub fn all(&self) -> BitBoardMask {
   - Cost: ~12 OR operations (~12 cycles)
 - **Optimizations**:
   - Manual loop unrolling (clearer to compiler for vectorization)
-  - `#[inline(always)]` for optimization
   - Single accumulator (single source of truth for result)
 
 ### 14.3 `MoveList` Operations
@@ -1504,12 +1466,12 @@ impl Square {
 | **Movegen** | `generate_pseudo_captures_fast()` | 10M/s | MEDIUM | ~5k cycles | Filtered generation | No | - |
 | **Movegen** | `generate_pseudo_{knight,pawn,bishop,rook,queen,king}_moves_fast()` | 1M/s | HIGH | ~2-5k cycles | Piece-specific delegations | No | - |
 | **Position** | `apply_move_into()` | 1M/s | HIGH | ~5k cycles | Single memcpy instead of field-by-field copy | Yes | 2026-03-07 |
-| **Position** | `copy_from()` | 100M/s | HIGH | ~100 cycles | Memcpy with #[inline(always)] | Yes | 2026-03-07 |
+| **Position** | `copy_from()` | 100M/s | HIGH | ~100 cycles | Memcpy, Copy trait | No | - |
 | **Position** | `all_pieces()` / `our_pieces()` | 10M/s | HIGH | ~1 cycle | Direct lookup | No | - |
 | **Position** | `piece_at()` | 100M/s | MEDIUM | ~1 cycle | Array indexing | No | - |
 | **Position** | `to_board_state()` | 10M/s | MEDIUM | ~5k cycles | Piece reorganization | No | - |
-| **Attack** | `is_square_attacked()` | 10M/s | HIGH | ~100-1k cycles | Early returns, lookup tables, unchecked array access, #[inline] | Yes | 2026-03-07 |
-| **Attack** | `is_king_in_check()` | 1M/s | MEDIUM | ~100 cycles | Direct king lookup, #[inline], cleaner match | Yes | 2026-03-07 |
+| **Attack** | `is_square_attacked()` | 10M/s | HIGH | ~100-1k cycles | Early returns, lookup tables, unchecked array access | Yes | 2026-03-07 |
+| **Attack** | `is_king_in_check()` | 1M/s | MEDIUM | ~100 cycles | Direct king lookup | No | - |
 | **Attack** | `is_in_check()` | 1M/s | MEDIUM | ~1k cycles | Wrapper + board state | No | - |
 | **Bitboard** | `rook_attacks_from()` | 100M/s | HIGH | ~3 cycles | Magic bitboard + PEXT | No | - |
 | **Bitboard** | `bishop_attacks_from()` | 100M/s | HIGH | ~3 cycles | Magic bitboard + PEXT | No | - |
@@ -1523,14 +1485,14 @@ impl Square {
 | **Intrinsics** | `pext()` | 100M/s | HIGH | ~1 cycle | PEXT/BMI2 | No | - |
 | **Search** | `search_node_with_arena()` | 1M/s | CRITICAL | ~100-1M cycles | LMR, PVS, alpha-beta, batched NODE_COUNT, max() updates, unchecked repetition | Yes | 2026-03-07 |
 | **Search** | `order_moves_with_heuristics_fast()` | 1M/s | HIGH | ~10k cycles | Cached scores + in-place insertion sort | Yes | 2026-03-07 |
-| **Eval** | `evaluate_for_side_to_move()` | 10M/s | HIGH | ~100 cycles | `#[inline(always)]` + branchless wrapping-safe sign flip | Yes | 2026-03-07 |
+| **Eval** | `evaluate_for_side_to_move()` | 10M/s | HIGH | ~100 cycles | Branchless wrapping-safe sign flip | Yes | 2026-03-07 |
 | **Eval** | `MaterialEvaluator::evaluate()` | 10M/s | HIGH | ~200-500 cycles | PST, phase blending, stack pawn-index buffer (no Vec alloc) | Yes | 2026-03-07 |
 | **Eval** | Mobility/King Safety/Rook Activity | 10M/s | MEDIUM | ~100-200 cycles | Bitboard iteration | No | - |
 | **Quiescence** | `quiescence_internal()` | 10M/s | HIGH | ~50-500k cycles | Delta+SEE pruning, cached MVV/LVA scores + insertion sort, branchless alpha updates | Yes | 2026-03-07 |
 | **SEE** | `compute_see()` | 1M/s | MEDIUM | ~1-10k cycles | Recursive exchange | No | - |
 | **SEE** | `find_least_valuable_attacker()` | 10M/s | MEDIUM | ~100-1k cycles | Early exit on pawn | No | - |
-| **TT** | `TranspositionTable::probe()` | 1M/s | HIGH | ~10-100 cycles | O(1) hash lookup, inlined index, direct flag comparisons, #[inline(always)] | Yes | 2026-03-07 |
-| **TT** | `TranspositionTable::store()` | 1M/s | MEDIUM | ~10-50 cycles | O(1) direct indexing, inlined index, in-place mutation | Yes | 2026-03-07 |
+| **TT** | `TranspositionTable::probe()` | 1M/s | HIGH | ~10-100 cycles | O(1) hash lookup, direct index arithmetic, direct flag comparisons | Yes | 2026-03-07 |
+| **TT** | `TranspositionTable::store()` | 1M/s | MEDIUM | ~10-50 cycles | O(1) direct indexing, direct index arithmetic, in-place mutation | Yes | 2026-03-07 |
 | **Zobrist** | `compute_zobrist()` | 1M/s | MEDIUM | ~100-300 cycles | XOR piece keys | No | - |
 | **Arena** | `Arena::get()` / `get_mut()` | 100M/s | CRITICAL | ~1 cycle | Unchecked access | No | - |
 | **Arena** | `Arena::get_pair_mut()` | 10M/s | MEDIUM | ~5 cycles | Pointer arithmetic | No | - |
@@ -1554,7 +1516,6 @@ impl Square {
 
 3. **Optimization Patterns Used**:
    - **Magic bitboarding** (rook/bishop attacks): PEXT for O(1) lookup
-   - **Inline directives** (`#[inline]`, `#[inline(always)]`): force cross-crate optimization
    - **Stack allocation** (MoveList, Position via Copy): avoid heap
    - **Precomputed tables** (attacks, PST, Zobrist keys): cache-warm data
    - **Early returns** (attack checking, TT probe): minimize useless computation

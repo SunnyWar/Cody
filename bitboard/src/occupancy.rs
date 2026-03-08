@@ -17,19 +17,16 @@ pub struct OccupancyMap {
 }
 
 impl OccupancyMap {
-    #[inline]
     pub const fn new() -> Self {
         Self {
             inner: [BitBoardMask::empty(); 3],
         }
     }
 
-    #[inline]
     pub fn or_in(&mut self, kind: OccupancyKind, mask: BitBoardMask) {
         self.inner[kind as usize] |= mask;
     }
 
-    #[inline]
     pub fn is_empty(&self) -> bool {
         self.inner[0].is_empty() && self.inner[1].is_empty() && self.inner[2].is_empty()
     }

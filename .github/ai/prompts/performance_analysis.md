@@ -31,7 +31,7 @@ Perform a deep analysis of the codebase to identify performance optimization opp
 
 4. **Rust-Specific Optimizations**
    - Find missed opportunities for `const fn`
-   - Identify places where inline hints would help
+
    - Check for unnecessary bounds checks
    - Find places where `unsafe` would be justified for speed
    - Identify opportunities for zero-cost abstractions
