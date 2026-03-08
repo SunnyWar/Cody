@@ -21,7 +21,7 @@ use bitboard::piece::Piece;
 use bitboard::piece::PieceKind;
 use bitboard::position::Position;
 
-fn piece_value(kind: PieceKind) -> i32 {
+const fn piece_value(kind: PieceKind) -> i32 {
     match kind {
         PieceKind::Pawn => 100,
         PieceKind::Knight => 320,
@@ -176,6 +176,13 @@ fn see_recursive(
 ) -> i32 {
     // Exchange length is bounded by total pieces; cap recursion defensively.
     if depth >= 32 {
+        return 0;
+    }
+
+    // Early termination heuristic: if capturing trivial material (< 1 pawn) at
+    // depth >= 2, the exchange won't affect move ordering. Saves recursion
+    // overhead in long exchanges.
+    if depth >= 2 && captured_value < 100 {
         return 0;
     }
 
