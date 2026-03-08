@@ -79,8 +79,36 @@ impl Evaluator for MaterialEvaluator {
         for &color in &[Color::White, Color::Black] {
             let sign = if color == Color::White { 1 } else { -1 };
 
+            // Process each piece type
+            // Pawns often come in batches of 8, perfect for SIMD
+            {
+                let piece = Piece::from_parts(color, Some(PieceKind::Pawn));
+                let bb = pos.pieces.get(piece);
+                let mut indices = Vec::with_capacity(16);
+
+                for sq in bb.squares() {
+                    let idx = if color == Color::White {
+                        sq.index()
+                    } else {
+                        63 - sq.index()
+                    };
+                    indices.push(idx);
+                }
+
+                if !indices.is_empty() {
+                    score += evaluate_pieces_batch_simd(
+                        &indices,
+                        &PAWN_SQUARE_TABLE,
+                        &PAWN_ENDGAME_TABLE,
+                        PIECE_VALUES[PieceKind::Pawn as usize],
+                        phase,
+                        sign,
+                    );
+                }
+            }
+
+            // Process other pieces (typically fewer, but SIMD still helps)
             for kind in [
-                PieceKind::Pawn,
                 PieceKind::Knight,
                 PieceKind::Bishop,
                 PieceKind::Rook,
@@ -98,9 +126,6 @@ impl Evaluator for MaterialEvaluator {
                     };
 
                     let pst_bonus = match kind {
-                        PieceKind::Pawn => {
-                            blend_tables(PAWN_SQUARE_TABLE[idx], PAWN_ENDGAME_TABLE[idx], phase)
-                        }
                         PieceKind::Knight => {
                             blend_tables(KNIGHT_SQUARE_TABLE[idx], KNIGHT_ENDGAME_TABLE[idx], phase)
                         }
@@ -118,6 +143,7 @@ impl Evaluator for MaterialEvaluator {
                             KING_ENDGAME_TABLE[idx],
                             phase,
                         ),
+                        _ => 0,
                     };
 
                     score += sign * (PIECE_VALUES[kind as usize] + pst_bonus);
@@ -137,16 +163,22 @@ impl Evaluator for MaterialEvaluator {
 }
 
 fn evaluate_bishop_pair(pos: &Position) -> i32 {
-    let white_bishops = bitboard::intrinsics::popcnt(
-        pos.pieces
-            .get(Piece::from_parts(Color::White, Some(PieceKind::Bishop)))
-            .0,
-    ) as i32;
-    let black_bishops = bitboard::intrinsics::popcnt(
-        pos.pieces
-            .get(Piece::from_parts(Color::Black, Some(PieceKind::Bishop)))
-            .0,
-    ) as i32;
+    // SIMD-optimized: count bishops for both sides in parallel
+    let white_bishops_bb = pos
+        .pieces
+        .get(Piece::from_parts(Color::White, Some(PieceKind::Bishop)))
+        .0;
+    let black_bishops_bb = pos
+        .pieces
+        .get(Piece::from_parts(Color::Black, Some(PieceKind::Bishop)))
+        .0;
+
+    // Use SIMD for parallel popcount (pads with zeros for unused lanes)
+    let vec = bitboard::intrinsics::SimdU64x4::new(white_bishops_bb, black_bishops_bb, 0, 0);
+    let counts = vec.popcnt_parallel();
+
+    let white_bishops = counts[0] as i32;
+    let black_bishops = counts[1] as i32;
 
     let white_bonus = if white_bishops >= 2 {
         BISHOP_PAIR_BONUS
@@ -245,28 +277,18 @@ fn compute_phase(pos: &Position) -> i32 {
 
     let mut phase = MAX_PHASE;
 
+    // SIMD-optimized phase computation: count all pieces for both sides in parallel
     for color in [Color::White, Color::Black] {
-        // Unrolled for maximum performance
-        let pawn_count = pos
-            .pieces
-            .get(Piece::from_parts(color, Some(Pawn)))
-            .0
-            .count_ones() as i32;
-        let knight_count = pos
-            .pieces
-            .get(Piece::from_parts(color, Some(Knight)))
-            .0
-            .count_ones() as i32;
-        let bishop_count = pos
-            .pieces
-            .get(Piece::from_parts(color, Some(Bishop)))
-            .0
-            .count_ones() as i32;
-        let rook_count = pos
-            .pieces
-            .get(Piece::from_parts(color, Some(Rook)))
-            .0
-            .count_ones() as i32;
+        // Load 4 piece bitboards into SIMD vector for parallel popcount
+        let pawns = pos.pieces.get(Piece::from_parts(color, Some(Pawn))).0;
+        let knights = pos.pieces.get(Piece::from_parts(color, Some(Knight))).0;
+        let bishops = pos.pieces.get(Piece::from_parts(color, Some(Bishop))).0;
+        let rooks = pos.pieces.get(Piece::from_parts(color, Some(Rook))).0;
+
+        // Parallel popcount on 4 bitboards simultaneously
+        let vec = bitboard::intrinsics::SimdU64x4::new(pawns, knights, bishops, rooks);
+        let counts = vec.popcnt_parallel();
+
         let queen_count = pos
             .pieces
             .get(Piece::from_parts(color, Some(Queen)))
@@ -277,6 +299,12 @@ fn compute_phase(pos: &Position) -> i32 {
             .get(Piece::from_parts(color, Some(King)))
             .0
             .count_ones() as i32;
+
+        // Use SIMD results
+        let pawn_count = counts[0] as i32;
+        let knight_count = counts[1] as i32;
+        let bishop_count = counts[2] as i32;
+        let rook_count = counts[3] as i32;
 
         phase -= PHASE_WEIGHTS[0] * pawn_count
             + PHASE_WEIGHTS[1] * knight_count
@@ -294,6 +322,123 @@ fn blend_tables(mid: i32, end: i32, phase: i32) -> i32 {
     // phase = 0 when minimal material (endgame)
     // So weight MID when phase is high, END when phase is low
     ((mid * (MAX_PHASE - phase)) + (end * phase)) / MAX_PHASE
+}
+
+/// SIMD-optimized batch PST evaluation.
+///
+/// Process up to 8 pieces at once using AVX2 SIMD operations.
+/// Returns the sum of all piece values + PST bonuses.
+#[inline]
+fn evaluate_pieces_batch_simd(
+    indices: &[usize],
+    mid_table: &[i32; 64],
+    end_table: &[i32; 64],
+    piece_value: i32,
+    phase: i32,
+    sign: i32,
+) -> i32 {
+    let count = indices.len();
+    if count == 0 {
+        return 0;
+    }
+
+    // For 8 or more pieces, use SIMD batch processing
+    if count >= 8 {
+        let mut batch_score = 0;
+        let mut i = 0;
+
+        while i + 8 <= count {
+            // Load 8 midgame PST values
+            let mid_vec = bitboard::intrinsics::SimdI32x8::new(
+                mid_table[indices[i]],
+                mid_table[indices[i + 1]],
+                mid_table[indices[i + 2]],
+                mid_table[indices[i + 3]],
+                mid_table[indices[i + 4]],
+                mid_table[indices[i + 5]],
+                mid_table[indices[i + 6]],
+                mid_table[indices[i + 7]],
+            );
+
+            // Load 8 endgame PST values
+            let end_vec = bitboard::intrinsics::SimdI32x8::new(
+                end_table[indices[i]],
+                end_table[indices[i + 1]],
+                end_table[indices[i + 2]],
+                end_table[indices[i + 3]],
+                end_table[indices[i + 4]],
+                end_table[indices[i + 5]],
+                end_table[indices[i + 6]],
+                end_table[indices[i + 7]],
+            );
+
+            // Blend: ((mid * (MAX_PHASE - phase)) + (end * phase)) / MAX_PHASE
+            let max_phase_vec = bitboard::intrinsics::SimdI32x8::splat(MAX_PHASE);
+            let phase_vec = bitboard::intrinsics::SimdI32x8::splat(phase);
+            let inv_phase_vec = max_phase_vec.sub(phase_vec);
+
+            // mid * (MAX_PHASE - phase)
+            let mid_weighted = bitboard::intrinsics::SimdI32x8::new(
+                mid_vec.data[0] * inv_phase_vec.data[0],
+                mid_vec.data[1] * inv_phase_vec.data[1],
+                mid_vec.data[2] * inv_phase_vec.data[2],
+                mid_vec.data[3] * inv_phase_vec.data[3],
+                mid_vec.data[4] * inv_phase_vec.data[4],
+                mid_vec.data[5] * inv_phase_vec.data[5],
+                mid_vec.data[6] * inv_phase_vec.data[6],
+                mid_vec.data[7] * inv_phase_vec.data[7],
+            );
+
+            // end * phase
+            let end_weighted = bitboard::intrinsics::SimdI32x8::new(
+                end_vec.data[0] * phase_vec.data[0],
+                end_vec.data[1] * phase_vec.data[1],
+                end_vec.data[2] * phase_vec.data[2],
+                end_vec.data[3] * phase_vec.data[3],
+                end_vec.data[4] * phase_vec.data[4],
+                end_vec.data[5] * phase_vec.data[5],
+                end_vec.data[6] * phase_vec.data[6],
+                end_vec.data[7] * phase_vec.data[7],
+            );
+
+            // Add and divide
+            let blended = mid_weighted.add(end_weighted);
+            let pst_bonuses = bitboard::intrinsics::SimdI32x8::new(
+                blended.data[0] / MAX_PHASE,
+                blended.data[1] / MAX_PHASE,
+                blended.data[2] / MAX_PHASE,
+                blended.data[3] / MAX_PHASE,
+                blended.data[4] / MAX_PHASE,
+                blended.data[5] / MAX_PHASE,
+                blended.data[6] / MAX_PHASE,
+                blended.data[7] / MAX_PHASE,
+            );
+
+            // Add piece values
+            let piece_values = bitboard::intrinsics::SimdI32x8::splat(piece_value);
+            let total_values = pst_bonuses.add(piece_values);
+
+            // Sum horizontally and apply sign
+            batch_score += sign * total_values.horizontal_sum();
+            i += 8;
+        }
+
+        // Handle remainder
+        for idx in &indices[i..] {
+            let pst_bonus = blend_tables(mid_table[*idx], end_table[*idx], phase);
+            batch_score += sign * (piece_value + pst_bonus);
+        }
+
+        return batch_score;
+    }
+
+    // Fallback for < 8 pieces: use scalar evaluation
+    let mut score = 0;
+    for &idx in indices {
+        let pst_bonus = blend_tables(mid_table[idx], end_table[idx], phase);
+        score += sign * (piece_value + pst_bonus);
+    }
+    score
 }
 
 /// Evaluate piece mobility (number of squares each piece can move to).

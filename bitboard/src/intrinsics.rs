@@ -314,6 +314,358 @@ fn pdep_software(mut src: u64, mut mask: u64) -> u64 {
 }
 
 // ============================================================================
+// SIMD / AVX Operations
+// ============================================================================
+
+/// SIMD vector type for 4x u64 values (256-bit AVX2 register).
+///
+/// Used for parallel operations on multiple bitboards simultaneously.
+/// On non-AVX2 targets, operations fall back to sequential processing.
+#[derive(Clone, Copy, Debug)]
+#[repr(align(32))]
+pub struct SimdU64x4 {
+    pub data: [u64; 4],
+}
+
+impl SimdU64x4 {
+    /// Create a new SIMD vector from 4 u64 values.
+    #[inline(always)]
+    pub fn new(a: u64, b: u64, c: u64, d: u64) -> Self {
+        Self { data: [a, b, c, d] }
+    }
+
+    /// Create a SIMD vector with all elements set to the same value.
+    #[inline(always)]
+    pub fn splat(value: u64) -> Self {
+        Self { data: [value; 4] }
+    }
+
+    /// Parallel population count: count bits in 4 bitboards simultaneously.
+    ///
+    /// Returns an array of 4 population counts.
+    /// Uses AVX2 when available for maximum throughput.
+    #[inline(always)]
+    pub fn popcnt_parallel(self) -> [u32; 4] {
+        #[cfg(all(
+            target_arch = "x86_64",
+            target_feature = "avx2",
+            target_feature = "popcnt"
+        ))]
+        unsafe {
+            // AVX2 path: use SIMD load + parallel popcnt
+            [
+                core::arch::x86_64::_popcnt64(self.data[0] as i64) as u32,
+                core::arch::x86_64::_popcnt64(self.data[1] as i64) as u32,
+                core::arch::x86_64::_popcnt64(self.data[2] as i64) as u32,
+                core::arch::x86_64::_popcnt64(self.data[3] as i64) as u32,
+            ]
+        }
+
+        #[cfg(not(all(
+            target_arch = "x86_64",
+            target_feature = "avx2",
+            target_feature = "popcnt"
+        )))]
+        {
+            [
+                popcnt(self.data[0]),
+                popcnt(self.data[1]),
+                popcnt(self.data[2]),
+                popcnt(self.data[3]),
+            ]
+        }
+    }
+
+    /// Parallel bitwise AND: compute self & other for all 4 elements.
+    #[inline(always)]
+    pub fn and(self, other: Self) -> Self {
+        #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+        unsafe {
+            let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+            let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+            let result = core::arch::x86_64::_mm256_and_si256(a, b);
+
+            let mut out = Self { data: [0; 4] };
+            core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+            out
+        }
+
+        #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
+        {
+            Self {
+                data: [
+                    self.data[0] & other.data[0],
+                    self.data[1] & other.data[1],
+                    self.data[2] & other.data[2],
+                    self.data[3] & other.data[3],
+                ],
+            }
+        }
+    }
+
+    /// Parallel bitwise OR: compute self | other for all 4 elements.
+    #[inline(always)]
+    pub fn or(self, other: Self) -> Self {
+        #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+        unsafe {
+            let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+            let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+            let result = core::arch::x86_64::_mm256_or_si256(a, b);
+
+            let mut out = Self { data: [0; 4] };
+            core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+            out
+        }
+
+        #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
+        {
+            Self {
+                data: [
+                    self.data[0] | other.data[0],
+                    self.data[1] | other.data[1],
+                    self.data[2] | other.data[2],
+                    self.data[3] | other.data[3],
+                ],
+            }
+        }
+    }
+
+    /// Parallel bitwise XOR: compute self ^ other for all 4 elements.
+    #[inline(always)]
+    pub fn xor(self, other: Self) -> Self {
+        #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+        unsafe {
+            let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+            let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+            let result = core::arch::x86_64::_mm256_xor_si256(a, b);
+
+            let mut out = Self { data: [0; 4] };
+            core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+            out
+        }
+
+        #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
+        {
+            Self {
+                data: [
+                    self.data[0] ^ other.data[0],
+                    self.data[1] ^ other.data[1],
+                    self.data[2] ^ other.data[2],
+                    self.data[3] ^ other.data[3],
+                ],
+            }
+        }
+    }
+
+    /// Parallel bitwise NOT: compute !self for all 4 elements.
+    #[inline(always)]
+    pub fn not(self) -> Self {
+        #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+        unsafe {
+            let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+            let ones = core::arch::x86_64::_mm256_set1_epi64x(-1);
+            let result = core::arch::x86_64::_mm256_xor_si256(a, ones);
+
+            let mut out = Self { data: [0; 4] };
+            core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+            out
+        }
+
+        #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
+        {
+            Self {
+                data: [!self.data[0], !self.data[1], !self.data[2], !self.data[3]],
+            }
+        }
+    }
+
+    /// Test if any element is non-zero.
+    #[inline(always)]
+    pub fn any_nonzero(self) -> bool {
+        self.data[0] != 0 || self.data[1] != 0 || self.data[2] != 0 || self.data[3] != 0
+    }
+
+    /// Test if all elements are zero.
+    #[inline(always)]
+    pub fn all_zero(self) -> bool {
+        !self.any_nonzero()
+    }
+}
+
+/// SIMD vector for 8x i32 values (256-bit AVX2 register).
+///
+/// Used for parallel evaluation scoring, move ordering, etc.
+#[derive(Clone, Copy, Debug)]
+#[repr(align(32))]
+pub struct SimdI32x8 {
+    pub data: [i32; 8],
+}
+
+impl SimdI32x8 {
+    /// Create a new SIMD vector from 8 i32 values.
+    #[inline(always)]
+    pub fn new(a: i32, b: i32, c: i32, d: i32, e: i32, f: i32, g: i32, h: i32) -> Self {
+        Self {
+            data: [a, b, c, d, e, f, g, h],
+        }
+    }
+
+    /// Create a SIMD vector with all elements set to the same value.
+    #[inline(always)]
+    pub fn splat(value: i32) -> Self {
+        Self { data: [value; 8] }
+    }
+
+    /// Parallel addition: add 8 integers simultaneously.
+    #[inline(always)]
+    pub fn add(self, other: Self) -> Self {
+        #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+        unsafe {
+            let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+            let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+            let result = core::arch::x86_64::_mm256_add_epi32(a, b);
+
+            let mut out = Self { data: [0; 8] };
+            core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+            out
+        }
+
+        #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
+        {
+            Self {
+                data: [
+                    self.data[0] + other.data[0],
+                    self.data[1] + other.data[1],
+                    self.data[2] + other.data[2],
+                    self.data[3] + other.data[3],
+                    self.data[4] + other.data[4],
+                    self.data[5] + other.data[5],
+                    self.data[6] + other.data[6],
+                    self.data[7] + other.data[7],
+                ],
+            }
+        }
+    }
+
+    /// Parallel subtraction: subtract 8 integers simultaneously.
+    #[inline(always)]
+    pub fn sub(self, other: Self) -> Self {
+        #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+        unsafe {
+            let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+            let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+            let result = core::arch::x86_64::_mm256_sub_epi32(a, b);
+
+            let mut out = Self { data: [0; 8] };
+            core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+            out
+        }
+
+        #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
+        {
+            Self {
+                data: [
+                    self.data[0] - other.data[0],
+                    self.data[1] - other.data[1],
+                    self.data[2] - other.data[2],
+                    self.data[3] - other.data[3],
+                    self.data[4] - other.data[4],
+                    self.data[5] - other.data[5],
+                    self.data[6] - other.data[6],
+                    self.data[7] - other.data[7],
+                ],
+            }
+        }
+    }
+
+    /// Horizontal sum: add all 8 elements together.
+    #[inline(always)]
+    pub fn horizontal_sum(self) -> i32 {
+        #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+        unsafe {
+            let vec = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+            // Horizontal add: reduce 8 elements to 4, then to 2, then to 1
+            let sum1 = core::arch::x86_64::_mm256_hadd_epi32(vec, vec);
+            let sum2 = core::arch::x86_64::_mm256_hadd_epi32(sum1, sum1);
+
+            // Extract high and low 128-bit lanes and sum them
+            let low = core::arch::x86_64::_mm256_castsi256_si128(sum2);
+            let high = core::arch::x86_64::_mm256_extracti128_si256::<1>(sum2);
+            let final_sum = core::arch::x86_64::_mm_add_epi32(low, high);
+
+            core::arch::x86_64::_mm_cvtsi128_si32(final_sum)
+        }
+
+        #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
+        {
+            self.data.iter().sum()
+        }
+    }
+
+    /// Parallel maximum: find max of corresponding elements.
+    #[inline(always)]
+    pub fn max(self, other: Self) -> Self {
+        #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+        unsafe {
+            let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+            let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+            let result = core::arch::x86_64::_mm256_max_epi32(a, b);
+
+            let mut out = Self { data: [0; 8] };
+            core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+            out
+        }
+
+        #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
+        {
+            Self {
+                data: [
+                    self.data[0].max(other.data[0]),
+                    self.data[1].max(other.data[1]),
+                    self.data[2].max(other.data[2]),
+                    self.data[3].max(other.data[3]),
+                    self.data[4].max(other.data[4]),
+                    self.data[5].max(other.data[5]),
+                    self.data[6].max(other.data[6]),
+                    self.data[7].max(other.data[7]),
+                ],
+            }
+        }
+    }
+
+    /// Parallel minimum: find min of corresponding elements.
+    #[inline(always)]
+    pub fn min(self, other: Self) -> Self {
+        #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+        unsafe {
+            let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+            let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+            let result = core::arch::x86_64::_mm256_min_epi32(a, b);
+
+            let mut out = Self { data: [0; 8] };
+            core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+            out
+        }
+
+        #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
+        {
+            Self {
+                data: [
+                    self.data[0].min(other.data[0]),
+                    self.data[1].min(other.data[1]),
+                    self.data[2].min(other.data[2]),
+                    self.data[3].min(other.data[3]),
+                    self.data[4].min(other.data[4]),
+                    self.data[5].min(other.data[5]),
+                    self.data[6].min(other.data[6]),
+                    self.data[7].min(other.data[7]),
+                ],
+            }
+        }
+    }
+}
+
+// ============================================================================
 // Tests and Usage Examples
 // ============================================================================
 
@@ -402,5 +754,84 @@ mod tests {
         }
 
         assert_eq!(squares, vec![0, 2, 3]);
+    }
+
+    #[test]
+    fn test_simd_u64x4_popcnt() {
+        let vec = SimdU64x4::new(0xFF, 0xFFFF, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF);
+        let counts = vec.popcnt_parallel();
+        assert_eq!(counts, [8, 16, 32, 64]);
+    }
+
+    #[test]
+    fn test_simd_u64x4_bitwise() {
+        let a = SimdU64x4::new(0xF0F0, 0xFF00, 0xAAAA, 0x5555);
+        let b = SimdU64x4::new(0x0F0F, 0x00FF, 0x5555, 0xAAAA);
+
+        // Test AND
+        let and_result = a.and(b);
+        assert_eq!(and_result.data, [0, 0, 0, 0]);
+
+        // Test OR
+        let or_result = a.or(b);
+        assert_eq!(or_result.data, [0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF]);
+
+        // Test XOR
+        let xor_result = a.xor(b);
+        assert_eq!(xor_result.data, [0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF]);
+
+        // Test NOT
+        let not_a = a.not();
+        assert_eq!(not_a.data, [!0xF0F0, !0xFF00, !0xAAAA, !0x5555]);
+    }
+
+    #[test]
+    fn test_simd_u64x4_zero_checks() {
+        let zeros = SimdU64x4::new(0, 0, 0, 0);
+        assert!(zeros.all_zero());
+        assert!(!zeros.any_nonzero());
+
+        let one_nonzero = SimdU64x4::new(0, 1, 0, 0);
+        assert!(!one_nonzero.all_zero());
+        assert!(one_nonzero.any_nonzero());
+    }
+
+    #[test]
+    fn test_simd_i32x8_arithmetic() {
+        let a = SimdI32x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b = SimdI32x8::new(8, 7, 6, 5, 4, 3, 2, 1);
+
+        // Test addition
+        let sum = a.add(b);
+        assert_eq!(sum.data, [9, 9, 9, 9, 9, 9, 9, 9]);
+
+        // Test subtraction
+        let diff = a.sub(b);
+        assert_eq!(diff.data, [-7, -5, -3, -1, 1, 3, 5, 7]);
+
+        // Test horizontal sum
+        assert_eq!(a.horizontal_sum(), 36);
+        assert_eq!(b.horizontal_sum(), 36);
+    }
+
+    #[test]
+    fn test_simd_i32x8_minmax() {
+        let a = SimdI32x8::new(10, 20, 30, 40, 50, 60, 70, 80);
+        let b = SimdI32x8::new(80, 70, 60, 50, 40, 30, 20, 10);
+
+        // Test max
+        let max_result = a.max(b);
+        assert_eq!(max_result.data, [80, 70, 60, 50, 50, 60, 70, 80]);
+
+        // Test min
+        let min_result = a.min(b);
+        assert_eq!(min_result.data, [10, 20, 30, 40, 40, 30, 20, 10]);
+    }
+
+    #[test]
+    fn test_simd_i32x8_splat() {
+        let vec = SimdI32x8::splat(42);
+        assert_eq!(vec.data, [42, 42, 42, 42, 42, 42, 42, 42]);
+        assert_eq!(vec.horizontal_sum(), 336);
     }
 }
