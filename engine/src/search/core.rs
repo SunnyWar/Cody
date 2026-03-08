@@ -186,7 +186,7 @@ pub fn order_moves_with_heuristics_fast(
         }
     }
 
-    let start = if pv_move.is_some_and(|m| !m.is_null() && moves.len() > 0 && moves[0] == m) {
+    let start = if pv_move.is_some_and(|m| !m.is_null() && !moves.is_empty() && moves[0] == m) {
         1
     } else {
         0
