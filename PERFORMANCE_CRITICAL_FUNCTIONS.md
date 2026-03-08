@@ -1526,7 +1526,7 @@ impl Square {
 | **Eval** | `evaluate_for_side_to_move()` | 10M/s | HIGH | ~100 cycles | `#[inline(always)]` + branchless wrapping-safe sign flip | Yes | 2026-03-07 |
 | **Eval** | `MaterialEvaluator::evaluate()` | 10M/s | HIGH | ~200-500 cycles | PST, phase blending, stack pawn-index buffer (no Vec alloc) | Yes | 2026-03-07 |
 | **Eval** | Mobility/King Safety/Rook Activity | 10M/s | MEDIUM | ~100-200 cycles | Bitboard iteration | No | - |
-| **Quiescence** | `quiescence_internal()` | 10M/s | HIGH | ~50-500k cycles | Delta+SEE pruning | No | - |
+| **Quiescence** | `quiescence_internal()` | 10M/s | HIGH | ~50-500k cycles | Delta+SEE pruning, cached MVV/LVA scores + insertion sort, branchless alpha updates | Yes | 2026-03-07 |
 | **SEE** | `compute_see()` | 1M/s | MEDIUM | ~1-10k cycles | Recursive exchange | No | - |
 | **SEE** | `find_least_valuable_attacker()` | 10M/s | MEDIUM | ~100-1k cycles | Early exit on pawn | No | - |
 | **TT** | `TranspositionTable::probe()` | 1M/s | HIGH | ~10-100 cycles | O(1) hash lookup | No | - |

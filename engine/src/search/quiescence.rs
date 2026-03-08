@@ -78,8 +78,10 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
     if !in_check && stand_pat >= beta {
         return stand_pat;
     }
-    if !in_check && alpha < stand_pat {
-        alpha = stand_pat;
+
+    // Update alpha with stand-pat score if not in check (branchless)
+    if !in_check {
+        alpha = alpha.max(stand_pat);
     }
 
     // If we're in check, we must consider all evasions (not just captures)
@@ -177,10 +179,30 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
         return stand_pat;
     }
 
-    // Order captures by MVV/LVA descending
-    moves
-        .as_mut_slice()
-        .sort_by_key(|m| -mvv_lva_score(&pos, m));
+    // Cache MVV/LVA scores once per move to avoid repeated piece lookups during
+    // sorting
+    let num_moves = moves.len();
+    let mut scores: [i32; 256] = [0; 256];
+    for i in 0..num_moves {
+        scores[i] = mvv_lva_score(&pos, &moves[i]);
+    }
+
+    // Insertion sort by descending MVV/LVA score (higher victim, lower attacker is
+    // better) This is cache-friendly for small move counts typical in qsearch
+    // (< 10 captures)
+    let moves_slice = moves.as_mut_slice();
+    for i in 1..num_moves {
+        let key_score = scores[i];
+        let key_move = moves_slice[i];
+        let mut j = i;
+        while j > 0 && scores[j - 1] < key_score {
+            moves_slice[j] = moves_slice[j - 1];
+            scores[j] = scores[j - 1];
+            j -= 1;
+        }
+        moves_slice[j] = key_move;
+        scores[j] = key_score;
+    }
 
     let mut best = i32::MIN;
     for i in 0..moves.len() {
@@ -210,13 +232,8 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
             qsearch_depth + 1,
         );
 
-        if score > best {
-            best = score;
-        }
-
-        if score > alpha {
-            alpha = score;
-        }
+        best = best.max(score);
+        alpha = alpha.max(score);
 
         if alpha >= beta {
             break;
