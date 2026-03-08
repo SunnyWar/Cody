@@ -48,56 +48,73 @@ fn find_least_valuable_attacker(
     attacking_color: Color,
     occupied: BitBoardMask,
 ) -> Option<(PieceKind, BitBoardMask)> {
-    let pawns = pos
-        .pieces
-        .get(Piece::from_parts(attacking_color, Some(PieceKind::Pawn)))
-        & occupied;
+    let (pawns, knights, bishops, rooks, queens, kings) = match attacking_color {
+        Color::White => (
+            pos.pieces.get(Piece::WhitePawn) & occupied,
+            pos.pieces.get(Piece::WhiteKnight) & occupied,
+            pos.pieces.get(Piece::WhiteBishop) & occupied,
+            pos.pieces.get(Piece::WhiteRook) & occupied,
+            pos.pieces.get(Piece::WhiteQueen) & occupied,
+            pos.pieces.get(Piece::WhiteKing) & occupied,
+        ),
+        Color::Black => (
+            pos.pieces.get(Piece::BlackPawn) & occupied,
+            pos.pieces.get(Piece::BlackKnight) & occupied,
+            pos.pieces.get(Piece::BlackBishop) & occupied,
+            pos.pieces.get(Piece::BlackRook) & occupied,
+            pos.pieces.get(Piece::BlackQueen) & occupied,
+            pos.pieces.get(Piece::BlackKing) & occupied,
+        ),
+    };
+
     let pawn_attackers = pawns & pawn_attacks_to(target_sq, attacking_color);
     if pawn_attackers.is_nonempty() {
         return Some((PieceKind::Pawn, pawn_attackers));
     }
 
-    let knights = pos
-        .pieces
-        .get(Piece::from_parts(attacking_color, Some(PieceKind::Knight)))
-        & occupied;
     let knight_attackers = knights & knight_attacks(target_sq);
     if knight_attackers.is_nonempty() {
         return Some((PieceKind::Knight, knight_attackers));
     }
 
-    let bishops = pos
-        .pieces
-        .get(Piece::from_parts(attacking_color, Some(PieceKind::Bishop)))
-        & occupied;
-    let bishop_attackers = bishops & bishop_attacks_from(target_sq, occupied);
+    let mut bishop_rays = BitBoardMask::empty();
+    let mut rook_rays = BitBoardMask::empty();
+
+    let bishop_attackers = if bishops.is_nonempty() || queens.is_nonempty() {
+        bishop_rays = bishop_attacks_from(target_sq, occupied);
+        bishops & bishop_rays
+    } else {
+        BitBoardMask::empty()
+    };
     if bishop_attackers.is_nonempty() {
         return Some((PieceKind::Bishop, bishop_attackers));
     }
 
-    let rooks = pos
-        .pieces
-        .get(Piece::from_parts(attacking_color, Some(PieceKind::Rook)))
-        & occupied;
-    let rook_attackers = rooks & rook_attacks_from(target_sq, occupied);
+    let rook_attackers = if rooks.is_nonempty() || queens.is_nonempty() {
+        rook_rays = rook_attacks_from(target_sq, occupied);
+        rooks & rook_rays
+    } else {
+        BitBoardMask::empty()
+    };
     if rook_attackers.is_nonempty() {
         return Some((PieceKind::Rook, rook_attackers));
     }
 
-    let queens = pos
-        .pieces
-        .get(Piece::from_parts(attacking_color, Some(PieceKind::Queen)))
-        & occupied;
-    let queen_attackers = queens
-        & (rook_attacks_from(target_sq, occupied) | bishop_attacks_from(target_sq, occupied));
+    let queen_attackers = if queens.is_nonempty() {
+        if bishop_rays.is_empty() {
+            bishop_rays = bishop_attacks_from(target_sq, occupied);
+        }
+        if rook_rays.is_empty() {
+            rook_rays = rook_attacks_from(target_sq, occupied);
+        }
+        queens & (rook_rays | bishop_rays)
+    } else {
+        BitBoardMask::empty()
+    };
     if queen_attackers.is_nonempty() {
         return Some((PieceKind::Queen, queen_attackers));
     }
 
-    let kings = pos
-        .pieces
-        .get(Piece::from_parts(attacking_color, Some(PieceKind::King)))
-        & occupied;
     let king_attackers = kings & king_attacks(target_sq);
     if king_attackers.is_nonempty() {
         return Some((PieceKind::King, king_attackers));

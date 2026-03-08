@@ -33,6 +33,7 @@
 | Bitboards | `BitBoardMask::count()` | Routed `count()` through `intrinsics::popcnt()` to reuse compile-time/runtime hardware POPCNT dispatch while keeping `count_ones()` as const fallback. | ~1 cycle per call in 100M/s population-count paths |
 | Eval | `evaluate_king_safety()` / `evaluate_rook_activity()` | Replaced per-rank file scans (`for rank in 0..8`) with direct file-bitmask tests (`0x0101.. << file`) for pawn-on-file checks. | Removed repeated inner loops in 10M/s eval path |
 | Eval | `evaluate_mobility()` | Replaced per-square rank/file distance arithmetic with a const precomputed square bonus table and split white/black piece loops using direct piece enums. | Removed inner-loop branching and arithmetic in 10M/s eval path |
+| SEE | `find_least_valuable_attacker()` | Reworked attacker selection to use direct color-specific piece enums, reused slider attack rays for bishop/rook/queen checks, and skipped expensive slider generation when relevant piece sets are empty. | Reduced redundant slider computations and branches in recursive SEE path |
 
 ## P1: High
 
@@ -43,14 +44,13 @@
 
 | Priority | Module | Function | Call Freq | Impact | Primary Cost | Current Notes |
 |---|---|---|---|---|---|---|
-| 1 | SEE | `find_least_valuable_attacker()` | 10M/s | MEDIUM | ~100-1k cycles | Early exit on pawn |
+| 1 | SEE | `compute_see()` | 1M/s | MEDIUM | ~1-10k cycles | Recursive exchange |
 | 2 | Bitboard | `king_attacks()` | 1M/s | MEDIUM | ~1 cycle | Table lookup |
 | 3 | Bitboard | `knight_attacks()` | 1M/s | MEDIUM | ~1 cycle | Table lookup |
-| 4 | SEE | `compute_see()` | 1M/s | MEDIUM | ~1-10k cycles | Recursive exchange |
-| 5 | Zobrist | `compute_zobrist()` | 1M/s | MEDIUM | ~100-300 cycles | XOR piece keys |
+| 4 | Zobrist | `compute_zobrist()` | 1M/s | MEDIUM | ~100-300 cycles | XOR piece keys |
 
 ---
 
 ## Next Target Recommendation
 
-P2 (MEDIUM) now active. Remaining wins are concentrated in SEE and zobrist logic, where function-level and early-exit optimizations should provide the best impact.
+P2 (MEDIUM) now active. Top remaining win is `compute_see()` recursion cost, followed by low-level 1M/s table lookups and zobrist maintenance work.
