@@ -5,6 +5,7 @@ pub mod bitboard;
 pub mod bitboardmask;
 pub mod castling;
 pub mod constants;
+pub mod intrinsics;
 pub mod mov;
 pub mod movegen;
 pub mod movelist;

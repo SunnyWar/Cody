@@ -481,6 +481,12 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 
     let mut legal_move_count = 0usize;
     for move_idx in 0..moves.len() {
+        // Prefetch future move entries while iterating the ordered move list.
+        // Applying this in search (instead of movegen) targets the true hot loop.
+        if move_idx & 7 == 0 {
+            moves.prefetch_next_batch(move_idx);
+        }
+
         let m = moves[move_idx];
         {
             let (parent, child) = arena.get_pair_mut(ply, ply + 1);
