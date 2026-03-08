@@ -132,7 +132,9 @@ pub fn is_king_in_check(king_color: Color, board: &BoardState) -> bool {
     // Square is repr(u8) over 0..63 and the king bitboard has a single legal
     // square.
     let king_square: Square = unsafe {
-        core::mem::transmute::<u8, Square>(crate::intrinsics::trailing_zeros(king_bits) as u8)
+        core::mem::transmute::<u8, Square>(
+            crate::intrinsics::trailing_zeros_nonzero(king_bits) as u8
+        )
     };
 
     is_square_attacked(king_square, king_color.opposite(), board)
