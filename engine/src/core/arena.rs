@@ -45,8 +45,16 @@ impl Arena {
 
     pub fn get_pair_mut(&mut self, idx1: usize, idx2: usize) -> (&Node, &mut Node) {
         debug_assert!(idx1 != idx2);
-        let ptr = self.nodes.as_mut_ptr();
+        debug_assert!(idx1 < self.nodes.len());
+        debug_assert!(idx2 < self.nodes.len());
+
+        let base = self.nodes.as_mut_ptr();
         // SAFETY: indices are distinct and in-bounds by caller contract.
-        unsafe { (&*ptr.add(idx1), &mut *ptr.add(idx2)) }
+        // Precomputing addresses avoids repeated pointer arithmetic at use sites.
+        unsafe {
+            let parent_ptr = base.add(idx1);
+            let child_ptr = base.add(idx2);
+            (&*parent_ptr, &mut *child_ptr)
+        }
     }
 }
