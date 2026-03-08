@@ -1495,7 +1495,7 @@ impl Square {
 | **TT** | `TranspositionTable::store()` | 1M/s | MEDIUM | ~10-50 cycles | O(1) direct indexing, direct index arithmetic, in-place mutation | Yes | 2026-03-07 |
 | **Zobrist** | `compute_zobrist()` | 1M/s | MEDIUM | ~100-300 cycles | XOR piece keys | No | - |
 | **Arena** | `Arena::get()` / `get_mut()` | 100M/s | CRITICAL | ~1 cycle | Direct pointer arithmetic + unchecked access | Yes | 2026-03-07 |
-| **Arena** | `Arena::get_pair_mut()` | 10M/s | MEDIUM | ~5 cycles | Pointer arithmetic | No | - |
+| **Arena** | `Arena::get_pair_mut()` | 10M/s | MEDIUM | ~5 cycles | Pointer arithmetic + precomputed raw addresses | Yes | 2026-03-07 |
 | **Bitboards** | `BitBoardMask::squares()` iterator | 1B/s | CRITICAL | ~per-bit | Trailing zeros + BLSR | No | - |
 | **Bitboards** | `BitBoardMask::contains_square()` | 100M/s | MEDIUM | ~1 cycle | Bitwise AND | No | - |
 | **Bitboards** | `BitBoardMask::count()` | 100M/s | MEDIUM | ~1 cycle | POPCNT | No | - |
