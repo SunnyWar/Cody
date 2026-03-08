@@ -232,8 +232,8 @@ fn piece_value(kind: PieceKind) -> i32 {
     }
 }
 
-fn get_piece_on_square(pos: &bitboard::position::Position, sq: bitboard::Square) -> Option<Piece> {
-    pos.piece_at(sq)
+fn get_piece_on_square(pos: &bitboard::position::Position, sq: bitboard::Square) -> Piece {
+    pos.piece_at_square(sq)
 }
 
 fn mvv_lva_score(pos: &bitboard::position::Position, mv: &ChessMove) -> i32 {
@@ -249,9 +249,19 @@ fn mvv_lva_score(pos: &bitboard::position::Position, mv: &ChessMove) -> i32 {
         _ => get_piece_on_square(pos, mv.to),
     };
 
-    let victim_value = victim_piece.map(|p| piece_value(p.kind())).unwrap_or(0);
+    let victim_value = if victim_piece != Piece::None {
+        piece_value(victim_piece.kind())
+    } else {
+        0
+    };
+
     let attacker_piece = get_piece_on_square(pos, mv.from);
-    let attacker_value = attacker_piece.map(|p| piece_value(p.kind())).unwrap_or(0);
+    let attacker_value = if attacker_piece != Piece::None {
+        piece_value(attacker_piece.kind())
+    } else {
+        0
+    };
+
     victim_value * 100 - attacker_value
 }
 

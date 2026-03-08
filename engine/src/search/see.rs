@@ -32,9 +32,11 @@ fn piece_value(kind: PieceKind) -> i32 {
     }
 }
 
-/// Helper to locate a piece at a square
-fn get_piece_at(pos: &Position, sq: Square) -> Option<Piece> {
-    pos.piece_at(sq)
+/// Helper to locate a piece at a square using direct accessor (no Option
+/// wrapping). Returns Piece::None if square is empty, otherwise returns the
+/// piece.
+fn get_piece_at(pos: &Position, sq: Square) -> Piece {
+    pos.piece_at_square(sq)
 }
 
 /// Returns the least-valuable attacker of a given color on a target square.
@@ -115,19 +117,19 @@ fn find_least_valuable_attacker(
 /// - Queen captures Knight, Pawn recaptures: +320 - 900 = -580 (bad)
 pub fn compute_see(pos: &Position, from: Square, to: Square) -> i32 {
     // Get the moving piece
-    let moving_piece = match get_piece_at(pos, from) {
-        Some(p) => p,
-        None => return 0, // No piece at source
-    };
+    let moving_piece = get_piece_at(pos, from);
+    if moving_piece == Piece::None {
+        return 0; // No piece at source
+    }
 
     let attacker_color = moving_piece.color();
     let defender_color = attacker_color.opposite();
 
     // Get the target piece being captured
-    let target_piece = match get_piece_at(pos, to) {
-        Some(p) => p,
-        None => return 0, // No piece to capture
-    };
+    let target_piece = get_piece_at(pos, to);
+    if target_piece == Piece::None {
+        return 0; // No piece to capture
+    }
 
     let gain = piece_value(target_piece.kind());
     let occupied =

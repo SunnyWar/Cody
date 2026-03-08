@@ -171,7 +171,10 @@ const fn pawn_attacks_from(square: Square, color: Color) -> BitBoardMask {
 
 pub fn pawn_attacks_to(sq: Square, attacker_color: Color) -> BitBoardMask {
     // Reverse the direction: squares that can attack `sq` for this color.
-    PAWN_ATTACKS[attacker_color.opposite().index()][sq.index()]
+    // Direct index computation avoids opposite().index() call overhead.
+    // Since Color::White=0 and Color::Black=1, we compute XOR with 1 to flip.
+    let defender_idx = (attacker_color as usize) ^ 1;
+    PAWN_ATTACKS[defender_idx][sq.index()]
 }
 
 const fn generate_attacks_for_color(color: Color) -> [BitBoardMask; NUM_SQUARES] {
