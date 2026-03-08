@@ -287,7 +287,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                     static THREAD_TT: RefCell<Option<crate::core::tt::TranspositionTable>> = const { RefCell::new(None) };
                 }
 
-                let results: Vec<(ChessMove, i32)> = pool.install(|| {
+                let parallel_best = pool.install(|| {
                     moves
                         .as_slice()
                         .par_iter()
@@ -376,14 +376,12 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                             });
                             (m, score)
                         })
-                        .collect()
+                        .reduce_with(|a, b| if a.1 >= b.1 { a } else { b })
                 });
 
-                for (m, score) in results {
-                    if !searched_any || score > best_score {
-                        best_score = score;
-                        best_move = m;
-                    }
+                if let Some((m, score)) = parallel_best {
+                    best_score = score;
+                    best_move = m;
                     searched_any = true;
                 }
             }
