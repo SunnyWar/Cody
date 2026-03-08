@@ -46,12 +46,6 @@ pub fn generate_pseudo_moves_fast(pos: &Position) -> MoveList {
     moves
 }
 
-/// Backward-compatible Vec-based move generation (slower due to heap
-/// allocation)
-pub fn generate_pseudo_moves(pos: &Position) -> Vec<ChessMove> {
-    generate_pseudo_moves_fast(pos).to_vec()
-}
-
 /// Fast zero-allocation legal move generation with reused position buffer
 pub fn generate_legal_moves_fast(pos: &Position) -> MoveList {
     let pseudo = generate_pseudo_moves_fast(pos);
@@ -134,7 +128,7 @@ pub fn validate_legal_move_generation(pos: &Position) -> bool {
     }
 
     // Legal move list is empty. Check if this is a valid terminal position.
-    let pseudo_moves = generate_pseudo_moves(pos);
+    let pseudo_moves = generate_pseudo_moves_fast(pos);
     let in_check = crate::movegen::is_in_check(pos, pos.side_to_move);
 
     // If there are ANY pseudo-legal moves that all fail the legality check,

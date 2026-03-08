@@ -30,18 +30,18 @@ mod regression_tests {
     #[test]
     fn test_illegal_move_issue_reproduction() {
         use crate::attack::is_square_attacked;
-        use crate::movegen::api::generate_pseudo_moves;
+        use crate::movegen::api::generate_pseudo_moves_fast;
         use crate::piece::Piece;
         use crate::piece::PieceKind;
         use crate::position::Position;
 
         // Exact position from failing game
         let pos = Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        let moves = generate_pseudo_moves(&pos);
+        let moves = generate_pseudo_moves_fast(&pos);
 
         // Verify no illegal moves are generated
         // Each generated move should not leave king in check
-        for mv in &moves {
+        for mv in moves.iter() {
             let mut resulting_pos = Position::default();
             pos.apply_move_into(mv, &mut resulting_pos);
 
