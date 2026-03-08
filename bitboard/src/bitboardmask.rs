@@ -12,7 +12,7 @@ impl Iterator for SquaresIter {
         } else {
             let tz = crate::intrinsics::trailing_zeros_nonzero(self.bb);
             let sq = tz as u8;
-            self.bb = crate::intrinsics::blsr(self.bb); // clear the lowest set bit
+            self.bb = crate::intrinsics::blsr_nonzero(self.bb); // clear the lowest set bit
             Square::try_from_index(sq)
         }
     }
