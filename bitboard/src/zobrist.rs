@@ -37,21 +37,29 @@ pub const ZOBRIST_CASTLE_KEYS: [u64; 4] = [
     0x89AB_CDEF_0123_4567u64,
 ];
 
-pub fn piece_index(p: Piece) -> usize {
-    // map (color, kind) to 0..12
-    let color_idx = match p.color() {
-        Color::White => 0usize,
-        Color::Black => 1usize,
-    };
-    let kind_idx = match p.kind() {
-        PieceKind::Pawn => 0,
-        PieceKind::Knight => 1,
-        PieceKind::Bishop => 2,
-        PieceKind::Rook => 3,
-        PieceKind::Queen => 4,
-        PieceKind::King => 5,
-    };
-    color_idx * 6 + kind_idx
+/// Const lookup table mapping Piece discriminant directly to zobrist index.
+/// Pieces 0-11 (WhitePawn..BlackKing) map to zobrist indices 0-11.
+/// Piece::None (12) maps to 0 (unused in zobrist computation).
+const PIECE_ZOBRIST_INDEX: [usize; 13] = [
+    0,  // WhitePawn
+    1,  // WhiteKnight
+    2,  // WhiteBishop
+    3,  // WhiteRook
+    4,  // WhiteQueen
+    5,  // WhiteKing
+    6,  // BlackPawn
+    7,  // BlackKnight
+    8,  // BlackBishop
+    9,  // BlackRook
+    10, // BlackQueen
+    11, // BlackKing
+    0,  // None (safe default, unused)
+];
+
+/// Map a piece to its zobrist hash table index. Uses const lookup table for
+/// O(1) access without branches; suitable for const evaluation.
+pub const fn piece_index(p: Piece) -> usize {
+    PIECE_ZOBRIST_INDEX[p as usize]
 }
 
 use crate::position::Position;

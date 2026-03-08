@@ -39,11 +39,11 @@ pub fn occupancy_to_index_u64(occupancy: u64, mask: u64) -> usize {
     crate::intrinsics::pext(occupancy, mask) as usize
 }
 
-pub fn king_attacks(square: Square) -> BitBoardMask {
+pub const fn king_attacks(square: Square) -> BitBoardMask {
     KING_ATTACKS[square.index()]
 }
 
-pub fn knight_attacks(square: Square) -> BitBoardMask {
+pub const fn knight_attacks(square: Square) -> BitBoardMask {
     KNIGHT_ATTACKS[square.index()]
 }
 
