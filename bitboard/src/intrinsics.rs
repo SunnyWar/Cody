@@ -263,6 +263,16 @@ pub fn pext(src: u64, mask: u64) -> u64 {
     }
 }
 
+/// Parallel bit extract (PEXT) - optimized for guaranteed non-zero mask.
+///
+/// Precondition: `mask != 0`. Enforced with debug_assert.
+/// This version is preferred for hot paths where mask is always non-zero
+/// (e.g., occupancy indexing with valid occupancy masks).
+pub fn pext_nonzero(src: u64, mask: u64) -> u64 {
+    debug_assert!(mask != 0, "pext_nonzero requires non-zero mask");
+    pext(src, mask)
+}
+
 /// Software fallback for PEXT (used when BMI2 not available).
 ///
 /// This is the "Kindergarten" bitboard approach - slower but portable.

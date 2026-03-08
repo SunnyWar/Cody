@@ -11,9 +11,12 @@ impl Iterator for SquaresIter {
             None
         } else {
             let tz = crate::intrinsics::trailing_zeros_nonzero(self.bb);
-            let sq = tz as u8;
             self.bb = crate::intrinsics::blsr_nonzero(self.bb); // clear the lowest set bit
-            Square::try_from_index(sq)
+
+            // SAFETY: trailing_zeros_nonzero returns 0..=63 for nonzero input,
+            // and Square is repr(u8) over exactly that range.
+            let sq = unsafe { core::mem::transmute::<u8, Square>(tz as u8) };
+            Some(sq)
         }
     }
 }
