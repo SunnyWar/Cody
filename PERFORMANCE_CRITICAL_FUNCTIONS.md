@@ -31,6 +31,7 @@
 | Bitboards | `BitBoardMask::contains_square()` | Made `contains()` and `contains_square()` `const`, and switched to direct square discriminant bit test (`sq as u8`) to avoid extra accessor path in the 100M/s hot lookup. | ~1 cycle per lookup |
 | Intrinsics | `popcnt()` | Added runtime x86/x86_64 POPCNT dispatch for builds without compile-time `target_feature=popcnt`, while preserving software fallback for unsupported CPUs. | ~1 cycle per call when hardware POPCNT is available at runtime |
 | Bitboards | `BitBoardMask::count()` | Routed `count()` through `intrinsics::popcnt()` to reuse compile-time/runtime hardware POPCNT dispatch while keeping `count_ones()` as const fallback. | ~1 cycle per call in 100M/s population-count paths |
+| Eval | `evaluate_king_safety()` / `evaluate_rook_activity()` | Replaced per-rank file scans (`for rank in 0..8`) with direct file-bitmask tests (`0x0101.. << file`) for pawn-on-file checks. | Removed repeated inner loops in 10M/s eval path |
 
 ## P1: High
 
@@ -41,7 +42,7 @@
 
 | Priority | Module | Function | Call Freq | Impact | Primary Cost | Current Notes |
 |---|---|---|---|---|---|---|
-| 1 | Eval | Mobility/King Safety/Rook Activity | 10M/s | MEDIUM | ~100-200 cycles | Bitboard iteration |
+| 1 | Eval | `evaluate_mobility()` | 10M/s | MEDIUM | ~100-200 cycles | Bitboard iteration |
 | 2 | SEE | `find_least_valuable_attacker()` | 10M/s | MEDIUM | ~100-1k cycles | Early exit on pawn |
 | 3 | Bitboard | `king_attacks()` | 1M/s | MEDIUM | ~1 cycle | Table lookup |
 | 4 | Bitboard | `knight_attacks()` | 1M/s | MEDIUM | ~1 cycle | Table lookup |
@@ -52,4 +53,4 @@
 
 ## Next Target Recommendation
 
-P2 (MEDIUM) now active. Remaining wins are concentrated in eval/SEE logic, where function-level and early-exit optimizations should have higher impact than additional single-instruction table lookups.
+P2 (MEDIUM) now active. Remaining wins are concentrated in `evaluate_mobility()` and SEE logic, where function-level and early-exit optimizations should have higher impact than additional single-instruction table lookups.

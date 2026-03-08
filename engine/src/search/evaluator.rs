@@ -549,25 +549,13 @@ fn evaluate_king_safety(pos: &Position) -> i32 {
                 };
 
             // Penalty: king on semi-open file (no friendly pawns but enemy pawns present)
-            let semi_open_file_penalty = {
-                let mut our_pawn_on_file = false;
-                let mut enemy_pawn_on_file = false;
-
-                for rank in 0..8 {
-                    let sq_idx = (rank * 8 + king_file as usize) as u64;
-                    if (our_pawns.0 & (1u64 << sq_idx)) != 0 {
-                        our_pawn_on_file = true;
-                    }
-                    if (enemy_pawns.0 & (1u64 << sq_idx)) != 0 {
-                        enemy_pawn_on_file = true;
-                    }
-                }
-
-                if !our_pawn_on_file && enemy_pawn_on_file {
-                    OPEN_FILE_NEAR_KING
-                } else {
-                    0
-                }
+            let file_mask = 0x0101_0101_0101_0101u64 << (king_file as u32);
+            let our_pawn_on_file = (our_pawns.0 & file_mask) != 0;
+            let enemy_pawn_on_file = (enemy_pawns.0 & file_mask) != 0;
+            let semi_open_file_penalty = if !our_pawn_on_file && enemy_pawn_on_file {
+                OPEN_FILE_NEAR_KING
+            } else {
+                0
             };
 
             let mut king_safety_penalty = safety_penalty + escape_penalty + semi_open_file_penalty;
@@ -624,18 +612,9 @@ fn evaluate_rook_activity(pos: &Position) -> i32 {
             let file = rook_sq.file() as usize;
 
             // Check if file is open or semi-open
-            let mut our_pawn_on_file = false;
-            let mut enemy_pawn_on_file = false;
-
-            for rank in 0..8 {
-                let sq_idx = (rank * 8 + file) as u64;
-                if (our_pawns.0 & (1u64 << sq_idx)) != 0 {
-                    our_pawn_on_file = true;
-                }
-                if (enemy_pawns.0 & (1u64 << sq_idx)) != 0 {
-                    enemy_pawn_on_file = true;
-                }
-            }
+            let file_mask = 0x0101_0101_0101_0101u64 << (file as u32);
+            let our_pawn_on_file = (our_pawns.0 & file_mask) != 0;
+            let enemy_pawn_on_file = (enemy_pawns.0 & file_mask) != 0;
 
             let bonus = if !our_pawn_on_file && !enemy_pawn_on_file {
                 ROOK_ON_OPEN_FILE_BONUS // Fully open file
