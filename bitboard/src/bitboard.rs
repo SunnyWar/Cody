@@ -30,9 +30,13 @@ impl Iterator for BitIter {
 }
 
 pub fn occupancy_to_index(occupancy: BitBoardMask, mask: BitBoardMask) -> usize {
+    occupancy_to_index_u64(occupancy.0, mask.0)
+}
+
+pub fn occupancy_to_index_u64(occupancy: u64, mask: u64) -> usize {
     // Use PEXT (Parallel Bits Extract) via our intrinsics module
     // This will use hardware BMI2 when available, software fallback otherwise
-    crate::intrinsics::pext(occupancy.0, mask.0) as usize
+    crate::intrinsics::pext(occupancy, mask) as usize
 }
 
 pub fn king_attacks(square: Square) -> BitBoardMask {
@@ -45,13 +49,13 @@ pub fn knight_attacks(square: Square) -> BitBoardMask {
 
 pub fn rook_attacks(sq: Square, occ_bb: BitBoardMask) -> BitBoardMask {
     let mask_bb = ROOK_MASKS[sq.index()];
-    let idx = occupancy_to_index(occ_bb, mask_bb);
+    let idx = occupancy_to_index_u64(occ_bb.0, mask_bb.0);
     ROOK_ATTACKS[sq.index()][idx]
 }
 
 pub fn bishop_attacks(sq: Square, occ_bb: BitBoardMask) -> BitBoardMask {
     let mask_bb = BISHOP_MASKS[sq.index()];
-    let idx = occupancy_to_index(occ_bb, mask_bb);
+    let idx = occupancy_to_index_u64(occ_bb.0, mask_bb.0);
     BISHOP_ATTACKS[sq.index()][idx]
 }
 
@@ -75,9 +79,15 @@ pub const ROOK_MASKS: [BitBoardMask; NUM_SQUARES] = {
 };
 
 pub fn rook_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
-    let mask = ROOK_MASKS[square.index()];
-    let index = occupancy_to_index(occupancy, mask);
-    ROOK_ATTACKS[square.index()][index]
+    let sq = square.index();
+
+    // SAFETY: `sq` is derived from `Square` and therefore in 0..64.
+    let mask = unsafe { *ROOK_MASKS.get_unchecked(sq) };
+    let index = occupancy_to_index_u64(occupancy.0, mask.0);
+
+    // SAFETY: `sq` is in-bounds and `index` is produced from rook occupancy mask
+    // via `occupancy_to_index`, matching the precomputed attack table dimensions.
+    unsafe { *ROOK_ATTACKS.get_unchecked(sq).get_unchecked(index) }
 }
 
 pub const BISHOP_MASKS: [BitBoardMask; NUM_SQUARES] = {
@@ -113,9 +123,15 @@ const fn bishop_mask(square: Square) -> BitBoardMask {
 /// Fast bishop attacks using magic bitboard lookup tables.
 /// This is the hot-path version used in move generation.
 pub fn bishop_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
-    let mask = BISHOP_MASKS[square.index()];
-    let index = occupancy_to_index(occupancy, mask);
-    BISHOP_ATTACKS[square.index()][index]
+    let sq = square.index();
+
+    // SAFETY: `sq` is derived from `Square` and therefore in 0..64.
+    let mask = unsafe { *BISHOP_MASKS.get_unchecked(sq) };
+    let index = occupancy_to_index_u64(occupancy.0, mask.0);
+
+    // SAFETY: `sq` is in-bounds and `index` is produced from bishop occupancy
+    // mask via `occupancy_to_index`, matching the precomputed attack table.
+    unsafe { *BISHOP_ATTACKS.get_unchecked(sq).get_unchecked(index) }
 }
 
 /// Const version for compile-time bishop attack computation.

@@ -6,7 +6,7 @@ use crate::bitboard::BISHOP_MASKS;
 use crate::bitboard::DIAGONAL_MASKS;
 use crate::bitboard::PAWN_ATTACKS;
 use crate::bitboard::ROOK_MASKS;
-use crate::bitboard::occupancy_to_index;
+use crate::bitboard::occupancy_to_index_u64;
 use crate::piece::Color;
 use crate::tables::bishop_attack::BISHOP_ATTACKS;
 use crate::tables::file_masks::FILE_MASKS;
@@ -84,7 +84,7 @@ pub fn is_square_attacked(square: Square, by_color: Color, board: &BoardState) -
     if !rook_like.is_empty() {
         // SAFETY: sq_index is guaranteed to be 0..64
         let rmask = unsafe { *ROOK_MASKS.get_unchecked(sq_index) };
-        let rindex = occupancy_to_index(board.occupancy, rmask);
+        let rindex = occupancy_to_index_u64(board.occupancy.0, rmask.0);
         // SAFETY: rindex is guaranteed valid by occupancy_to_index
         let rook_attacks = unsafe { *ROOK_ATTACKS.get_unchecked(sq_index).get_unchecked(rindex) };
         if (rook_attacks & rook_like).is_nonempty() {
@@ -102,7 +102,7 @@ pub fn is_square_attacked(square: Square, by_color: Color, board: &BoardState) -
     if !bishop_like.is_empty() {
         // SAFETY: sq_index is guaranteed to be 0..64
         let bmask = unsafe { *BISHOP_MASKS.get_unchecked(sq_index) };
-        let bindex = occupancy_to_index(board.occupancy, bmask);
+        let bindex = occupancy_to_index_u64(board.occupancy.0, bmask.0);
         // SAFETY: bindex is guaranteed valid by occupancy_to_index
         let bishop_attacks =
             unsafe { *BISHOP_ATTACKS.get_unchecked(sq_index).get_unchecked(bindex) };
