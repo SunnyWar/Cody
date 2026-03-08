@@ -14,10 +14,8 @@ pub use api::SimpleMoveGen;
 pub use api::generate_legal_moves;
 pub use api::generate_legal_moves_fast;
 pub use api::generate_pseudo_captures_fast;
-pub use api::generate_pseudo_moves;
 pub use api::generate_pseudo_moves_fast;
 pub use api::validate_legal_move_generation;
-// Re-export pawn generator to preserve the original API surface
 pub use king::generate_pseudo_king_moves;
 pub use king::generate_pseudo_king_moves_fast;
 pub use knight::generate_pseudo_knight_moves;

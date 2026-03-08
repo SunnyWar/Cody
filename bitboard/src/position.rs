@@ -9,7 +9,7 @@ use crate::castling::CastlingRights;
 use crate::mov::ChessMove;
 use crate::mov::MoveType;
 use crate::movegen::generate_legal_moves;
-use crate::movegen::generate_pseudo_moves;
+use crate::movegen::generate_pseudo_moves_fast;
 use crate::occupancy::OccupancyKind;
 use crate::occupancy::OccupancyMap;
 use crate::piece::Color;
@@ -504,9 +504,11 @@ impl Position {
             None
         };
 
-        let candidate = generate_pseudo_moves(self)
-            .into_iter()
-            .find(|m| m.from() == from_sq && m.to() == to_sq && m.promotion() == promo)?;
+        let candidate = generate_pseudo_moves_fast(self)
+            .as_slice()
+            .iter()
+            .find(|m| m.from() == from_sq && m.to() == to_sq && m.promotion() == promo)
+            .copied()?;
 
         // CRITICAL: Verify the pseudo-legal move doesn't leave our king in check.
         // This prevents desync from accepting moves that are mechanically possible
