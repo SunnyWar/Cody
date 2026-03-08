@@ -22,7 +22,13 @@ pub fn generate_pseudo_king_moves_fast(
     if let Some(from) = king_bb.squares().next() {
         // Standard king moves
         let valid_moves = king_attacks(from).and(context.not_ours);
-        crate::movegen::api::push_moves_from_valid_targets_fast(pos, context, from, valid_moves, moves);
+        crate::movegen::api::push_moves_from_valid_targets_fast(
+            pos,
+            context,
+            from,
+            valid_moves,
+            moves,
+        );
 
         // Castling moves
         if pos.can_castle_kingside(context.us) {

@@ -137,14 +137,16 @@ impl Evaluator for MaterialEvaluator {
 }
 
 fn evaluate_bishop_pair(pos: &Position) -> i32 {
-    let white_bishops = pos
-        .pieces
-        .get(Piece::from_parts(Color::White, Some(PieceKind::Bishop)))
-        .count_ones() as i32;
-    let black_bishops = pos
-        .pieces
-        .get(Piece::from_parts(Color::Black, Some(PieceKind::Bishop)))
-        .count_ones() as i32;
+    let white_bishops = bitboard::intrinsics::popcnt(
+        pos.pieces
+            .get(Piece::from_parts(Color::White, Some(PieceKind::Bishop)))
+            .0,
+    ) as i32;
+    let black_bishops = bitboard::intrinsics::popcnt(
+        pos.pieces
+            .get(Piece::from_parts(Color::Black, Some(PieceKind::Bishop)))
+            .0,
+    ) as i32;
 
     let white_bonus = if white_bishops >= 2 {
         BISHOP_PAIR_BONUS

@@ -12,7 +12,6 @@ use crate::tables::file_masks::NOT_FILE_H;
 use crate::tables::king_attack::KING_ATTACKS;
 use crate::tables::knight_attack::KNIGHT_ATTACKS;
 use crate::tables::rook_attack::ROOK_ATTACKS;
-use std::arch::x86_64::*;
 
 pub struct BitIter(u64);
 
@@ -23,8 +22,8 @@ impl Iterator for BitIter {
         if self.0 == 0 {
             None
         } else {
-            let sq = self.0.trailing_zeros() as u8;
-            self.0 &= self.0 - 1; // clear LS1B
+            let sq = crate::intrinsics::trailing_zeros(self.0) as u8;
+            self.0 = crate::intrinsics::blsr(self.0); // clear LS1B
             Some(sq)
         }
     }
@@ -33,12 +32,8 @@ impl Iterator for BitIter {
 #[cfg(all(target_arch = "x86_64", target_feature = "bmi2"))]
 #[inline]
 pub fn occupancy_to_index(occupancy: BitBoardMask, mask: BitBoardMask) -> usize {
-    // Use PEXT (Parallel Bits Extract) if available on x86_64 with BMI2
-    // PEXT extracts bits from occupancy according to the mask pattern
-    unsafe {
-        // extracts bits according to mask
-        _pext_u64(occupancy.0, mask.0) as usize
-    }
+    // Use PEXT (Parallel Bits Extract) via our intrinsics module
+    crate::intrinsics::pext(occupancy.0, mask.0) as usize
 }
 
 #[inline]
