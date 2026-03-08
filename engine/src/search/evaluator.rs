@@ -37,6 +37,27 @@ const PASSED_PAWN_BONUS_BY_ADVANCE: [i32; 8] = [0, 5, 10, 18, 28, 42, 60, 0];
 // Piece mobility (activity bonus per legal move a piece can make)
 const MOBILITY_WEIGHT: i32 = 4;
 
+const fn mobility_bonus_by_square() -> [i32; 64] {
+    let mut bonuses = [0i32; 64];
+    let mut idx = 0usize;
+    while idx < 64 {
+        let file = (idx % 8) as i32;
+        let rank = (idx / 8) as i32;
+        let file_distance = if file >= 3 { file - 3 } else { 3 - file };
+        let rank_distance = if rank >= 3 { rank - 3 } else { 3 - rank };
+        let mut center_distance = file_distance + rank_distance;
+        if center_distance < 1 {
+            center_distance = 1;
+        }
+        let center_bonus = (5 - center_distance) / 2;
+        bonuses[idx] = center_bonus * MOBILITY_WEIGHT;
+        idx += 1;
+    }
+    bonuses
+}
+
+const MOBILITY_BONUS_BY_SQUARE: [i32; 64] = mobility_bonus_by_square();
+
 // King safety penalties (centipawns per issue)
 const EXPOSED_KING_PENALTY: i32 = 25; // King on open file/rank
 const OPEN_FILE_NEAR_KING: i32 = 15; // Semi-open file near king
@@ -449,38 +470,25 @@ fn evaluate_mobility(pos: &Position) -> i32 {
     let mut white_mobility = 0i32;
     let mut black_mobility = 0i32;
 
-    // Simple mobility: count checks per piece (expensive but necessary for
-    // strength) For now, use a lightweight heuristic based on piece placement
-    // rather than generating all legal moves.
+    for piece in [
+        Piece::WhiteKnight,
+        Piece::WhiteBishop,
+        Piece::WhiteRook,
+        Piece::WhiteQueen,
+    ] {
+        for sq in pos.pieces.get(piece).squares() {
+            white_mobility += MOBILITY_BONUS_BY_SQUARE[sq as usize];
+        }
+    }
 
-    for color in [Color::White, Color::Black] {
-        for kind in [
-            PieceKind::Knight,
-            PieceKind::Bishop,
-            PieceKind::Rook,
-            PieceKind::Queen,
-        ] {
-            let piece = Piece::from_parts(color, Some(kind));
-            let bb = pos.pieces.get(piece);
-
-            // Lightweight heuristic: pieces in center/active squares are better
-            // than pieces on edges/passive squares.
-            for sq in bb.squares() {
-                let rank = sq.rank() as i32;
-                let file = sq.file() as i32;
-
-                // Center control bonus (pieces closer to center d-file & 4-5 ranks)
-                let center_distance = ((file - 3).abs() + (rank - 3).abs()).max(1);
-                let center_bonus = (5 - center_distance) / 2; // +2 to 0 depending on distance
-
-                let mobility_bonus = center_bonus * MOBILITY_WEIGHT;
-
-                if color == Color::White {
-                    white_mobility += mobility_bonus;
-                } else {
-                    black_mobility += mobility_bonus;
-                }
-            }
+    for piece in [
+        Piece::BlackKnight,
+        Piece::BlackBishop,
+        Piece::BlackRook,
+        Piece::BlackQueen,
+    ] {
+        for sq in pos.pieces.get(piece).squares() {
+            black_mobility += MOBILITY_BONUS_BY_SQUARE[sq as usize];
         }
     }
 
