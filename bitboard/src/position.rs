@@ -44,14 +44,13 @@ impl Default for Position {
 }
 
 impl Position {
-    #[inline]
     /// Fast, flat copy of a complete `Position`.
     ///
     /// Even though the body is only a single assignment (lowered to a `memcpy`
     /// because `Position: Copy`), this helper sits on the hottest path of the
     /// search.  Forcing cross-crate inlining removes the call overhead when it
     /// is executed millions of times per second.
-
+    #[inline(always)]
     pub fn copy_from(&mut self, other: &Position) {
         *self = *other;
     }
@@ -229,15 +228,10 @@ impl Position {
     }
 
     pub fn apply_move_into(&self, mv: &ChessMove, out: &mut Position) {
-        // Copy all fields except pieces, which will be updated below
-        out.occupancy = self.occupancy;
-        out.side_to_move = self.side_to_move;
-        out.castling_rights = self.castling_rights;
-        out.ep_square = self.ep_square;
-        out.halfmove_clock = self.halfmove_clock;
-        out.fullmove_number = self.fullmove_number;
-        out.pieces = self.pieces; // Start with a copy, then update only the relevant bitboards
-        out.piece_on = self.piece_on;
+        // Copy entire position in one memcpy (Position is Copy)
+        // Much faster than field-by-field assignment
+        *out = *self;
+
         let us = self.side_to_move;
         let them = us.opposite();
 
