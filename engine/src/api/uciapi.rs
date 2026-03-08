@@ -171,12 +171,12 @@ impl CodyApi {
     }
 
     #[cfg(test)]
-    pub(crate) fn ponder_enabled(&self) -> bool {
+    pub(crate) const fn ponder_enabled(&self) -> bool {
         self.ponder_enabled
     }
 
     #[cfg(test)]
-    pub(crate) fn current_limits(&self) -> GoLimits {
+    pub(crate) const fn current_limits(&self) -> GoLimits {
         self.limits
     }
 

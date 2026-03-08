@@ -42,7 +42,7 @@ impl PieceBitboards {
         BitBoardMask(acc)
     }
 
-    pub fn get_mut(&mut self, piece: Piece) -> &mut BitBoardMask {
+    pub const fn get_mut(&mut self, piece: Piece) -> &mut BitBoardMask {
         &mut self.inner[piece.index()]
     }
 }

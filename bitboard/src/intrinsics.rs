@@ -84,7 +84,7 @@ pub fn popcnt(x: u64) -> u32 {
         // Use compile-time POPCNT when available.
         #[cfg(target_feature = "popcnt")]
         unsafe {
-            return core::arch::x86_64::_popcnt64(x as i64) as u32;
+            core::arch::x86_64::_popcnt64(x as i64) as u32
         }
 
         #[cfg(not(target_feature = "popcnt"))]
@@ -155,7 +155,7 @@ pub fn trailing_zeros_nonzero(x: u64) -> u32 {
     {
         #[cfg(target_feature = "bmi1")]
         unsafe {
-            return core::arch::x86_64::_tzcnt_u64(x) as u32;
+            core::arch::x86_64::_tzcnt_u64(x) as u32
         }
 
         #[cfg(not(target_feature = "bmi1"))]
@@ -179,7 +179,7 @@ pub fn leading_zeros(x: u64) -> u32 {
     {
         #[cfg(target_feature = "lzcnt")]
         unsafe {
-            return core::arch::x86_64::_lzcnt_u64(x) as u32;
+            core::arch::x86_64::_lzcnt_u64(x) as u32
         }
 
         #[cfg(not(target_feature = "lzcnt"))]
@@ -216,7 +216,7 @@ pub fn blsr_nonzero(x: u64) -> u64 {
     {
         #[cfg(target_feature = "bmi1")]
         unsafe {
-            return core::arch::x86_64::_blsr_u64(x);
+            core::arch::x86_64::_blsr_u64(x)
         }
 
         #[cfg(not(target_feature = "bmi1"))]
@@ -240,7 +240,7 @@ pub fn blsi(x: u64) -> u64 {
     {
         #[cfg(target_feature = "bmi1")]
         unsafe {
-            return core::arch::x86_64::_blsi_u64(x);
+            core::arch::x86_64::_blsi_u64(x)
         }
 
         #[cfg(not(target_feature = "bmi1"))]
@@ -302,7 +302,7 @@ pub fn pext_nonzero(src: u64, mask: u64) -> u64 {
 ///
 /// This is the "Kindergarten" bitboard approach - slower but portable.
 #[allow(dead_code)]
-fn pext_software(src: u64, mut mask: u64) -> u64 {
+const fn pext_software(src: u64, mut mask: u64) -> u64 {
     let mut result = 0u64;
     let mut bb = 1u64;
 
@@ -344,7 +344,7 @@ pub fn pdep(src: u64, mask: u64) -> u64 {
 
 /// Software fallback for PDEP.
 #[allow(dead_code)]
-fn pdep_software(mut src: u64, mut mask: u64) -> u64 {
+const fn pdep_software(mut src: u64, mut mask: u64) -> u64 {
     let mut result = 0u64;
 
     while mask != 0 {
@@ -378,12 +378,12 @@ pub struct SimdU64x4 {
 
 impl SimdU64x4 {
     /// Create a new SIMD vector from 4 u64 values.
-    pub fn new(a: u64, b: u64, c: u64, d: u64) -> Self {
+    pub const fn new(a: u64, b: u64, c: u64, d: u64) -> Self {
         Self { data: [a, b, c, d] }
     }
 
     /// Create a SIMD vector with all elements set to the same value.
-    pub fn splat(value: u64) -> Self {
+    pub const fn splat(value: u64) -> Self {
         Self { data: [value; 4] }
     }
 
@@ -522,12 +522,12 @@ impl SimdU64x4 {
     }
 
     /// Test if any element is non-zero.
-    pub fn any_nonzero(self) -> bool {
+    pub const fn any_nonzero(self) -> bool {
         self.data[0] != 0 || self.data[1] != 0 || self.data[2] != 0 || self.data[3] != 0
     }
 
     /// Test if all elements are zero.
-    pub fn all_zero(self) -> bool {
+    pub const fn all_zero(self) -> bool {
         !self.any_nonzero()
     }
 }
@@ -543,12 +543,12 @@ pub struct SimdI32x8 {
 
 impl SimdI32x8 {
     /// Create a new SIMD vector from 8 i32 values.
-    pub fn new(data: [i32; 8]) -> Self {
+    pub const fn new(data: [i32; 8]) -> Self {
         Self { data }
     }
 
     /// Create a SIMD vector with all elements set to the same value.
-    pub fn splat(value: i32) -> Self {
+    pub const fn splat(value: i32) -> Self {
         Self { data: [value; 8] }
     }
 

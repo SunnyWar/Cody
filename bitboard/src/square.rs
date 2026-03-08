@@ -83,11 +83,11 @@ impl Square {
         squares
     }
 
-    pub fn file_char(self) -> char {
+    pub const fn file_char(self) -> char {
         (b'a' + self.file()) as char
     }
 
-    pub fn rank_char(self) -> char {
+    pub const fn rank_char(self) -> char {
         (b'1' + self.rank()) as char
     }
 
@@ -122,7 +122,7 @@ impl Square {
         RANK_MASKS[self.rank() as usize]
     }
 
-    pub fn color_mask(self) -> BitBoardMask {
+    pub const fn color_mask(self) -> BitBoardMask {
         SQUARE_COLOR_MASK[self.index()]
     }
 }

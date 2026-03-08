@@ -25,7 +25,7 @@ const SEE_DEEP_THRESHOLD: i32 = 0;
 /// In very crowded boards, require captures to have clear tactical value.
 const SEE_DENSE_THRESHOLD: i32 = 100;
 
-fn should_run_full_see(attacker_value: i32, victim_value: i32, threshold: i32) -> bool {
+const fn should_run_full_see(attacker_value: i32, victim_value: i32, threshold: i32) -> bool {
     // If material swing already clears threshold with attacker/victim values,
     // skip full SEE recursion and keep the move.
     victim_value - attacker_value < threshold
@@ -273,7 +273,7 @@ fn mvv_lva_score(pos: &Position, mv: &ChessMove) -> i32 {
     victim_value * 100 - attacker_value
 }
 
-fn piece_value(kind: PieceKind) -> i32 {
+const fn piece_value(kind: PieceKind) -> i32 {
     match kind {
         PieceKind::Pawn => 100,
         PieceKind::Knight => 320,

@@ -169,7 +169,7 @@ const fn pawn_attacks_from(square: Square, color: Color) -> BitBoardMask {
     }
 }
 
-pub fn pawn_attacks_to(sq: Square, attacker_color: Color) -> BitBoardMask {
+pub const fn pawn_attacks_to(sq: Square, attacker_color: Color) -> BitBoardMask {
     // Reverse the direction: squares that can attack `sq` for this color.
     // Direct index computation avoids opposite().index() call overhead.
     // Since Color::White=0 and Color::Black=1, we compute XOR with 1 to flip.

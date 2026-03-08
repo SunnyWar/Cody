@@ -74,11 +74,11 @@ impl BitBoardMask {
         self | rhs
     }
 
-    pub fn shift_left(self, n: u8) -> Self {
+    pub const fn shift_left(self, n: u8) -> Self {
         BitBoardMask(self.0 << n)
     }
 
-    pub fn shift_right(self, n: u8) -> Self {
+    pub const fn shift_right(self, n: u8) -> Self {
         BitBoardMask(self.0 >> n)
     }
 
@@ -94,11 +94,11 @@ impl BitBoardMask {
         Self(1u64 << (sq as u8))
     }
 
-    pub fn set(&mut self, sq: Square) {
+    pub const fn set(&mut self, sq: Square) {
         self.0 |= 1u64 << sq.index();
     }
 
-    pub fn clear(&mut self, sq: Square) {
+    pub const fn clear(&mut self, sq: Square) {
         self.0 &= !(1u64 << sq.index());
     }
 
@@ -128,7 +128,7 @@ impl BitBoardMask {
     }
 
     /// Returns an iterator over all set squares in this bitboard.
-    pub fn squares(self) -> SquaresIter {
+    pub const fn squares(self) -> SquaresIter {
         SquaresIter { bb: self.0 }
     }
 

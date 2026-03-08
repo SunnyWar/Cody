@@ -22,7 +22,7 @@ pub struct ChessMove {
 }
 
 impl ChessMove {
-    pub fn new(from: Square, to: Square, move_type: MoveType) -> Self {
+    pub const fn new(from: Square, to: Square, move_type: MoveType) -> Self {
         ChessMove {
             from,
             to,
@@ -30,7 +30,7 @@ impl ChessMove {
         }
     }
 
-    pub fn null() -> Self {
+    pub const fn null() -> Self {
         ChessMove {
             from: Square::A1,
             to: Square::A1,
@@ -42,15 +42,15 @@ impl ChessMove {
         self.from == Square::A1 && self.to == Square::A1
     }
 
-    pub fn from(&self) -> Square {
+    pub const fn from(&self) -> Square {
         self.from
     }
 
-    pub fn to(&self) -> Square {
+    pub const fn to(&self) -> Square {
         self.to
     }
 
-    pub fn promotion(&self) -> Option<PieceKind> {
+    pub const fn promotion(&self) -> Option<PieceKind> {
         match self.move_type {
             MoveType::Promotion(kind) => Some(kind),
             _ => None,

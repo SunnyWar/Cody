@@ -221,7 +221,7 @@ pub fn order_moves_with_heuristics_fast(
     }
 }
 
-fn piece_value(kind: PieceKind) -> i32 {
+const fn piece_value(kind: PieceKind) -> i32 {
     match kind {
         PieceKind::Pawn => 100,
         PieceKind::Knight => 320,

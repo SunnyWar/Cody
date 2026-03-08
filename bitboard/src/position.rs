@@ -50,7 +50,7 @@ impl Position {
     /// This explicit operation allows better compiler optimization without
     /// relying on cross-crate inlining, while executing millions of times per
     /// second in the hot search path.
-    pub fn copy_from(&mut self, other: &Position) {
+    pub const fn copy_from(&mut self, other: &Position) {
         // Safety: self and other are both valid, properly aligned Position structs.
         // They may not overlap since self is &mut and other is &.
         unsafe {
@@ -138,7 +138,7 @@ impl Position {
         self.occupancy.or_in(OccupancyKind::Both, bit);
     }
 
-    fn empty() -> Self {
+    const fn empty() -> Self {
         Self {
             pieces: PieceBitboards::new(),
             piece_on: [Piece::None; 64],
@@ -364,8 +364,8 @@ impl Position {
         out.side_to_move = them;
     }
 
-    fn update_castling_rights(&mut self, from: Square, to: Square) {
-        fn clear_for_square(rights: &mut CastlingRights, sq: Square) {
+    const fn update_castling_rights(&mut self, from: Square, to: Square) {
+        const fn clear_for_square(rights: &mut CastlingRights, sq: Square) {
             use Square::*;
             match sq {
                 E1 => {

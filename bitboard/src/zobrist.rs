@@ -3,7 +3,6 @@
 // small LCG. This keeps the bitboard crate allocation-free and dependency-free.
 use crate::piece::Color;
 use crate::piece::Piece;
-use crate::piece::PieceKind;
 
 pub const ZOBRIST_PIECE_KEYS: [[u64; 64]; 12] = {
     // Generated with a tiny LCG; values are precomputed offline and embedded here.

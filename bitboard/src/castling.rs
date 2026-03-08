@@ -11,21 +11,21 @@ pub struct CastlingRights {
 }
 
 impl CastlingRights {
-    pub fn kingside(&self, color: Color) -> bool {
+    pub const fn kingside(&self, color: Color) -> bool {
         match color {
             Color::White => self.white_kingside,
             Color::Black => self.black_kingside,
         }
     }
 
-    pub fn queenside(&self, color: Color) -> bool {
+    pub const fn queenside(&self, color: Color) -> bool {
         match color {
             Color::White => self.white_queenside,
             Color::Black => self.black_queenside,
         }
     }
 
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         Self {
             white_kingside: false,
             white_queenside: false,
@@ -71,7 +71,7 @@ impl CastlingRights {
         s
     }
 
-    pub fn clear(&mut self, color: Color, side: bool) {
+    pub const fn clear(&mut self, color: Color, side: bool) {
         match (color, side) {
             (Color::White, true) => self.white_kingside = false,
             (Color::White, false) => self.white_queenside = false,
