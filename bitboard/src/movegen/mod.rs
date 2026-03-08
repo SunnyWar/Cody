@@ -13,7 +13,6 @@ pub use api::MoveGenerator;
 pub use api::SimpleMoveGen;
 pub use api::generate_legal_moves;
 pub use api::generate_legal_moves_fast;
-pub use api::generate_pseudo_captures;
 pub use api::generate_pseudo_captures_fast;
 pub use api::generate_pseudo_moves;
 pub use api::generate_pseudo_moves_fast;

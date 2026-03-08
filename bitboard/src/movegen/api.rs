@@ -81,13 +81,6 @@ pub fn generate_pseudo_captures_fast(pos: &Position) -> MoveList {
     crate::movegen::captures::generate_pseudo_captures_fast(pos)
 }
 
-/// Backward-compatible Vec-based pseudo capture generation (slower due to heap
-/// allocation) This mirrors the helper previously duplicated in the engine
-/// crate so the move-generation logic is centralized in the `bitboard` crate.
-pub fn generate_pseudo_captures(pos: &Position) -> Vec<ChessMove> {
-    generate_pseudo_captures_fast(pos).to_vec()
-}
-
 // Delegated to `movegen::legality` during refactor
 
 // Pawn move generation was moved into `movegen::pawn` during the refactor.
