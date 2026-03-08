@@ -1522,7 +1522,7 @@ impl Square {
 | **Intrinsics** | `blsr()` | 1B/s | CRITICAL | ~1 cycle | BLSR/BMI1 | No | - |
 | **Intrinsics** | `pext()` | 100M/s | HIGH | ~1 cycle | PEXT/BMI2 | No | - |
 | **Search** | `search_node_with_arena()` | 1M/s | CRITICAL | ~100-1M cycles | LMR, PVS, alpha-beta, batched NODE_COUNT, max() updates, unchecked repetition | Yes | 2026-03-07 |
-| **Search** | `order_moves_with_heuristics_fast()` | 1M/s | HIGH | ~10k cycles | MoveList sort, heuristics | No | - |
+| **Search** | `order_moves_with_heuristics_fast()` | 1M/s | HIGH | ~10k cycles | Cached scores + in-place insertion sort | Yes | 2026-03-07 |
 | **Eval** | `evaluate_for_side_to_move()` | 10M/s | HIGH | ~100 cycles | Inline conversion | No | - |
 | **Eval** | `MaterialEvaluator::evaluate()` | 10M/s | HIGH | ~200-500 cycles | PST, phase blending | No | - |
 | **Eval** | Mobility/King Safety/Rook Activity | 10M/s | MEDIUM | ~100-200 cycles | Bitboard iteration | No | - |
