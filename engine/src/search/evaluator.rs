@@ -349,7 +349,7 @@ fn evaluate_pieces_batch_simd(
 
         while i + 8 <= count {
             // Load 8 midgame PST values
-            let mid_vec = bitboard::intrinsics::SimdI32x8::new(
+            let mid_vec = bitboard::intrinsics::SimdI32x8::new([
                 mid_table[indices[i]],
                 mid_table[indices[i + 1]],
                 mid_table[indices[i + 2]],
@@ -358,10 +358,10 @@ fn evaluate_pieces_batch_simd(
                 mid_table[indices[i + 5]],
                 mid_table[indices[i + 6]],
                 mid_table[indices[i + 7]],
-            );
+            ]);
 
             // Load 8 endgame PST values
-            let end_vec = bitboard::intrinsics::SimdI32x8::new(
+            let end_vec = bitboard::intrinsics::SimdI32x8::new([
                 end_table[indices[i]],
                 end_table[indices[i + 1]],
                 end_table[indices[i + 2]],
@@ -370,15 +370,15 @@ fn evaluate_pieces_batch_simd(
                 end_table[indices[i + 5]],
                 end_table[indices[i + 6]],
                 end_table[indices[i + 7]],
-            );
+            ]);
 
             // Blend: ((mid * (MAX_PHASE - phase)) + (end * phase)) / MAX_PHASE
             let max_phase_vec = bitboard::intrinsics::SimdI32x8::splat(MAX_PHASE);
             let phase_vec = bitboard::intrinsics::SimdI32x8::splat(phase);
-            let inv_phase_vec = max_phase_vec.sub(phase_vec);
+            let inv_phase_vec = max_phase_vec - phase_vec;
 
             // mid * (MAX_PHASE - phase)
-            let mid_weighted = bitboard::intrinsics::SimdI32x8::new(
+            let mid_weighted = bitboard::intrinsics::SimdI32x8::new([
                 mid_vec.data[0] * inv_phase_vec.data[0],
                 mid_vec.data[1] * inv_phase_vec.data[1],
                 mid_vec.data[2] * inv_phase_vec.data[2],
@@ -387,10 +387,10 @@ fn evaluate_pieces_batch_simd(
                 mid_vec.data[5] * inv_phase_vec.data[5],
                 mid_vec.data[6] * inv_phase_vec.data[6],
                 mid_vec.data[7] * inv_phase_vec.data[7],
-            );
+            ]);
 
             // end * phase
-            let end_weighted = bitboard::intrinsics::SimdI32x8::new(
+            let end_weighted = bitboard::intrinsics::SimdI32x8::new([
                 end_vec.data[0] * phase_vec.data[0],
                 end_vec.data[1] * phase_vec.data[1],
                 end_vec.data[2] * phase_vec.data[2],
@@ -399,11 +399,11 @@ fn evaluate_pieces_batch_simd(
                 end_vec.data[5] * phase_vec.data[5],
                 end_vec.data[6] * phase_vec.data[6],
                 end_vec.data[7] * phase_vec.data[7],
-            );
+            ]);
 
             // Add and divide
-            let blended = mid_weighted.add(end_weighted);
-            let pst_bonuses = bitboard::intrinsics::SimdI32x8::new(
+            let blended = mid_weighted + end_weighted;
+            let pst_bonuses = bitboard::intrinsics::SimdI32x8::new([
                 blended.data[0] / MAX_PHASE,
                 blended.data[1] / MAX_PHASE,
                 blended.data[2] / MAX_PHASE,
@@ -412,11 +412,11 @@ fn evaluate_pieces_batch_simd(
                 blended.data[5] / MAX_PHASE,
                 blended.data[6] / MAX_PHASE,
                 blended.data[7] / MAX_PHASE,
-            );
+            ]);
 
             // Add piece values
             let piece_values = bitboard::intrinsics::SimdI32x8::splat(piece_value);
-            let total_values = pst_bonuses.add(piece_values);
+            let total_values = pst_bonuses + piece_values;
 
             // Sum horizontally and apply sign
             batch_score += sign * total_values.horizontal_sum();

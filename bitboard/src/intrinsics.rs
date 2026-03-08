@@ -504,10 +504,8 @@ pub struct SimdI32x8 {
 impl SimdI32x8 {
     /// Create a new SIMD vector from 8 i32 values.
     #[inline(always)]
-    pub fn new(a: i32, b: i32, c: i32, d: i32, e: i32, f: i32, g: i32, h: i32) -> Self {
-        Self {
-            data: [a, b, c, d, e, f, g, h],
-        }
+    pub fn new(data: [i32; 8]) -> Self {
+        Self { data }
     }
 
     /// Create a SIMD vector with all elements set to the same value.
@@ -518,7 +516,7 @@ impl SimdI32x8 {
 
     /// Parallel addition: add 8 integers simultaneously.
     #[inline(always)]
-    pub fn add(self, other: Self) -> Self {
+    fn add_impl(self, other: Self) -> Self {
         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
         unsafe {
             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
@@ -549,7 +547,7 @@ impl SimdI32x8 {
 
     /// Parallel subtraction: subtract 8 integers simultaneously.
     #[inline(always)]
-    pub fn sub(self, other: Self) -> Self {
+    fn sub_impl(self, other: Self) -> Self {
         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
         unsafe {
             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
@@ -662,6 +660,24 @@ impl SimdI32x8 {
                 ],
             }
         }
+    }
+}
+
+impl std::ops::Add for SimdI32x8 {
+    type Output = Self;
+
+    #[inline(always)]
+    fn add(self, other: Self) -> Self {
+        self.add_impl(other)
+    }
+}
+
+impl std::ops::Sub for SimdI32x8 {
+    type Output = Self;
+
+    #[inline(always)]
+    fn sub(self, other: Self) -> Self {
+        self.sub_impl(other)
     }
 }
 
@@ -798,15 +814,15 @@ mod tests {
 
     #[test]
     fn test_simd_i32x8_arithmetic() {
-        let a = SimdI32x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let b = SimdI32x8::new(8, 7, 6, 5, 4, 3, 2, 1);
+        let a = SimdI32x8::new([1, 2, 3, 4, 5, 6, 7, 8]);
+        let b = SimdI32x8::new([8, 7, 6, 5, 4, 3, 2, 1]);
 
         // Test addition
-        let sum = a.add(b);
+        let sum = a + b;
         assert_eq!(sum.data, [9, 9, 9, 9, 9, 9, 9, 9]);
 
         // Test subtraction
-        let diff = a.sub(b);
+        let diff = a - b;
         assert_eq!(diff.data, [-7, -5, -3, -1, 1, 3, 5, 7]);
 
         // Test horizontal sum
@@ -816,8 +832,8 @@ mod tests {
 
     #[test]
     fn test_simd_i32x8_minmax() {
-        let a = SimdI32x8::new(10, 20, 30, 40, 50, 60, 70, 80);
-        let b = SimdI32x8::new(80, 70, 60, 50, 40, 30, 20, 10);
+        let a = SimdI32x8::new([10, 20, 30, 40, 50, 60, 70, 80]);
+        let b = SimdI32x8::new([80, 70, 60, 50, 40, 30, 20, 10]);
 
         // Test max
         let max_result = a.max(b);
