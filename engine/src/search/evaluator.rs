@@ -14,6 +14,8 @@ use crate::search::piecesquaretable::QUEEN_ENDGAME_TABLE;
 use crate::search::piecesquaretable::QUEEN_SQUARE_TABLE;
 use crate::search::piecesquaretable::ROOK_ENDGAME_TABLE;
 use crate::search::piecesquaretable::ROOK_SQUARE_TABLE;
+use bitboard::attack::is_square_attacked;
+use bitboard::bitboard::king_attacks;
 use bitboard::piece::Color;
 use bitboard::piece::Piece;
 use bitboard::piece::PieceKind;
@@ -736,7 +738,22 @@ fn evaluate_bare_king_endgame(pos: &Position) -> i32 {
         ((def_file - att_sq.file() as i32).abs() + (def_rank - att_sq.rank() as i32).abs()) as i32;
     let proximity_bonus = (14 - king_distance) * 10; // Closer kings = better
 
-    let total_bonus = edge_bonus + proximity_bonus;
+    // Penalize lone-king mobility: fewer safe king moves means closer to mate.
+    let board_state = pos.to_board_state();
+    let mut defender_mobility = 0i32;
+    for target_sq in king_attacks(def_sq).squares() {
+        let occupant = pos.piece_at_square(target_sq);
+        if occupant != Piece::None && occupant.color() == attacking_color {
+            continue;
+        }
+
+        if !is_square_attacked(target_sq, attacking_color, &board_state) {
+            defender_mobility += 1;
+        }
+    }
+    let mobility_bonus = (8 - defender_mobility) * 18;
+
+    let total_bonus = edge_bonus + proximity_bonus + mobility_bonus;
 
     // Return from white's perspective
     if attacking_color == Color::White {
