@@ -174,6 +174,19 @@ pub fn leading_zeros(x: u64) -> u32 {
 /// Critical for fast bitboard iteration: repeatedly extract and clear LSB.
 /// Example: while bb != 0 { let sq = trailing_zeros(bb); bb = blsr(bb); ... }
 pub fn blsr(x: u64) -> u64 {
+    if x == 0 {
+        return 0;
+    }
+
+    blsr_nonzero(x)
+}
+
+/// Reset the least significant set bit for nonzero input.
+///
+/// Caller must guarantee `x != 0`.
+pub fn blsr_nonzero(x: u64) -> u64 {
+    debug_assert!(x != 0);
+
     #[cfg(target_arch = "x86_64")]
     {
         #[cfg(target_feature = "bmi1")]
@@ -183,13 +196,13 @@ pub fn blsr(x: u64) -> u64 {
 
         #[cfg(not(target_feature = "bmi1"))]
         {
-            x & x.wrapping_sub(1)
+            x & (x - 1)
         }
     }
 
     #[cfg(not(target_arch = "x86_64"))]
     {
-        x & x.wrapping_sub(1)
+        x & (x - 1)
     }
 }
 
