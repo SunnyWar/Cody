@@ -1462,8 +1462,8 @@ impl Square {
 | Module | Function | Call Freq | Impact | Primary Cost | Optimization | Optimized? | Last Optimized |
 |--------|----------|-----------|--------|--------------|--------------|------------|----------------
 | **Movegen** | `generate_pseudo_moves_fast()` | 1M/s | HIGH | ~10k cycles | MoveList + hoisted STM lookup + direct per-piece dispatch | Yes | 2026-03-07 |
-| **Movegen** | `generate_legal_moves_fast()` | 1M/s | HIGH | ~100k cycles | Reused Position buffer | No | - |
-| **Movegen** | `generate_pseudo_captures_fast()` | 10M/s | MEDIUM | ~5k cycles | Filtered generation | No | - |
+| **Movegen** | `generate_legal_moves_fast()` | 1M/s | HIGH | ~100k cycles | Reused Position buffer + slice iteration (no indexed loop) | Yes | 2026-03-07 |
+| **Movegen** | `generate_pseudo_captures_fast()` | 10M/s | MEDIUM | ~5k cycles | Filtered generation + direct pawn-source iteration | Yes | 2026-03-07 |
 | **Movegen** | `generate_pseudo_{knight,pawn,bishop,rook,queen,king}_moves_fast()` | 1M/s | HIGH | ~2-5k cycles | Piece-specific delegations | No | - |
 | **Position** | `apply_move_into()` | 1M/s | HIGH | ~5k cycles | Single memcpy instead of field-by-field copy | Yes | 2026-03-07 |
 | **Position** | `copy_from()` | 100M/s | HIGH | ~100 cycles | Memcpy, Copy trait | No | - |
@@ -1471,8 +1471,8 @@ impl Square {
 | **Position** | `piece_at()` | 100M/s | MEDIUM | ~1 cycle | Array indexing | No | - |
 | **Position** | `to_board_state()` | 10M/s | MEDIUM | ~5k cycles | Piece reorganization | No | - |
 | **Attack** | `is_square_attacked()` | 10M/s | HIGH | ~100-1k cycles | Early returns, lookup tables, unchecked array access | Yes | 2026-03-07 |
-| **Attack** | `is_king_in_check()` | 1M/s | MEDIUM | ~100 cycles | Direct king lookup | No | - |
-| **Attack** | `is_in_check()` | 1M/s | MEDIUM | ~1k cycles | Wrapper + board state | No | - |
+| **Attack** | `is_king_in_check()` | 1M/s | MEDIUM | ~100 cycles | Direct king bit extraction + attack delegation | Yes | 2026-03-07 |
+| **Attack** | `is_in_check()` | 1M/s | MEDIUM | ~1k cycles | Cached attacker bitboards + direct attack tests | Yes | 2026-03-07 |
 | **Bitboard** | `rook_attacks_from()` | 100M/s | HIGH | ~3 cycles | Magic bitboard + PEXT | No | - |
 | **Bitboard** | `bishop_attacks_from()` | 100M/s | HIGH | ~3 cycles | Magic bitboard + PEXT | No | - |
 | **Bitboard** | `king_attacks()` | 1M/s | MEDIUM | ~1 cycle | Table lookup | No | - |

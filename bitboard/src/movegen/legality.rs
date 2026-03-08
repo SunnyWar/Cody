@@ -52,11 +52,8 @@ pub fn is_legal_fast(original_pos: &Position, pos_after_move: &Position) -> bool
 }
 
 pub fn is_in_check(pos: &Position, color: Color) -> bool {
-    let king_sq = match pos
-        .pieces
-        .get(Piece::from_parts(color, Some(PieceKind::King)))
-        .first_square()
-    {
+    let king_piece = Piece::from_parts(color, Some(PieceKind::King));
+    let king_sq = match pos.pieces.get(king_piece).first_square() {
         Some(sq) => sq,
         None => return false,
     };
@@ -65,61 +62,55 @@ pub fn is_in_check(pos: &Position, color: Color) -> bool {
 }
 
 fn is_square_attacked_by(pos: &Position, sq: Square, attacker_color: Color) -> bool {
+    let attacker_pawns = pos
+        .pieces
+        .get(Piece::from_parts(attacker_color, Some(PieceKind::Pawn)));
+    let attacker_knights = pos
+        .pieces
+        .get(Piece::from_parts(attacker_color, Some(PieceKind::Knight)));
+    let attacker_bishops = pos
+        .pieces
+        .get(Piece::from_parts(attacker_color, Some(PieceKind::Bishop)));
+    let attacker_rooks = pos
+        .pieces
+        .get(Piece::from_parts(attacker_color, Some(PieceKind::Rook)));
+    let attacker_queens = pos
+        .pieces
+        .get(Piece::from_parts(attacker_color, Some(PieceKind::Queen)));
+    let attacker_king = pos
+        .pieces
+        .get(Piece::from_parts(attacker_color, Some(PieceKind::King)));
+    let occ = pos.occupancy[OccupancyKind::Both];
+
     // Pawn attacks
     if pawn_attacks_to(sq, attacker_color)
-        .and(
-            pos.pieces
-                .get(Piece::from_parts(attacker_color, Some(PieceKind::Pawn))),
-        )
+        .and(attacker_pawns)
         .is_nonempty()
     {
         return true;
     }
 
     // Knight attacks
-    if knight_attacks(sq)
-        .and(
-            pos.pieces
-                .get(Piece::from_parts(attacker_color, Some(PieceKind::Knight))),
-        )
-        .is_nonempty()
-    {
+    if knight_attacks(sq).and(attacker_knights).is_nonempty() {
         return true;
     }
 
     // Bishop/Queen attacks
-    if bishop_attacks_from(sq, pos.occupancy[OccupancyKind::Both])
-        .and(
-            pos.pieces
-                .get(Piece::from_parts(attacker_color, Some(PieceKind::Bishop)))
-                | pos
-                    .pieces
-                    .get(Piece::from_parts(attacker_color, Some(PieceKind::Queen))),
-        )
+    if bishop_attacks_from(sq, occ)
+        .and(attacker_bishops | attacker_queens)
         .is_nonempty()
     {
         return true;
     }
 
     // Rook/Queen attacks
-    if rook_attacks_from(sq, pos.occupancy[OccupancyKind::Both])
-        .and(
-            pos.pieces
-                .get(Piece::from_parts(attacker_color, Some(PieceKind::Rook)))
-                | pos
-                    .pieces
-                    .get(Piece::from_parts(attacker_color, Some(PieceKind::Queen))),
-        )
+    if rook_attacks_from(sq, occ)
+        .and(attacker_rooks | attacker_queens)
         .is_nonempty()
     {
         return true;
     }
 
     // King attacks
-    king_attacks(sq)
-        .and(
-            pos.pieces
-                .get(Piece::from_parts(attacker_color, Some(PieceKind::King))),
-        )
-        .is_nonempty()
+    king_attacks(sq).and(attacker_king).is_nonempty()
 }

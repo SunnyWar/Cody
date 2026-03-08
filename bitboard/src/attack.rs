@@ -122,11 +122,18 @@ pub fn is_king_in_check(king_color: Color, board: &BoardState) -> bool {
         Color::Black => board.black_pieces.king,
     };
 
-    // Extract the king square or return false if no king (illegal position).
-    // Using `first_square()` avoids manual transmute and is equivalent:
-    // both extract the single set bit as a square index.
-    match king_bb.first_square() {
-        Some(king_square) => is_square_attacked(king_square, king_color.opposite(), board),
-        None => false,
+    // No king on board means illegal position; treat as not in check.
+    let king_bits = king_bb.0;
+    if king_bits == 0 {
+        return false;
     }
+
+    // SAFETY: king_bits has at least one set bit, so trailing_zeros is in 0..63.
+    // Square is repr(u8) over 0..63 and the king bitboard has a single legal
+    // square.
+    let king_square: Square = unsafe {
+        core::mem::transmute::<u8, Square>(crate::intrinsics::trailing_zeros(king_bits) as u8)
+    };
+
+    is_square_attacked(king_square, king_color.opposite(), board)
 }

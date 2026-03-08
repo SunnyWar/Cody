@@ -58,8 +58,7 @@ pub fn generate_legal_moves_fast(pos: &Position) -> MoveList {
     let mut legal = MoveList::new();
     let mut new_pos = *pos; // Single allocation, reused for all moves
 
-    for i in 0..pseudo.len() {
-        let m = pseudo[i];
+    for &m in pseudo.as_slice() {
         pos.apply_move_into(&m, &mut new_pos);
 
         if !crate::movegen::is_legal_fast(pos, &new_pos) {
