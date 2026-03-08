@@ -29,18 +29,19 @@ impl MoveGenerator for SimpleMoveGen {
 /// Fast zero-allocation move generation using stack-allocated MoveList
 pub fn generate_pseudo_moves_fast(pos: &Position) -> MoveList {
     let mut moves = MoveList::new();
+    let us = pos.side_to_move;
     let context = MoveGenContext {
-        us: pos.side_to_move,
+        us,
         occupancy: pos.all_pieces(),
-        not_ours: !pos.our_pieces(pos.side_to_move),
+        not_ours: !pos.our_pieces(us),
     };
 
     crate::movegen::generate_pseudo_pawn_moves_fast(pos, &context, &mut moves);
-    generate_pseudo_knight_moves_fast(pos, &context, &mut moves);
-    generate_pseudo_bishop_moves_fast(pos, &context, &mut moves);
-    generate_pseudo_rook_moves_fast(pos, &context, &mut moves);
-    generate_pseudo_queen_moves_fast(pos, &context, &mut moves);
-    generate_pseudo_king_moves_fast(pos, &context, &mut moves);
+    crate::movegen::generate_pseudo_knight_moves_fast(pos, &context, &mut moves);
+    crate::movegen::generate_pseudo_bishop_moves_fast(pos, &context, &mut moves);
+    crate::movegen::generate_pseudo_rook_moves_fast(pos, &context, &mut moves);
+    crate::movegen::generate_pseudo_queen_moves_fast(pos, &context, &mut moves);
+    crate::movegen::generate_pseudo_king_moves_fast(pos, &context, &mut moves);
 
     moves
 }
@@ -93,39 +94,6 @@ pub fn generate_pseudo_captures(pos: &Position) -> Vec<ChessMove> {
 // Pawn move generation was moved into `movegen::pawn` during the refactor.
 // See `crate::movegen::pawn` for the implementation
 // (generate_pseudo_pawn_moves).
-
-// Fast MoveList-based helper functions
-fn generate_pseudo_knight_moves_fast(
-    pos: &Position,
-    context: &MoveGenContext,
-    moves: &mut MoveList,
-) {
-    crate::movegen::generate_pseudo_knight_moves_fast(pos, context, moves);
-}
-
-fn generate_pseudo_bishop_moves_fast(
-    pos: &Position,
-    context: &MoveGenContext,
-    moves: &mut MoveList,
-) {
-    crate::movegen::generate_pseudo_bishop_moves_fast(pos, context, moves);
-}
-
-fn generate_pseudo_rook_moves_fast(pos: &Position, context: &MoveGenContext, moves: &mut MoveList) {
-    crate::movegen::generate_pseudo_rook_moves_fast(pos, context, moves);
-}
-
-fn generate_pseudo_queen_moves_fast(
-    pos: &Position,
-    context: &MoveGenContext,
-    moves: &mut MoveList,
-) {
-    crate::movegen::generate_pseudo_queen_moves_fast(pos, context, moves);
-}
-
-fn generate_pseudo_king_moves_fast(pos: &Position, context: &MoveGenContext, moves: &mut MoveList) {
-    crate::movegen::generate_pseudo_king_moves_fast(pos, context, moves);
-}
 
 pub(crate) fn push_moves_from_valid_targets_fast(
     pos: &Position,

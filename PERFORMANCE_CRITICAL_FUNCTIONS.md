@@ -1461,7 +1461,7 @@ impl Square {
 
 | Module | Function | Call Freq | Impact | Primary Cost | Optimization | Optimized? | Last Optimized |
 |--------|----------|-----------|--------|--------------|--------------|------------|----------------
-| **Movegen** | `generate_pseudo_moves_fast()` | 1M/s | HIGH | ~10k cycles | MoveList instead of Vec | No | - |
+| **Movegen** | `generate_pseudo_moves_fast()` | 1M/s | HIGH | ~10k cycles | MoveList + hoisted STM lookup + direct per-piece dispatch | Yes | 2026-03-07 |
 | **Movegen** | `generate_legal_moves_fast()` | 1M/s | HIGH | ~100k cycles | Reused Position buffer | No | - |
 | **Movegen** | `generate_pseudo_captures_fast()` | 10M/s | MEDIUM | ~5k cycles | Filtered generation | No | - |
 | **Movegen** | `generate_pseudo_{knight,pawn,bishop,rook,queen,king}_moves_fast()` | 1M/s | HIGH | ~2-5k cycles | Piece-specific delegations | No | - |
