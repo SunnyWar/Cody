@@ -3,6 +3,7 @@
 use bitboard::position::Position;
 
 #[derive(Clone, Default)]
+#[repr(align(64))]
 pub struct Node {
     pub position: Position,
     pub score: i32,

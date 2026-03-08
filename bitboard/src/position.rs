@@ -25,6 +25,7 @@ pub struct MoveGenContext {
 }
 
 #[derive(Clone, Copy, Debug)]
+#[repr(align(64))]
 pub struct Position {
     pub pieces: PieceBitboards,
     pub piece_on: [Piece; 64],
