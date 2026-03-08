@@ -181,6 +181,7 @@ impl Evaluator for MaterialEvaluator {
         score += evaluate_king_safety(pos);
         score += evaluate_rook_activity(pos);
         score += evaluate_pawn_advancement(pos);
+        score += evaluate_bare_king_endgame(pos);
 
         score
     }
@@ -672,4 +673,75 @@ fn evaluate_pawn_advancement(pos: &Position) -> i32 {
     }
 
     white_bonus - black_bonus
+}
+
+/// Detect and evaluate simplified endgames where one side has only a king.
+/// In these positions, guide the engine to:
+/// 1. Drive the defending king to the edge/corner
+/// 2. Bring the attacking king close for support
+/// This is critical for converting basic checkmates like K+R vs K.
+fn evaluate_bare_king_endgame(pos: &Position) -> i32 {
+    // Quick check: only applies with very few pieces (<=4 total)
+    let piece_count = pos.all_pieces().count();
+    if piece_count > 4 {
+        return 0;
+    }
+
+    // Identify which side has the bare king
+    let white_non_king = pos.pieces.get(Piece::WhitePawn).count()
+        + pos.pieces.get(Piece::WhiteKnight).count()
+        + pos.pieces.get(Piece::WhiteBishop).count()
+        + pos.pieces.get(Piece::WhiteRook).count()
+        + pos.pieces.get(Piece::WhiteQueen).count();
+
+    let black_non_king = pos.pieces.get(Piece::BlackPawn).count()
+        + pos.pieces.get(Piece::BlackKnight).count()
+        + pos.pieces.get(Piece::BlackBishop).count()
+        + pos.pieces.get(Piece::BlackRook).count()
+        + pos.pieces.get(Piece::BlackQueen).count();
+
+    // Bare king endgame: one side has 0 non-king pieces, other has 1-2
+    let (defending_color, attacking_color) = if white_non_king == 0 && black_non_king > 0 {
+        (Color::White, Color::Black)
+    } else if black_non_king == 0 && white_non_king > 0 {
+        (Color::Black, Color::White)
+    } else {
+        return 0; // Not a bare king endgame
+    };
+
+    // Get king positions
+    let def_king_sq = pos
+        .pieces
+        .get(Piece::from_parts(defending_color, Some(PieceKind::King)))
+        .first_square();
+    let att_king_sq = pos
+        .pieces
+        .get(Piece::from_parts(attacking_color, Some(PieceKind::King)))
+        .first_square();
+
+    let (def_sq, att_sq) = match (def_king_sq, att_king_sq) {
+        (Some(d), Some(a)) => (d, a),
+        _ => return 0, // Missing king (illegal position)
+    };
+
+    // Distance to edge: reward pushing defending king to the edge
+    // Center squares (d4, d5, e4, e5) are far from edge; corners are at the edge
+    let def_file = def_sq.file() as i32;
+    let def_rank = def_sq.rank() as i32;
+    let edge_distance = 3 - def_file.min(7 - def_file).min(def_rank).min(7 - def_rank);
+    let edge_bonus = edge_distance * 30; // 30 cp per square toward edge
+
+    // King proximity: reward reducing distance between kings
+    let king_distance =
+        ((def_file - att_sq.file() as i32).abs() + (def_rank - att_sq.rank() as i32).abs()) as i32;
+    let proximity_bonus = (14 - king_distance) * 10; // Closer kings = better
+
+    let total_bonus = edge_bonus + proximity_bonus;
+
+    // Return from white's perspective
+    if attacking_color == Color::White {
+        total_bonus
+    } else {
+        -total_bonus
+    }
 }
