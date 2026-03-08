@@ -97,9 +97,3 @@ pub fn generate_pseudo_captures_fast(pos: &Position) -> MoveList {
 
     moves
 }
-
-/// Backward-compatible Vec-based capture generation
-/// Generate pseudo capture-like moves (captures, promotions, en-passant).
-pub fn generate_pseudo_captures(pos: &Position) -> Vec<ChessMove> {
-    generate_pseudo_captures_fast(pos).to_vec()
-}
