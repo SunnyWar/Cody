@@ -22,7 +22,7 @@ impl Iterator for BitIter {
         if self.0 == 0 {
             None
         } else {
-            let sq = crate::intrinsics::trailing_zeros(self.0) as u8;
+            let sq = crate::intrinsics::trailing_zeros_nonzero(self.0) as u8;
             self.0 = crate::intrinsics::blsr(self.0); // clear LS1B
             Some(sq)
         }

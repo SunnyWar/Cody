@@ -113,6 +113,19 @@ pub fn popcnt(x: u64) -> u32 {
 /// Used for: extracting square indices from bitboards, iterating pieces.
 /// Returns 64 if x == 0.
 pub fn trailing_zeros(x: u64) -> u32 {
+    if x == 0 {
+        return 64;
+    }
+
+    trailing_zeros_nonzero(x)
+}
+
+/// Count trailing zeros for nonzero input.
+///
+/// Caller must guarantee `x != 0`.
+pub fn trailing_zeros_nonzero(x: u64) -> u32 {
+    debug_assert!(x != 0);
+
     #[cfg(target_arch = "x86_64")]
     {
         #[cfg(target_feature = "bmi1")]

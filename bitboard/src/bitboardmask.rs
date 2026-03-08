@@ -10,7 +10,7 @@ impl Iterator for SquaresIter {
         if self.bb == 0 {
             None
         } else {
-            let tz = crate::intrinsics::trailing_zeros(self.bb);
+            let tz = crate::intrinsics::trailing_zeros_nonzero(self.bb);
             let sq = tz as u8;
             self.bb = crate::intrinsics::blsr(self.bb); // clear the lowest set bit
             Square::try_from_index(sq)
@@ -133,7 +133,7 @@ impl BitBoardMask {
         if self.0 == 0 {
             None
         } else {
-            let tz = crate::intrinsics::trailing_zeros(self.0);
+            let tz = crate::intrinsics::trailing_zeros_nonzero(self.0);
             Square::try_from_index(tz as u8)
         }
     }
