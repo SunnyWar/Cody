@@ -49,3 +49,22 @@ fn test_black_finds_forcing_tactical_capture() {
         score
     );
 }
+
+#[test]
+fn test_krvk_constricted_king_scores_higher() {
+    // Same material (K+R vs K), but in the first position the defender king
+    // is much more restricted. Evaluation should reflect conversion progress.
+    let constricted = Position::from_fen("k7/1R6/2K5/8/8/8/8/8 w - - 0 1");
+    let loose = Position::from_fen("8/8/8/3k4/7R/4K3/8/8 w - - 0 1");
+
+    let ev = MaterialEvaluator;
+    let constricted_score = evaluate_for_side_to_move(&ev, &constricted);
+    let loose_score = evaluate_for_side_to_move(&ev, &loose);
+
+    assert!(
+        constricted_score > loose_score,
+        "Expected constricted KRvK position to score higher, got constricted={} loose={}",
+        constricted_score,
+        loose_score
+    );
+}
