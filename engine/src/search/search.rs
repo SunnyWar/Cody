@@ -5,7 +5,10 @@ use crate::search::core::INF;
 use crate::search::core::MATE_SCORE;
 use crate::search::core::MAX_REPETITION_HISTORY;
 use crate::search::core::NODE_COUNT;
+use crate::search::core::RepetitionState;
+use crate::search::core::SearchContext;
 use crate::search::core::SearchHeuristics;
+use crate::search::core::SearchWindow;
 use crate::search::core::current_seldepth;
 use crate::search::core::order_moves_with_heuristics_fast;
 use crate::search::core::reset_seldepth;
@@ -323,21 +326,30 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
 
                                     // Use shared alpha for better cutoffs in parallel search
                                     let current_alpha = shared_alpha.load(Ordering::Relaxed);
+
+                                    let mut ctx = SearchContext {
+                                        movegen: &mg,
+                                        evaluator: &ev,
+                                        tt: local_tt,
+                                        heuristics: &mut local_heuristics,
+                                        stop,
+                                        time_budget_ms,
+                                        start_time: Some(&start),
+                                    };
+
                                     let score = -search_node_with_arena(
-                                        &mg,
-                                        &ev,
+                                        &mut ctx,
                                         local_arena,
                                         1,
                                         d - 1,
-                                        -INF,
-                                        -current_alpha,
-                                        local_tt,
-                                        &mut local_heuristics,
-                                        stop,
-                                        time_budget_ms,
-                                        Some(&start),
-                                        &mut repetition_history,
-                                        2,
+                                        &mut SearchWindow {
+                                            alpha: -INF,
+                                            beta: -current_alpha,
+                                        },
+                                        &mut RepetitionState {
+                                            history: repetition_history,
+                                            len: 2,
+                                        },
                                     );
 
                                     // Update shared alpha if we found a better move
@@ -505,57 +517,60 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             repetition_history[0] = root.zobrist_hash();
             repetition_history[1] = self.arena.get(1).position.zobrist_hash();
 
+            let mut ctx = SearchContext {
+                movegen: &self.movegen,
+                evaluator: &self.evaluator,
+                tt: tt_ref,
+                heuristics,
+                stop,
+                time_budget_ms,
+                start_time: Some(start),
+            };
+
             let score = if i == 0 {
-                -search_node_with_arena(
-                    &self.movegen,
-                    &self.evaluator,
-                    &mut self.arena,
-                    1,
-                    d - 1,
-                    -beta,
-                    -local_alpha,
-                    tt_ref,
-                    heuristics,
-                    stop,
-                    time_budget_ms,
-                    Some(start),
-                    &mut repetition_history,
-                    2,
-                )
+                let mut window = SearchWindow {
+                    alpha: -beta,
+                    beta: -local_alpha,
+                };
+                let mut rep = RepetitionState {
+                    history: repetition_history,
+                    len: 2,
+                };
+                -search_node_with_arena(&mut ctx, &mut self.arena, 1, d - 1, &mut window, &mut rep)
             } else {
+                let mut window = SearchWindow {
+                    alpha: -local_alpha - 1,
+                    beta: -local_alpha,
+                };
+                let mut rep = RepetitionState {
+                    history: repetition_history,
+                    len: 2,
+                };
                 let mut pvs_score = -search_node_with_arena(
-                    &self.movegen,
-                    &self.evaluator,
+                    &mut ctx,
                     &mut self.arena,
                     1,
                     d - 1,
-                    -local_alpha - 1,
-                    -local_alpha,
-                    tt_ref,
-                    heuristics,
-                    stop,
-                    time_budget_ms,
-                    Some(start),
-                    &mut repetition_history,
-                    2,
+                    &mut window,
+                    &mut rep,
                 );
 
                 if pvs_score > local_alpha && pvs_score < beta {
+                    let mut full_window = SearchWindow {
+                        alpha: -beta,
+                        beta: -local_alpha,
+                    };
+                    let mut full_rep = RepetitionState {
+                        history: repetition_history,
+                        len: 2,
+                    };
                     pvs_score = -search_node_with_arena(
-                        &self.movegen,
-                        &self.evaluator,
+                        &mut ctx,
                         &mut self.arena,
                         1,
                         d - 1,
-                        -beta,
-                        -local_alpha,
-                        tt_ref,
-                        heuristics,
-                        stop,
-                        time_budget_ms,
-                        Some(start),
-                        &mut repetition_history,
-                        2,
+                        &mut full_window,
+                        &mut full_rep,
                     );
                 }
 

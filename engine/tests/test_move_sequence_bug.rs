@@ -75,10 +75,7 @@ fn test_move_sequence_bug_reproduction() {
             // If parsing succeeds, the move itself might still be illegal
             println!("  Move parsed successfully: {:?}", mv4);
             println!("  WARNING: d1b3 was parsed but it's Black's turn!");
-            assert!(
-                false,
-                "d1b3 should not be a legal move when it's Black's turn"
-            );
+            panic!("d1b3 should not be a legal move when it's Black's turn");
         }
         None => {
             println!("  Move parsing failed (expected)");

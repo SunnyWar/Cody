@@ -331,35 +331,49 @@ pub fn print_uci_info(
     }
 }
 
-// Helper recursive search that operates on a provided arena and components.
+// Context struct to reduce function parameter count
+pub struct SearchContext<'a, M: MoveGenerator, E: Evaluator> {
+    pub movegen: &'a M,
+    pub evaluator: &'a E,
+    pub tt: &'a mut TranspositionTable,
+    pub heuristics: &'a mut SearchHeuristics,
+    pub stop: Option<&'a std::sync::atomic::AtomicBool>,
+    pub time_budget_ms: Option<u64>,
+    pub start_time: Option<&'a std::time::Instant>,
+}
 
+/// Search window (alpha-beta bounds) for a single search node.
+pub struct SearchWindow {
+    pub alpha: i32,
+    pub beta: i32,
+}
+
+/// Repetition history tracking for the current search path.
+pub struct RepetitionState {
+    pub history: [u64; MAX_REPETITION_HISTORY],
+    pub len: usize,
+}
+
+// Helper recursive search that operates on a provided arena and components.
 pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
-    movegen: &M,
-    evaluator: &E,
+    ctx: &mut SearchContext<M, E>,
     arena: &mut Arena,
     ply: usize,
     remaining: usize,
-    mut alpha: i32,
-    beta: i32,
-    tt: &mut TranspositionTable,
-    heuristics: &mut SearchHeuristics,
-    stop: Option<&std::sync::atomic::AtomicBool>,
-    time_budget_ms: Option<u64>,
-    start_time: Option<&std::time::Instant>,
-    repetition_history: &mut [u64; MAX_REPETITION_HISTORY],
-    repetition_len: usize,
+    window: &mut SearchWindow,
+    rep_state: &mut RepetitionState,
 ) -> i32 {
     NODE_COUNT.fetch_add(1, Ordering::Relaxed);
     update_seldepth(ply);
-    let original_alpha = alpha;
+    let original_alpha = window.alpha;
     // Check stop flag and time budget at each node
-    if let Some(stopflag) = stop
+    if let Some(stopflag) = ctx.stop
         && stopflag.load(Ordering::Relaxed)
     {
         return 0;
     }
 
-    if let (Some(mt), Some(start)) = (time_budget_ms, start_time) {
+    if let (Some(mt), Some(start)) = (ctx.time_budget_ms, ctx.start_time) {
         let elapsed = start.elapsed().as_millis() as u64;
         if elapsed >= mt {
             return 0;
@@ -367,7 +381,14 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     }
 
     if remaining == 0 {
-        return quiescence_with_arena(movegen, evaluator, arena, ply, alpha, beta);
+        return quiescence_with_arena(
+            ctx.movegen,
+            ctx.evaluator,
+            arena,
+            ply,
+            window.alpha,
+            window.beta,
+        );
     }
 
     // Compute key once; full Zobrist recomputation is expensive.
@@ -375,7 +396,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 
     // Draw adjudication.
     // 1) Threefold repetition from the current search path.
-    if is_threefold_repetition(key, repetition_history, repetition_len) {
+    if is_threefold_repetition(key, &rep_state.history, rep_state.len) {
         return 0;
     }
 
@@ -393,7 +414,10 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     //   can be used as immediate cutoffs.
     let mut tt_exact_needs_verify: Option<crate::core::tt::TTEntry> = None;
     {
-        if let Some(e) = tt.probe(key, remaining as i8, alpha, beta) {
+        if let Some(e) = ctx
+            .tt
+            .probe(key, remaining as i8, window.alpha, window.beta)
+        {
             if e.flag == crate::core::tt::TTFlag::Exact as u8 {
                 if e.best_move.is_null() {
                     return e.value;
@@ -410,9 +434,9 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     // qsearch collision), (c) not root, (d) static eval is already close to
     // beta so a fail-high is plausible.
     let pos_ref = arena.get(ply).position;
-    let static_eval = evaluate_for_side_to_move(evaluator, &pos_ref);
-    let can_try_null = static_eval >= beta - NULL_MOVE_STATIC_MARGIN_CP;
-    if ply > 0 && remaining > 2 && !movegen.in_check(&pos_ref) && can_try_null {
+    let static_eval = evaluate_for_side_to_move(ctx.evaluator, &pos_ref);
+    let can_try_null = static_eval >= window.beta - NULL_MOVE_STATIC_MARGIN_CP;
+    if ply > 0 && remaining > 2 && !ctx.movegen.in_check(&pos_ref) && can_try_null {
         // Make a null move (pass)
         let mut child_pos = pos_ref;
         child_pos.side_to_move = pos_ref.side_to_move.opposite();
@@ -425,31 +449,31 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
             let child_key = arena.get(ply + 1).position.zobrist_hash();
             // Optimization: Use unchecked access to avoid redundant bounds checks (safe
             // within ply < MAX_SEARCH_PLY)
-            let next_rep_len = if repetition_len < MAX_REPETITION_HISTORY {
+            let next_rep_len = if rep_state.len < MAX_REPETITION_HISTORY {
                 unsafe {
-                    *repetition_history.get_unchecked_mut(repetition_len) = child_key;
+                    *rep_state.history.get_unchecked_mut(rep_state.len) = child_key;
                 }
-                repetition_len + 1
+                rep_state.len + 1
             } else {
-                repetition_len
+                rep_state.len
+            };
+            let mut null_window = SearchWindow {
+                alpha: -window.beta,
+                beta: -window.beta + 1,
+            };
+            let mut null_rep = RepetitionState {
+                history: rep_state.history,
+                len: next_rep_len,
             };
             let null_score = -search_node_with_arena(
-                movegen,
-                evaluator,
+                ctx,
                 arena,
                 ply + 1,
                 remaining - null_reduction - 1,
-                -beta,
-                -beta + 1,
-                tt,
-                heuristics,
-                stop,
-                time_budget_ms,
-                start_time,
-                repetition_history,
-                next_rep_len,
+                &mut null_window,
+                &mut null_rep,
             );
-            if null_score >= beta {
+            if null_score >= window.beta {
                 return null_score;
             }
         }
@@ -462,7 +486,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 
     if moves.is_empty() {
         let pos = &arena.get(ply).position;
-        if movegen.in_check(pos) {
+        if ctx.movegen.in_check(pos) {
             // mate: return losing score adjusted by ply (so earlier mate is worse)
             return -MATE_SCORE + ply as i32;
         }
@@ -489,7 +513,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         .map(|e| e.best_move)
         .filter(|m| !m.is_null());
     // Full-list move ordering gives alpha-beta the best chance to cut early.
-    order_moves_with_heuristics_fast(&pos, &mut moves, heuristics, ply, tt_best_move);
+    order_moves_with_heuristics_fast(&pos, &mut moves, ctx.heuristics, ply, tt_best_move);
 
     if let Some(e) = tt_exact_needs_verify
         && !e.best_move.is_null()
@@ -508,7 +532,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
                 parent
                     .position
                     .apply_move_into(&e.best_move, &mut child.position);
-                if !mover_left_in_check(movegen, &parent.position, &child.position) {
+                if !mover_left_in_check(ctx.movegen, &parent.position, &child.position) {
                     tt_move_is_legal = true;
                 }
             }
@@ -531,7 +555,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
             let (parent, child) = arena.get_pair_mut(ply, ply + 1);
             parent.position.apply_move_into(&m, &mut child.position);
 
-            if mover_left_in_check(movegen, &parent.position, &child.position) {
+            if mover_left_in_check(ctx.movegen, &parent.position, &child.position) {
                 continue;
             }
         }
@@ -542,13 +566,13 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         let child_key = arena.get(ply + 1).position.zobrist_hash();
         // Optimization: Use unchecked access to avoid redundant bounds checks (safe
         // within ply < MAX_SEARCH_PLY)
-        let next_rep_len = if repetition_len < MAX_REPETITION_HISTORY {
+        let next_rep_len = if rep_state.len < MAX_REPETITION_HISTORY {
             unsafe {
-                *repetition_history.get_unchecked_mut(repetition_len) = child_key;
+                *rep_state.history.get_unchecked_mut(rep_state.len) = child_key;
             }
-            repetition_len + 1
+            rep_state.len + 1
         } else {
-            repetition_len
+            rep_state.len
         };
 
         // Late Move Reduction (LMR): reduce depth for moves beyond the first 2 or 3
@@ -574,56 +598,56 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         // Principal Variation Search (PVS): first legal move with full window,
         // later moves with null window and full-window re-search on improvement.
         let mut score = if move_index == 0 {
+            let mut child_window = SearchWindow {
+                alpha: -window.beta,
+                beta: -window.alpha,
+            };
+            let mut child_rep = RepetitionState {
+                history: rep_state.history,
+                len: next_rep_len,
+            };
             -search_node_with_arena(
-                movegen,
-                evaluator,
+                ctx,
                 arena,
                 ply + 1,
                 depth_for_search,
-                -beta,
-                -alpha,
-                tt,
-                heuristics,
-                stop,
-                time_budget_ms,
-                start_time,
-                repetition_history,
-                next_rep_len,
+                &mut child_window,
+                &mut child_rep,
             )
         } else {
+            let mut null_window = SearchWindow {
+                alpha: -window.alpha - 1,
+                beta: -window.alpha,
+            };
+            let mut null_rep = RepetitionState {
+                history: rep_state.history,
+                len: next_rep_len,
+            };
             let mut pvs_score = -search_node_with_arena(
-                movegen,
-                evaluator,
+                ctx,
                 arena,
                 ply + 1,
                 depth_for_search,
-                -alpha - 1,
-                -alpha,
-                tt,
-                heuristics,
-                stop,
-                time_budget_ms,
-                start_time,
-                repetition_history,
-                next_rep_len,
+                &mut null_window,
+                &mut null_rep,
             );
 
-            if pvs_score > alpha && pvs_score < beta {
+            if pvs_score > window.alpha && pvs_score < window.beta {
+                let mut full_window = SearchWindow {
+                    alpha: -window.beta,
+                    beta: -window.alpha,
+                };
+                let mut full_rep = RepetitionState {
+                    history: rep_state.history,
+                    len: next_rep_len,
+                };
                 pvs_score = -search_node_with_arena(
-                    movegen,
-                    evaluator,
+                    ctx,
                     arena,
                     ply + 1,
                     depth_for_search,
-                    -beta,
-                    -alpha,
-                    tt,
-                    heuristics,
-                    stop,
-                    time_budget_ms,
-                    start_time,
-                    repetition_history,
-                    next_rep_len,
+                    &mut full_window,
+                    &mut full_rep,
                 );
             }
 
@@ -631,22 +655,22 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         };
 
         // If LMR returned a value > alpha, re-search at full depth to verify
-        if !do_full_depth_search && score > alpha {
+        if !do_full_depth_search && score > window.alpha {
+            let mut lmr_window = SearchWindow {
+                alpha: -window.beta,
+                beta: -window.alpha,
+            };
+            let mut lmr_rep = RepetitionState {
+                history: rep_state.history,
+                len: next_rep_len,
+            };
             score = -search_node_with_arena(
-                movegen,
-                evaluator,
+                ctx,
                 arena,
                 ply + 1,
                 remaining - 1,
-                -beta,
-                -alpha,
-                tt,
-                heuristics,
-                stop,
-                time_budget_ms,
-                start_time,
-                repetition_history,
-                next_rep_len,
+                &mut lmr_window,
+                &mut lmr_rep,
             );
         }
 
@@ -658,18 +682,18 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         // Optimization: Use max() for alpha updates instead of if-else.
         // Compiler generates cmov instead of conditional branch, better pipeline
         // utilization.
-        alpha = alpha.max(score);
+        window.alpha = window.alpha.max(score);
 
         // Beta cutoff
-        if alpha >= beta {
-            heuristics.update_on_beta_cutoff(ply, m, remaining);
+        if window.alpha >= window.beta {
+            ctx.heuristics.update_on_beta_cutoff(ply, m, remaining);
             break;
         }
     }
 
     if legal_move_count == 0 {
         let pos = &arena.get(ply).position;
-        if movegen.in_check(pos) {
+        if ctx.movegen.in_check(pos) {
             return -MATE_SCORE + ply as i32;
         }
         return 0;
@@ -678,12 +702,13 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     // Store TT result with correct bound semantics from the original window.
     let tt_flag = if best_score <= original_alpha {
         TTFlag::Upper
-    } else if best_score >= beta {
+    } else if best_score >= window.beta {
         TTFlag::Lower
     } else {
         TTFlag::Exact
     };
-    tt.store(key, best_score, remaining as i8, tt_flag, best_move);
+    ctx.tt
+        .store(key, best_score, remaining as i8, tt_flag, best_move);
 
     best_score
 }
