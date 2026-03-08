@@ -183,6 +183,15 @@ fn test_handle_setoption_ponder_toggles_runtime_option() {
     assert!(!api.ponder_enabled());
 }
 
+#[test]
+fn test_handle_setoption_syzygypath_is_accepted() {
+    let api = &mut CodyApi::new();
+
+    // Path may be invalid on CI/dev boxes; this test only validates parsing and
+    // command handling stability.
+    api.handle_setoption("setoption name SyzygyPath value C:\\tb");
+}
+
 #[allow(clippy::collapsible_if)]
 #[test]
 fn test_uci_position_moves_c3d5_state_consistency() {

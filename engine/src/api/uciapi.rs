@@ -215,6 +215,7 @@ impl CodyApi {
         );
         self.writeln_and_log(out, "option name Ponder type check default false");
         self.writeln_and_log(out, "option name Verbose type check default false");
+        self.writeln_and_log(out, "option name SyzygyPath type string default");
 
         self.writeln_and_log(out, "uciok");
     }
@@ -254,7 +255,11 @@ impl CodyApi {
             && ni < vi
         {
             let name = parts[ni + 1..vi].join(" ");
-            let value = parts.get(vi + 1).copied().unwrap_or("");
+            let value = if vi + 1 < parts.len() {
+                parts[vi + 1..].join(" ")
+            } else {
+                String::new()
+            };
             if name.eq_ignore_ascii_case("hash") {
                 if let Ok(n) = value.parse::<usize>() {
                     self.engine.set_hash_size_mb(n);
@@ -269,6 +274,8 @@ impl CodyApi {
             } else if name.eq_ignore_ascii_case("verbose") {
                 let enable = value.eq_ignore_ascii_case("true");
                 VERBOSE.store(enable, Ordering::Relaxed);
+            } else if name.eq_ignore_ascii_case("syzygypath") {
+                let _ = self.engine.set_tablebase_path(&value);
             }
         } else if let Some(ni) = name_idx {
             // Handle buttons (no value field)
@@ -359,6 +366,14 @@ impl CodyApi {
         if VERBOSE.load(Ordering::Relaxed) {
             self.writeln_and_log(out, &format!("debug: handle_go limits: {:?}", self.limits));
             out.flush().ok();
+        }
+
+        // If the full root move set is tablebase-probeable, trust TB and return
+        // immediately with the exact best move for solved endgames.
+        if let Some(tb_move) = crate::search::tablebase::probe_root_best_move(&self.current_pos) {
+            self.pondering_active.store(false, Ordering::Relaxed);
+            self.writeln_and_log(out, &format!("bestmove {}", tb_move));
+            return;
         }
 
         // Use engine's iterative deepening search. We forward the move time limit

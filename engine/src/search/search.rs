@@ -464,7 +464,12 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
 
     pub fn clear_state(&mut self) {
         NODE_COUNT.store(0, Ordering::Relaxed);
+        crate::search::core::TB_HITS.store(0, Ordering::Relaxed);
         self.tt.write().unwrap().clear();
+    }
+
+    pub fn set_tablebase_path(&mut self, path: &str) -> Result<(), String> {
+        crate::search::tablebase::set_syzygy_path(path)
     }
 
     #[allow(clippy::too_many_arguments)]

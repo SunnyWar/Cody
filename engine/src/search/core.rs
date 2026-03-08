@@ -22,6 +22,7 @@ use std::sync::atomic::Ordering;
 
 pub static NODE_COUNT: AtomicU64 = AtomicU64::new(0);
 pub static SELDEPTH_MAX: AtomicUsize = AtomicUsize::new(0);
+pub static TB_HITS: AtomicU64 = AtomicU64::new(0);
 
 pub fn reset_seldepth(initial_ply: usize) {
     SELDEPTH_MAX.store(initial_ply, Ordering::Relaxed);
@@ -284,6 +285,7 @@ pub fn print_uci_info(
     hashfull: u16,
 ) {
     let nodes = NODE_COUNT.load(Ordering::Relaxed);
+    let tbhits = TB_HITS.load(Ordering::Relaxed);
     let nps = elapsed_ms
         .checked_div(1)
         .map(|_| {
@@ -305,14 +307,14 @@ pub fn print_uci_info(
         };
         format!(
             "info depth {} seldepth {} multipv 1 score mate {} nodes {} nps {} hashfull {} tbhits \
-             0 time {} pv {}",
-            depth, seldepth, mate_in, nodes, nps, hashfull, elapsed_ms, pv
+             {} time {} pv {}",
+            depth, seldepth, mate_in, nodes, nps, hashfull, tbhits, elapsed_ms, pv
         )
     } else {
         format!(
-            "info depth {} seldepth {} multipv 1 score cp {} nodes {} nps {} hashfull {} tbhits 0 \
+            "info depth {} seldepth {} multipv 1 score cp {} nodes {} nps {} hashfull {} tbhits {} \
              time {} pv {}",
-            depth, seldepth, score, nodes, nps, hashfull, elapsed_ms, pv
+            depth, seldepth, score, nodes, nps, hashfull, tbhits, elapsed_ms, pv
         )
     };
 
@@ -404,6 +406,11 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     // immediate draws to avoid wasting search on objectively drawn lines.
     if arena.get(ply).position.halfmove_clock >= 100 {
         return 0;
+    }
+
+    if let Some(tb_score) = crate::search::tablebase::probe_wdl_cp(&arena.get(ply).position) {
+        TB_HITS.fetch_add(1, Ordering::Relaxed);
+        return tb_score;
     }
 
     // Probe TT if provided (tt is always present in serial path; for parallel we

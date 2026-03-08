@@ -166,7 +166,6 @@ impl Position {
     /// quiescence).
     ///
     /// Returns Piece::None if square is empty.
-    #[inline(always)]
     pub fn piece_at_square(&self, sq: Square) -> Piece {
         // Safety: Square::index() is always in-bounds for [0..64].
         unsafe { *self.piece_on.get_unchecked(sq.index()) }
