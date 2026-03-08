@@ -1529,8 +1529,8 @@ impl Square {
 | **Quiescence** | `quiescence_internal()` | 10M/s | HIGH | ~50-500k cycles | Delta+SEE pruning, cached MVV/LVA scores + insertion sort, branchless alpha updates | Yes | 2026-03-07 |
 | **SEE** | `compute_see()` | 1M/s | MEDIUM | ~1-10k cycles | Recursive exchange | No | - |
 | **SEE** | `find_least_valuable_attacker()` | 10M/s | MEDIUM | ~100-1k cycles | Early exit on pawn | No | - |
-| **TT** | `TranspositionTable::probe()` | 1M/s | HIGH | ~10-100 cycles | O(1) hash lookup | No | - |
-| **TT** | `TranspositionTable::store()` | 1M/s | MEDIUM | ~10-50 cycles | O(1) direct indexing | No | - |
+| **TT** | `TranspositionTable::probe()` | 1M/s | HIGH | ~10-100 cycles | O(1) hash lookup, inlined index, direct flag comparisons, #[inline(always)] | Yes | 2026-03-07 |
+| **TT** | `TranspositionTable::store()` | 1M/s | MEDIUM | ~10-50 cycles | O(1) direct indexing, inlined index, in-place mutation | Yes | 2026-03-07 |
 | **Zobrist** | `compute_zobrist()` | 1M/s | MEDIUM | ~100-300 cycles | XOR piece keys | No | - |
 | **Arena** | `Arena::get()` / `get_mut()` | 100M/s | CRITICAL | ~1 cycle | Unchecked access | No | - |
 | **Arena** | `Arena::get_pair_mut()` | 10M/s | MEDIUM | ~5 cycles | Pointer arithmetic | No | - |
