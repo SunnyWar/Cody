@@ -53,9 +53,11 @@ impl TranspositionTable {
         }
     }
 
+    #[inline(always)]
     pub fn probe(&self, key: u64, depth: i8, alpha: i32, beta: i32) -> Option<TTEntry> {
-        let idx = self.index(key);
+        let idx = (key as usize) & self.mask;
         let e = self.entries[idx];
+
         if e.key != key {
             return None;
         }
@@ -63,29 +65,24 @@ impl TranspositionTable {
             return None; // stored value from shallower search; ignore
         }
 
-        match e.flag {
-            x if x == TTFlag::Exact as u8 => Some(e),
-            x if x == TTFlag::Lower as u8 => {
-                if e.value >= beta {
-                    Some(e)
-                } else {
-                    None
-                }
-            }
-            x if x == TTFlag::Upper as u8 => {
-                if e.value <= alpha {
-                    Some(e)
-                } else {
-                    None
-                }
-            }
-            _ => None,
+        // Optimize flag checks with direct equality comparisons
+        let flag = e.flag;
+        if flag == TTFlag::Exact as u8 {
+            return Some(e);
         }
+        if flag == TTFlag::Lower as u8 {
+            return if e.value >= beta { Some(e) } else { None };
+        }
+        if flag == TTFlag::Upper as u8 {
+            return if e.value <= alpha { Some(e) } else { None };
+        }
+        None
     }
 
+    #[inline]
     pub fn store(&mut self, key: u64, value: i32, depth: i8, flag: TTFlag, best_move: ChessMove) {
-        let idx = self.index(key);
-        let mut e = self.entries[idx];
+        let idx = (key as usize) & self.mask;
+        let e = &mut self.entries[idx];
         // Replacement: prefer deeper entries
         if e.depth > depth {
             // keep existing deeper entry
@@ -96,7 +93,6 @@ impl TranspositionTable {
         e.depth = depth;
         e.flag = flag as u8;
         e.best_move = best_move;
-        self.entries[idx] = e;
     }
 
     /// Approximate hash occupancy in per-mille, similar to UCI `hashfull`.
