@@ -275,7 +275,8 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                 let arena_cap = self.arena_capacity;
 
                 // Shared atomic alpha for basic cutoffs across threads
-                let shared_alpha = Arc::new(AtomicI32::new(i32::MIN));
+                // Use -INF instead of i32::MIN to avoid overflow when negating values
+                let shared_alpha = Arc::new(AtomicI32::new(-INF));
 
                 // Use thread-local storage to reuse arenas and TTs across moves
                 thread_local! {

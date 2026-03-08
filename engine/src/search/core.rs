@@ -388,8 +388,12 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
             arena.get_mut(ply + 1).position = child_pos;
             let null_reduction = (remaining / 3).max(1);
             let child_key = arena.get(ply + 1).position.zobrist_hash();
+            // Optimization: Use unchecked access to avoid redundant bounds checks (safe
+            // within ply < MAX_SEARCH_PLY)
             let next_rep_len = if repetition_len < MAX_REPETITION_HISTORY {
-                repetition_history[repetition_len] = child_key;
+                unsafe {
+                    *repetition_history.get_unchecked_mut(repetition_len) = child_key;
+                }
                 repetition_len + 1
             } else {
                 repetition_len
@@ -501,8 +505,12 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         legal_move_count += 1;
 
         let child_key = arena.get(ply + 1).position.zobrist_hash();
+        // Optimization: Use unchecked access to avoid redundant bounds checks (safe
+        // within ply < MAX_SEARCH_PLY)
         let next_rep_len = if repetition_len < MAX_REPETITION_HISTORY {
-            repetition_history[repetition_len] = child_key;
+            unsafe {
+                *repetition_history.get_unchecked_mut(repetition_len) = child_key;
+            }
             repetition_len + 1
         } else {
             repetition_len
@@ -612,9 +620,10 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
             best_move = m;
         }
 
-        if score > alpha {
-            alpha = score;
-        }
+        // Optimization: Use max() for alpha updates instead of if-else.
+        // Compiler generates cmov instead of conditional branch, better pipeline
+        // utilization.
+        alpha = alpha.max(score);
 
         // Beta cutoff
         if alpha >= beta {
