@@ -160,6 +160,18 @@ impl Position {
         }
     }
 
+    /// Direct piece accessor returning Piece (which may be Piece::None).
+    /// Eliminates Option wrapping overhead by returning the raw Piece value.
+    /// Preferred in hot paths where None is explicitly checked (SEE,
+    /// quiescence).
+    ///
+    /// Returns Piece::None if square is empty.
+    #[inline(always)]
+    pub fn piece_at_square(&self, sq: Square) -> Piece {
+        // Safety: Square::index() is always in-bounds for [0..64].
+        unsafe { *self.piece_on.get_unchecked(sq.index()) }
+    }
+
     pub fn from_fen(fen: &str) -> Self {
         let mut pos = Position::empty();
         let parts: Vec<&str> = fen.split_whitespace().collect();
@@ -522,56 +534,20 @@ impl Position {
         BoardState {
             occupancy: self.occupancy[crate::occupancy::OccupancyKind::Both],
             white_pieces: PieceSet {
-                pawns: self.pieces.get(piece::Piece::from_parts(
-                    piece::Color::White,
-                    Some(piece::PieceKind::Pawn),
-                )),
-                knights: self.pieces.get(piece::Piece::from_parts(
-                    piece::Color::White,
-                    Some(piece::PieceKind::Knight),
-                )),
-                bishops: self.pieces.get(piece::Piece::from_parts(
-                    piece::Color::White,
-                    Some(piece::PieceKind::Bishop),
-                )),
-                rooks: self.pieces.get(piece::Piece::from_parts(
-                    piece::Color::White,
-                    Some(piece::PieceKind::Rook),
-                )),
-                queens: self.pieces.get(piece::Piece::from_parts(
-                    piece::Color::White,
-                    Some(piece::PieceKind::Queen),
-                )),
-                king: self.pieces.get(piece::Piece::from_parts(
-                    piece::Color::White,
-                    Some(piece::PieceKind::King),
-                )),
+                pawns: self.pieces.get(piece::Piece::WhitePawn),
+                knights: self.pieces.get(piece::Piece::WhiteKnight),
+                bishops: self.pieces.get(piece::Piece::WhiteBishop),
+                rooks: self.pieces.get(piece::Piece::WhiteRook),
+                queens: self.pieces.get(piece::Piece::WhiteQueen),
+                king: self.pieces.get(piece::Piece::WhiteKing),
             },
             black_pieces: PieceSet {
-                pawns: self.pieces.get(piece::Piece::from_parts(
-                    piece::Color::Black,
-                    Some(piece::PieceKind::Pawn),
-                )),
-                knights: self.pieces.get(piece::Piece::from_parts(
-                    piece::Color::Black,
-                    Some(piece::PieceKind::Knight),
-                )),
-                bishops: self.pieces.get(piece::Piece::from_parts(
-                    piece::Color::Black,
-                    Some(piece::PieceKind::Bishop),
-                )),
-                rooks: self.pieces.get(piece::Piece::from_parts(
-                    piece::Color::Black,
-                    Some(piece::PieceKind::Rook),
-                )),
-                queens: self.pieces.get(piece::Piece::from_parts(
-                    piece::Color::Black,
-                    Some(piece::PieceKind::Queen),
-                )),
-                king: self.pieces.get(piece::Piece::from_parts(
-                    piece::Color::Black,
-                    Some(piece::PieceKind::King),
-                )),
+                pawns: self.pieces.get(piece::Piece::BlackPawn),
+                knights: self.pieces.get(piece::Piece::BlackKnight),
+                bishops: self.pieces.get(piece::Piece::BlackBishop),
+                rooks: self.pieces.get(piece::Piece::BlackRook),
+                queens: self.pieces.get(piece::Piece::BlackQueen),
+                king: self.pieces.get(piece::Piece::BlackKing),
             },
         }
     }

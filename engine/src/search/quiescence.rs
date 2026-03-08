@@ -98,7 +98,8 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
             let m = move_list[i];
             // Delta pruning: skip captures that can't possibly improve alpha
             // even if we capture the target piece
-            if let Some(victim) = get_piece_on_square(&pos, m.to) {
+            let victim = get_piece_on_square(&pos, m.to);
+            if victim != Piece::None {
                 let victim_val = piece_value(victim.kind());
                 // If stand_pat + captured piece value + margin is still below alpha, prune
                 if stand_pat + victim_val + DELTA_MARGIN < alpha {
@@ -117,7 +118,8 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
 
                 // Run full SEE only for likely-losing captures; this
                 // avoids expensive recursive SEE on clearly favorable trades.
-                if let Some(attacker) = get_piece_on_square(&pos, m.from) {
+                let attacker = get_piece_on_square(&pos, m.from);
+                if attacker != Piece::None {
                     let attacker_val = piece_value(attacker.kind());
 
                     // In high-density tactical skirmishes, avoid neutral
@@ -256,9 +258,17 @@ fn mvv_lva_score(pos: &Position, mv: &ChessMove) -> i32 {
         _ => get_piece_on_square(pos, mv.to),
     };
 
-    let victim_value = victim_piece.map(|p| piece_value(p.kind())).unwrap_or(0);
+    let victim_value = if victim_piece != Piece::None {
+        piece_value(victim_piece.kind())
+    } else {
+        0
+    };
     let attacker_piece = get_piece_on_square(pos, mv.from);
-    let attacker_value = attacker_piece.map(|p| piece_value(p.kind())).unwrap_or(0);
+    let attacker_value = if attacker_piece != Piece::None {
+        piece_value(attacker_piece.kind())
+    } else {
+        0
+    };
 
     victim_value * 100 - attacker_value
 }
@@ -274,6 +284,6 @@ fn piece_value(kind: PieceKind) -> i32 {
     }
 }
 
-fn get_piece_on_square(pos: &Position, sq: bitboard::Square) -> Option<Piece> {
-    pos.piece_at(sq)
+fn get_piece_on_square(pos: &Position, sq: bitboard::Square) -> Piece {
+    pos.piece_at_square(sq)
 }
