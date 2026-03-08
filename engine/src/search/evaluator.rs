@@ -61,14 +61,14 @@ pub trait Evaluator {
 ///
 /// Negamax expects every node score to be from the perspective of the player
 /// to move in `pos`.
-#[inline]
+#[inline(always)]
 pub fn evaluate_for_side_to_move<E: Evaluator>(evaluator: &E, pos: &Position) -> i32 {
     let white_centric = evaluator.evaluate(pos);
-    if pos.side_to_move == Color::White {
-        white_centric
-    } else {
-        -white_centric
-    }
+    // Branchless conditional negation:
+    // - White to move: return x
+    // - Black to move: return -x (wrapping-safe)
+    let flip = (pos.side_to_move == Color::Black) as i32;
+    (white_centric ^ -flip).wrapping_add(flip)
 }
 
 impl Evaluator for MaterialEvaluator {
