@@ -82,7 +82,7 @@ impl BitBoardMask {
         BitBoardMask(self.0 >> n)
     }
 
-    pub fn contains(&self, sq: Square) -> bool {
+    pub const fn contains(&self, sq: Square) -> bool {
         self.contains_square(sq)
     }
 
@@ -106,8 +106,8 @@ impl BitBoardMask {
         self.0 == 0
     }
 
-    pub const fn count(self) -> u32 {
-        self.0.count_ones()
+    pub fn count(self) -> u32 {
+        crate::intrinsics::popcnt(self.0)
     }
 
     pub const fn count_ones(self) -> u32 {
@@ -123,8 +123,8 @@ impl BitBoardMask {
         self.0 != 0
     }
 
-    pub fn contains_square(self, sq: Square) -> bool {
-        (self.0 & (1u64 << sq.index())) != 0
+    pub const fn contains_square(self, sq: Square) -> bool {
+        (self.0 & (1u64 << (sq as u8))) != 0
     }
 
     /// Returns an iterator over all set squares in this bitboard.
