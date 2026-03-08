@@ -4,6 +4,7 @@ use crate::BitBoardMask;
 use crate::piece::Piece;
 
 #[derive(Clone, Copy, Debug)]
+#[repr(align(64))]
 pub struct PieceBitboards {
     inner: [BitBoardMask; 12],
 }

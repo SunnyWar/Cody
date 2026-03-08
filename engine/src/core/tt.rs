@@ -8,6 +8,7 @@ pub enum TTFlag {
 }
 
 #[derive(Clone, Copy, Debug)]
+#[repr(align(32))]
 pub struct TTEntry {
     pub key: u64,
     pub value: i32,
