@@ -4,4 +4,6 @@ version = "0.3.0"
 edition = "2024"
 
 [dependencies]
-# no external deps—pure, allocation-free logic
+# External dependencies are allowed only when they are extremely
+# high-performance and used in performance-critical paths.
+

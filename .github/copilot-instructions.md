@@ -2,7 +2,7 @@
 
 This repository implements "Cody", a Rust chess engine focused on a deterministic, allocation-free fixed‑block search tree and a high‑performance pseudo‑legal move generator. The codebase is a Cargo workspace with two crates:
 
-- `bitboard/` — pure bitboard logic, move generation, position representation and board utilities (no external deps). Key files: `bitboard/src/position.rs`, `bitboard/src/movegen.rs`, `bitboard/src/attack.rs`, `bitboard/src/piecebitboards.rs`, `bitboard/src/tables/*`.
+- `bitboard/` — pure bitboard logic, move generation, position representation and board utilities. Key files: `bitboard/src/position.rs`, `bitboard/src/movegen.rs`, `bitboard/src/attack.rs`, `bitboard/src/piecebitboards.rs`, `bitboard/src/tables/*`.
 - `engine/` — the search/engine layer, benches and UCI API. Key files: `engine/src/search/engine.rs`, `engine/src/core/arena.rs`, `engine/src/api/uciapi.rs`, `engine/benches/bench.rs`.
 
 When making changes, prefer editing the smallest crate that contains the behavior (usually `bitboard` for board rules and `engine` for search/uci). The workspace root `Cargo.toml` binds them together.
@@ -35,7 +35,8 @@ Notes:
 ## Integration points and dependencies
 
 - `engine` depends on `bitboard` (path dependency in `engine/Cargo.toml`). Keep API changes in `bitboard` minimal and backward compatible when possible.
-- External crates used by `engine`: `criterion` (benchmarking), `once_cell`, `rand`. The `bitboard` crate intentionally has no external deps.
+- External crates used by `engine`: `criterion` (benchmarking), `once_cell`, `rand`.
+- Dependency policy: external dependencies are allowed only when they are extremely high-performance and used in performance-critical paths.
 - UCI API: implemented in `engine/src/api/uciapi.rs` and wired via `engine/src/main.rs`. Changes to command handling must maintain compatibility with existing UCI flows.
 
 ## How to modify safely (PR checklist for agents)
