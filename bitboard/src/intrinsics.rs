@@ -501,7 +501,7 @@ impl SimdU64x4 {
     }
 
     /// Parallel bitwise NOT: compute !self for all 4 elements.
-    pub fn not(self) -> Self {
+    fn bitwise_not(self) -> Self {
         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
         unsafe {
             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
@@ -696,6 +696,14 @@ impl SimdI32x8 {
     }
 }
 
+impl std::ops::Not for SimdU64x4 {
+    type Output = Self;
+
+    fn not(self) -> Self {
+        self.bitwise_not()
+    }
+}
+
 impl std::ops::Add for SimdI32x8 {
     type Output = Self;
 
@@ -827,8 +835,8 @@ mod tests {
         let xor_result = a.xor(b);
         assert_eq!(xor_result.data, [0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF]);
 
-        // Test NOT
-        let not_a = a.not();
+        // Test NOT using the trait impl
+        let not_a = !a;
         assert_eq!(not_a.data, [!0xF0F0, !0xFF00, !0xAAAA, !0x5555]);
     }
 

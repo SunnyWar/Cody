@@ -6,7 +6,10 @@ use engine::core::arena::Arena;
 use engine::core::tt::TranspositionTable;
 use engine::search::INF;
 use engine::search::MAX_REPETITION_HISTORY;
+use engine::search::RepetitionState;
+use engine::search::SearchContext;
 use engine::search::SearchHeuristics;
+use engine::search::SearchWindow;
 use engine::search::search_node_with_arena;
 
 #[test]
@@ -33,22 +36,27 @@ fn test_threefold_repetition_scored_as_draw_in_search_node() {
     let mut tt = TranspositionTable::new(1);
     let mut heuristics = SearchHeuristics::new();
 
-    let score = search_node_with_arena(
-        &SimpleMoveGen,
-        &MaterialEvaluator,
-        &mut arena,
-        0,
-        3,
-        -INF,
-        INF,
-        &mut tt,
-        &mut heuristics,
-        None,
-        None,
-        None,
-        &mut repetition_history,
-        3,
-    );
+    let mut ctx = SearchContext {
+        movegen: &SimpleMoveGen,
+        evaluator: &MaterialEvaluator,
+        tt: &mut tt,
+        heuristics: &mut heuristics,
+        stop: None,
+        time_budget_ms: None,
+        start_time: None,
+    };
+
+    let mut window = SearchWindow {
+        alpha: -INF,
+        beta: INF,
+    };
+
+    let mut rep_state = RepetitionState {
+        history: repetition_history,
+        len: 3,
+    };
+
+    let score = search_node_with_arena(&mut ctx, &mut arena, 0, 3, &mut window, &mut rep_state);
 
     assert_eq!(score, 0, "Expected draw score for threefold repetition");
 }

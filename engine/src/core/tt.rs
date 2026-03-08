@@ -43,10 +43,6 @@ impl TranspositionTable {
         }
     }
 
-    const fn index(&self, key: u64) -> usize {
-        (key as usize) & self.mask
-    }
-
     pub fn clear(&mut self) {
         for e in self.entries.iter_mut() {
             *e = TTEntry::default();
