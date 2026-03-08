@@ -10,9 +10,9 @@ impl Iterator for SquaresIter {
         if self.bb == 0 {
             None
         } else {
-            let tz = self.bb.trailing_zeros();
+            let tz = crate::intrinsics::trailing_zeros(self.bb);
             let sq = tz as u8;
-            self.bb &= !(1u64 << tz); // clear the lowest set bit
+            self.bb = crate::intrinsics::blsr(self.bb); // clear the lowest set bit
             Square::try_from_index(sq)
         }
     }
@@ -51,7 +51,6 @@ mod squares_iterator_regression_tests {
     }
 }
 use crate::Square;
-use std::arch::x86_64::*;
 use std::ops::BitAnd;
 use std::ops::BitAndAssign;
 use std::ops::BitOr;
@@ -151,7 +150,7 @@ impl BitBoardMask {
         if self.0 == 0 {
             None
         } else {
-            let tz = self.0.trailing_zeros();
+            let tz = crate::intrinsics::trailing_zeros(self.0);
             Square::try_from_index(tz as u8)
         }
     }
@@ -279,7 +278,7 @@ impl BitBoardMask {
             BitBoardMask((origin_bit - 1) & rank_mask)
         } else {
             // Find rightmost blocker (MSB of left_pieces)
-            let blocker_pos = 63 - left_pieces.leading_zeros();
+            let blocker_pos = 63 - crate::intrinsics::leading_zeros(left_pieces);
             let ray_mask = (origin_bit - 1) & !((1u64 << (blocker_pos + 1)) - 1);
             BitBoardMask(ray_mask)
         }
@@ -477,31 +476,29 @@ impl BitBoardMask {
     #[cfg(target_arch = "x86_64")]
     #[inline]
     pub fn subray_horizontal_bmi2(self, origin_sq: u8, direction: bool) -> BitBoardMask {
-        unsafe {
-            if std::arch::is_x86_feature_detected!("bmi2") {
-                let rank = (origin_sq / 8) as u64;
-                let rank_mask = 0xFFu64 << (rank * 8);
-                let occupied = _pext_u64(self.0, rank_mask) as u8;
-                let file = origin_sq % 8;
+        if std::arch::is_x86_feature_detected!("bmi2") {
+            let rank = (origin_sq / 8) as u64;
+            let rank_mask = 0xFFu64 << (rank * 8);
+            let occupied = crate::intrinsics::pext(self.0, rank_mask) as u8;
+            let file = origin_sq % 8;
 
-                // Use lookup tables or bit manipulation to compute ray
-                // This is where you'd implement hyperbola quintessence with BMI2
-                let ray = if direction {
-                    // Right direction
-                    occupied & ((1u8 << file) - 1)
-                } else {
-                    // Left direction
-                    occupied & !((1u8 << (file + 1)) - 1)
-                };
-
-                BitBoardMask(_pdep_u64(ray as u64, rank_mask))
+            // Use lookup tables or bit manipulation to compute ray
+            // This is where you'd implement hyperbola quintessence with BMI2
+            let ray = if direction {
+                // Right direction
+                occupied & ((1u8 << file) - 1)
             } else {
-                // Fallback to const version
-                if direction {
-                    self.subray_right(BitBoardMask(1u64 << origin_sq))
-                } else {
-                    self.subray_left(BitBoardMask(1u64 << origin_sq))
-                }
+                // Left direction
+                occupied & !((1u8 << (file + 1)) - 1)
+            };
+
+            BitBoardMask(crate::intrinsics::pdep(ray as u64, rank_mask))
+        } else {
+            // Fallback to const version
+            if direction {
+                self.subray_right(BitBoardMask(1u64 << origin_sq))
+            } else {
+                self.subray_left(BitBoardMask(1u64 << origin_sq))
             }
         }
     }

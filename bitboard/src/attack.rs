@@ -109,8 +109,9 @@ pub fn is_king_in_check(king_color: Color, board: &BoardState) -> bool {
 
     // SAFETY: `bb_bits` has exactly one bit set (the king), so the index
     // produced by `trailing_zeros` is guaranteed to be in 0..64.
-    let king_square: Square =
-        unsafe { core::mem::transmute::<u8, Square>(bb_bits.trailing_zeros() as u8) };
+    let king_square: Square = unsafe {
+        core::mem::transmute::<u8, Square>(crate::intrinsics::trailing_zeros(bb_bits) as u8)
+    };
 
     is_square_attacked(king_square, king_color.opposite(), board)
 }
