@@ -1,11 +1,17 @@
 // Stack-allocated move list to eliminate heap allocations in hot path
 // Maximum legal moves in any chess position is 218
 // We use 256 for power-of-2 alignment and safety margin
+// Aligned to 64-byte cache lines for optimal L1 cache utilization
 
 use crate::mov::ChessMove;
 
 const MAX_MOVES: usize = 256;
 
+/// MoveList optimized for cache-line efficiency.
+/// Aligned to 64-byte L1 cache lines to reduce cache misses during move
+/// iteration. This alignment is particularly beneficial for tight move
+/// generation and search loops.
+#[repr(align(64))]
 #[derive(Clone)]
 pub struct MoveList {
     moves: [ChessMove; MAX_MOVES],
@@ -90,6 +96,18 @@ impl MoveList {
             list.push(mv);
         }
         list
+    }
+
+    /// Hint the CPU to prefetch a future move entry into cache.
+    /// On unsupported targets this is intentionally a no-op.
+    #[inline]
+    pub fn prefetch_next_batch(&self, current_index: usize) {
+        // Prefetch 2 cache lines ahead (128 bytes ~= 16 ChessMove entries).
+        let prefetch_idx = current_index.saturating_add(16).min(self.len);
+        if prefetch_idx < self.len {
+            let addr = &self.moves[prefetch_idx] as *const ChessMove;
+            crate::intrinsics::prefetch_read(addr);
+        }
     }
 }
 
