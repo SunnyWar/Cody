@@ -29,14 +29,14 @@ impl Arena {
     pub fn get(&self, idx: usize) -> &Node {
         debug_assert!(idx < self.nodes.len());
         // SAFETY: caller guarantees `idx` is in-bounds.
-        unsafe { self.nodes.get_unchecked(idx) }
+        unsafe { &*self.nodes.as_ptr().add(idx) }
     }
 
     /// Mutable counterpart of `get`.
     pub fn get_mut(&mut self, idx: usize) -> &mut Node {
         debug_assert!(idx < self.nodes.len());
         // SAFETY: caller guarantees `idx` is in-bounds and we have &mut self.
-        unsafe { self.nodes.get_unchecked_mut(idx) }
+        unsafe { &mut *self.nodes.as_mut_ptr().add(idx) }
     }
 
     pub fn reset(&mut self) {
