@@ -56,6 +56,40 @@ cargo run --release -p engine -- perft 5
 cargo run -p engine
 ```
 
+### Release Selfplay Gate (ELO Acceptance)
+
+Use this when deciding whether a code change improved playing strength.
+
+```powershell
+# 1) Build current candidate
+cargo build --release
+
+# 2) Ensure baseline exists in same folder as candidate
+# (baseline should come from a previous known-good version)
+Copy-Item .\target\release\cody.exe .\target\release\cody-v1.0.exe
+
+# 3) Run reproducible A/B match
+Push-Location .\target\release
+D:/Cody/.venv/Scripts/python.exe ../../cody-graph/tools/selfplay.py --mode strict
+Pop-Location
+
+# If already in repo root (D:\Cody), this is equivalent:
+D:/Cody/.venv/Scripts/python.exe .\cody-graph\tools\selfplay.py --mode strict
+```
+
+Note: `../../cody-graph/tools/selfplay.py` only works when current directory is `target\release`.
+
+Expected layout in `target/release`:
+- Candidate: `cody.exe`
+- Baseline: `cody-v*.exe` (highest version is selected)
+
+Acceptance criteria:
+- `cargo build --release` passes
+- `cargo test -p bitboard` and `cargo test -p engine` pass
+- Strict selfplay completes without illegal move/disqualification
+- Candidate beats baseline in final score (`W > L`)
+- Keep `temp_match.meta.json` and `temp_match.pgn` for reproducibility
+
 ### Check Diagnostics
 
 ```powershell
