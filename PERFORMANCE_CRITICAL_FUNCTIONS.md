@@ -1503,8 +1503,8 @@ impl Square {
 | **Movegen** | `generate_legal_moves_fast()` | 1M/s | HIGH | ~100k cycles | Reused Position buffer | No | - |
 | **Movegen** | `generate_pseudo_captures_fast()` | 10M/s | MEDIUM | ~5k cycles | Filtered generation | No | - |
 | **Movegen** | `generate_pseudo_{knight,pawn,bishop,rook,queen,king}_moves_fast()` | 1M/s | HIGH | ~2-5k cycles | Piece-specific delegations | No | - |
-| **Position** | `apply_move_into()` | 1M/s | HIGH | ~5k cycles | Struct copy, no allocation | No | - |
-| **Position** | `copy_from()` | 100M/s | HIGH | ~100 cycles | Memcpy, Copy trait | No | - |
+| **Position** | `apply_move_into()` | 1M/s | HIGH | ~5k cycles | Single memcpy instead of field-by-field copy | Yes | 2026-03-07 |
+| **Position** | `copy_from()` | 100M/s | HIGH | ~100 cycles | Memcpy with #[inline(always)] | Yes | 2026-03-07 |
 | **Position** | `all_pieces()` / `our_pieces()` | 10M/s | HIGH | ~1 cycle | Direct lookup | No | - |
 | **Position** | `piece_at()` | 100M/s | MEDIUM | ~1 cycle | Array indexing | No | - |
 | **Position** | `to_board_state()` | 10M/s | MEDIUM | ~5k cycles | Piece reorganization | No | - |
