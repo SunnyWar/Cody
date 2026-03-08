@@ -34,6 +34,7 @@
 | Eval | `evaluate_king_safety()` / `evaluate_rook_activity()` | Replaced per-rank file scans (`for rank in 0..8`) with direct file-bitmask tests (`0x0101.. << file`) for pawn-on-file checks. | Removed repeated inner loops in 10M/s eval path |
 | Eval | `evaluate_mobility()` | Replaced per-square rank/file distance arithmetic with a const precomputed square bonus table and split white/black piece loops using direct piece enums. | Removed inner-loop branching and arithmetic in 10M/s eval path |
 | SEE | `find_least_valuable_attacker()` | Reworked attacker selection to use direct color-specific piece enums, reused slider attack rays for bishop/rook/queen checks, and skipped expensive slider generation when relevant piece sets are empty. | Reduced redundant slider computations and branches in recursive SEE path |
+| SEE | `compute_see()` | Made `piece_value()` `const fn` for compile-time folding; added early-termination heuristic: if capturing trivial material (< 1 pawn) at depth >= 2, return 0 since exchanges won't affect move quality. | Saves recursion overhead in long exchange sequences by avoiding deep recursion for minor material captures |
 
 ## P1: High
 
@@ -44,13 +45,12 @@
 
 | Priority | Module | Function | Call Freq | Impact | Primary Cost | Current Notes |
 |---|---|---|---|---|---|---|
-| 1 | SEE | `compute_see()` | 1M/s | MEDIUM | ~1-10k cycles | Recursive exchange |
-| 2 | Bitboard | `king_attacks()` | 1M/s | MEDIUM | ~1 cycle | Table lookup |
-| 3 | Bitboard | `knight_attacks()` | 1M/s | MEDIUM | ~1 cycle | Table lookup |
-| 4 | Zobrist | `compute_zobrist()` | 1M/s | MEDIUM | ~100-300 cycles | XOR piece keys |
+| 1 | Bitboard | `king_attacks()` | 1M/s | MEDIUM | ~1 cycle | Table lookup |
+| 2 | Bitboard | `knight_attacks()` | 1M/s | MEDIUM | ~1 cycle | Table lookup |
+| 3 | Zobrist | `compute_zobrist()` | 1M/s | MEDIUM | ~100-300 cycles | XOR piece keys |
 
 ---
 
 ## Next Target Recommendation
 
-P2 (MEDIUM) now active. Top remaining win is `compute_see()` recursion cost, followed by low-level 1M/s table lookups and zobrist maintenance work.
+P2 (MEDIUM) active with 3 remaining items. SEE recursive cost now addressed via early-termination heuristic. Top remaining wins are 1M/s table lookups (king_attacks, knight_attacks) and zobrist computation optimization.
