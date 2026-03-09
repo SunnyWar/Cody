@@ -128,7 +128,7 @@ Remaining migration tasks are tracked in the root `TODO.md` document.
 After each commit with version bump:
 
 1. **Build release binary:**
-   ```powershell
+   ```bash
    cargo build --release
    ```
 

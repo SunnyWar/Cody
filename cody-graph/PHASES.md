@@ -94,13 +94,13 @@ def after_phase_complete(state: CodyState):
 ## Running Multi-Phase Orchestration
 
 ### Run All Configured Phases
-```powershell
+```bash
 python .\cody-graph\main.py all
 ```
 This loads phases from `cody-agent/config.json` and executes them in order.
 
 ### Run a Single Phase
-```powershell
+```bash
 # CLI phase names (aliases for internal phase names)
 python .\cody-graph\main.py clippy      # Fix compiler warnings
 python .\cody-graph\main.py refactor    # Code quality improvements  

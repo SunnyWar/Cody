@@ -16,7 +16,7 @@ Diagnostics:     .cody_logs/ (generated)
 
 ### Run the Automated Improvement Agent
 
-```powershell
+```bash
 # From repo root - run all configured phases
 python .\cody-graph\main.py all
 
@@ -37,7 +37,7 @@ This will:
 
 ### Build and Test
 
-```powershell
+```bash
 # Build
 cargo build --release
 
@@ -60,7 +60,7 @@ cargo run -p engine
 
 Use this when deciding whether a code change improved playing strength.
 
-```powershell
+```bash
 # 1) Build current candidate
 cargo build --release
 
@@ -92,7 +92,7 @@ Acceptance criteria:
 
 ### Check Diagnostics
 
-```powershell
+```bash
 # List generated logs
 ls .cody_logs/ | tail -10
 
@@ -123,7 +123,7 @@ cat .cody_logs/*_clippy_output.txt | tail -50
 
 ## Environment Setup
 
-```powershell
+```bash
 # Install dependencies
 pip install -U langgraph openai
 
@@ -218,7 +218,7 @@ Other phases (refactoring, performance, etc.) skip clippy checks and use the LLM
 - **unit_tests_docs** - Test coverage and documentation
 
 ### Run Specific Phases
-```powershell
+```bash
 python .\cody-graph\main.py all          # Run all phases
 python .\cody-graph\main.py clippy       # Run only clippy
 python .\cody-graph\main.py performance  # Run only performance
@@ -239,7 +239,7 @@ Every change must pass:
 ## Git Workflow
 
 After successful agent run:
-```powershell
+```bash
 # Changes are automatically validated but NOT committed
 # Review changes
 git diff

@@ -97,7 +97,7 @@ Exception stack traces from patch application errors
 
 ## Running with Diagnostics
 
-```powershell
+```bash
 python .\cody-graph\main.py
 ```
 

@@ -165,7 +165,7 @@ For each iteration:
 
 When running the full orchestration:
 
-```powershell
+```bash
 # Run all phases including performance
 python .\cody-graph\main.py all
 

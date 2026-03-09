@@ -227,7 +227,7 @@ Use `cody-graph/tools/selfplay.py` to decide whether a code change should be acc
 
 Run from repo root (`D:\Cody`):
 
-```powershell
+```bash
 # Build current commit as candidate
 cargo build --release
 
@@ -250,7 +250,7 @@ Pop-Location
 
 If you are already in repo root (`D:\Cody`), use this equivalent command:
 
-```powershell
+```bash
 D:/Cody/.venv/Scripts/python.exe .\cody-graph\tools\selfplay.py --mode strict
 ```
 
