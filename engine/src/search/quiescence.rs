@@ -7,6 +7,7 @@ use bitboard::mov::ChessMove;
 use bitboard::movegen::MoveGenerator;
 use bitboard::movegen::generate_legal_moves_fast;
 use bitboard::movegen::generate_pseudo_captures_fast;
+use bitboard::movegen::is_move_legal_without_making;
 use bitboard::piece::Color;
 use bitboard::piece::Piece;
 use bitboard::piece::PieceKind;
@@ -210,37 +211,24 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
     let mut best = i32::MIN;
     for i in 0..moves.len() {
         let m = moves[i];
-        let (is_legal, child_pos) = {
-            let parent = arena.get_mut(ply);
-            let original_side = parent.position.side_to_move;
-            let undo = parent.position.make_move(&m);
 
-            // In the non-check qsearch branch we start from pseudo-captures,
-            // so verify legality after the real move apply to avoid duplicate work.
-            let is_legal = if !in_check {
-                let mut legal_test = parent.position;
-                legal_test.side_to_move = original_side;
-                !movegen.in_check(&legal_test)
-            } else {
-                true
-            };
-
-            let child_pos = if is_legal {
-                Some(parent.position)
-            } else {
-                None
-            };
-
-            parent.position.unmake_move(&m, &undo);
-            (is_legal, child_pos)
-        };
-
-        if !is_legal {
+        // Fast legality check using bitboard operations without making the move
+        let pos_ref = &arena.get(ply).position;
+        if !in_check && !is_move_legal_without_making(pos_ref, &m) {
             continue;
         }
 
+        // Move is legal - make it and copy to child node
+        let child_pos = {
+            let parent = arena.get_mut(ply);
+            let undo = parent.position.make_move(&m);
+            let child = parent.position;
+            parent.position.unmake_move(&m, &undo);
+            child
+        };
+
         // Copy child position to arena
-        arena.get_mut(ply + 1).position = child_pos.unwrap();
+        arena.get_mut(ply + 1).position = child_pos;
 
         let score = -quiescence_internal(
             movegen,

@@ -23,6 +23,7 @@ pub use knight::generate_pseudo_knight_moves_fast;
 pub use legality::is_in_check;
 pub use legality::is_legal;
 pub use legality::is_legal_fast;
+pub use legality::is_move_legal_without_making;
 pub use pawn::generate_pseudo_pawn_moves;
 pub use pawn::generate_pseudo_pawn_moves_fast;
 pub use sliders::generate_pseudo_bishop_moves;

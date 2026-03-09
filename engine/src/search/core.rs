@@ -12,6 +12,7 @@ use bitboard::mov::ChessMove;
 use bitboard::mov::MoveType;
 use bitboard::movegen::MoveGenerator;
 use bitboard::movegen::generate_pseudo_moves_fast;
+use bitboard::movegen::is_move_legal_without_making;
 use bitboard::piece::Color;
 use bitboard::piece::Piece;
 use bitboard::piece::PieceKind;
@@ -493,19 +494,8 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
             }
         }
         if has_move {
-            let tt_move_is_legal = {
-                let parent = arena.get_mut(ply);
-                let original_side = parent.position.side_to_move;
-                let undo = parent.position.make_move(&e.best_move);
-
-                let mut legal_test = parent.position;
-                legal_test.side_to_move = original_side;
-                let is_legal = !ctx.movegen.in_check(&legal_test);
-
-                parent.position.unmake_move(&e.best_move, &undo);
-                is_legal
-            };
-            if tt_move_is_legal {
+            // Fast legality check using bitboard operations
+            if is_move_legal_without_making(&pos, &e.best_move) {
                 return e.value;
             }
         }
@@ -524,37 +514,23 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 
         let m = moves[move_idx];
 
-        // Use make/unmake approach to avoid copying Position for illegal moves.
-        // This saves ~64 bytes of memcpy per illegal pseudo-legal move.
-        let (is_legal, child_pos) = {
-            let parent = arena.get_mut(ply);
-            let original_side = parent.position.side_to_move;
-            let undo = parent.position.make_move(&m);
-
-            // After make_move, side_to_move has flipped. Check if the opponent
-            // (who just moved) left their own king in check (illegal).
-            let mut legal_test = parent.position;
-            legal_test.side_to_move = original_side;
-            let is_legal = !ctx.movegen.in_check(&legal_test);
-
-            // Save child position if legal, then unmake
-            let child_pos = if is_legal {
-                Some(parent.position)
-            } else {
-                None
-            };
-
-            // Unmake move on parent so we can try next move
-            parent.position.unmake_move(&m, &undo);
-            (is_legal, child_pos)
-        };
-
-        if !is_legal {
+        // Fast legality check using bitboard operations without making the move.
+        // This avoids the expensive make/unmake cycle for illegal moves.
+        if !is_move_legal_without_making(&pos, &m) {
             continue;
         }
 
+        // Move is legal - make it and copy to child node for recursive search
+        let child_pos = {
+            let parent = arena.get_mut(ply);
+            let undo = parent.position.make_move(&m);
+            let child = parent.position;
+            parent.position.unmake_move(&m, &undo);
+            child
+        };
+
         // Copy child position to arena
-        arena.get_mut(ply + 1).position = child_pos.unwrap();
+        arena.get_mut(ply + 1).position = child_pos;
 
         let move_index = legal_move_count;
         legal_move_count += 1;
