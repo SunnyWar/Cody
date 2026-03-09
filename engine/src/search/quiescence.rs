@@ -162,8 +162,10 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
 
                 // Check if this move gives check
                 let mut temp = pos;
-                pos.apply_move_into(&m, &mut temp);
-                if movegen.in_check(&temp) {
+                let undo = temp.make_move(&m);
+                let gives_check = movegen.in_check(&temp);
+                temp.unmake_move(&m, &undo);
+                if gives_check {
                     filtered.push(m);
                 }
             }
@@ -208,20 +210,37 @@ fn quiescence_internal<M: MoveGenerator, E: Evaluator>(
     let mut best = i32::MIN;
     for i in 0..moves.len() {
         let m = moves[i];
-        {
-            let (parent, child) = arena.get_pair_mut(ply, ply + 1);
-            parent.position.apply_move_into(&m, &mut child.position);
+        let (is_legal, child_pos) = {
+            let parent = arena.get_mut(ply);
+            let original_side = parent.position.side_to_move;
+            let undo = parent.position.make_move(&m);
 
             // In the non-check qsearch branch we start from pseudo-captures,
             // so verify legality after the real move apply to avoid duplicate work.
-            if !in_check {
-                let mut legal_test = child.position;
-                legal_test.side_to_move = parent.position.side_to_move;
-                if movegen.in_check(&legal_test) {
-                    continue;
-                }
-            }
+            let is_legal = if !in_check {
+                let mut legal_test = parent.position;
+                legal_test.side_to_move = original_side;
+                !movegen.in_check(&legal_test)
+            } else {
+                true
+            };
+
+            let child_pos = if is_legal {
+                Some(parent.position)
+            } else {
+                None
+            };
+
+            parent.position.unmake_move(&m, &undo);
+            (is_legal, child_pos)
+        };
+
+        if !is_legal {
+            continue;
         }
+
+        // Copy child position to arena
+        arena.get_mut(ply + 1).position = child_pos.unwrap();
 
         let score = -quiescence_internal(
             movegen,

@@ -15,8 +15,7 @@ impl Iterator for SquaresIter {
 
             // SAFETY: trailing_zeros_nonzero returns 0..=63 for nonzero input,
             // and Square is repr(u8) over exactly that range.
-            let sq = unsafe { core::mem::transmute::<u8, Square>(tz as u8) };
-            Some(sq)
+            Some(unsafe { core::mem::transmute::<u8, Square>(tz as u8) })
         }
     }
 }

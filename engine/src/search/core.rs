@@ -216,16 +216,6 @@ fn mvv_lva_score(pos: &bitboard::position::Position, mv: &ChessMove) -> i32 {
     victim_value * 100 - attacker_value
 }
 
-fn mover_left_in_check<M: MoveGenerator>(
-    movegen: &M,
-    parent: &bitboard::position::Position,
-    child: &bitboard::position::Position,
-) -> bool {
-    let mut legal_test = *child;
-    legal_test.side_to_move = parent.side_to_move;
-    movegen.in_check(&legal_test)
-}
-
 pub fn print_uci_info(
     depth: usize,
     seldepth: usize,
@@ -503,16 +493,18 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
             }
         }
         if has_move {
-            let mut tt_move_is_legal = false;
-            {
-                let (parent, child) = arena.get_pair_mut(ply, ply + 1);
-                parent
-                    .position
-                    .apply_move_into(&e.best_move, &mut child.position);
-                if !mover_left_in_check(ctx.movegen, &parent.position, &child.position) {
-                    tt_move_is_legal = true;
-                }
-            }
+            let tt_move_is_legal = {
+                let parent = arena.get_mut(ply);
+                let original_side = parent.position.side_to_move;
+                let undo = parent.position.make_move(&e.best_move);
+
+                let mut legal_test = parent.position;
+                legal_test.side_to_move = original_side;
+                let is_legal = !ctx.movegen.in_check(&legal_test);
+
+                parent.position.unmake_move(&e.best_move, &undo);
+                is_legal
+            };
             if tt_move_is_legal {
                 return e.value;
             }
@@ -531,14 +523,38 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         }
 
         let m = moves[move_idx];
-        {
-            let (parent, child) = arena.get_pair_mut(ply, ply + 1);
-            parent.position.apply_move_into(&m, &mut child.position);
 
-            if mover_left_in_check(ctx.movegen, &parent.position, &child.position) {
-                continue;
-            }
+        // Use make/unmake approach to avoid copying Position for illegal moves.
+        // This saves ~64 bytes of memcpy per illegal pseudo-legal move.
+        let (is_legal, child_pos) = {
+            let parent = arena.get_mut(ply);
+            let original_side = parent.position.side_to_move;
+            let undo = parent.position.make_move(&m);
+
+            // After make_move, side_to_move has flipped. Check if the opponent
+            // (who just moved) left their own king in check (illegal).
+            let mut legal_test = parent.position;
+            legal_test.side_to_move = original_side;
+            let is_legal = !ctx.movegen.in_check(&legal_test);
+
+            // Save child position if legal, then unmake
+            let child_pos = if is_legal {
+                Some(parent.position)
+            } else {
+                None
+            };
+
+            // Unmake move on parent so we can try next move
+            parent.position.unmake_move(&m, &undo);
+            (is_legal, child_pos)
+        };
+
+        if !is_legal {
+            continue;
         }
+
+        // Copy child position to arena
+        arena.get_mut(ply + 1).position = child_pos.unwrap();
 
         let move_index = legal_move_count;
         legal_move_count += 1;

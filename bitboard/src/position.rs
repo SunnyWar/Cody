@@ -24,6 +24,19 @@ pub struct MoveGenContext {
     pub occupancy: BitBoardMask,
 }
 
+/// Undo information for unmake_move. Stores only the minimal state needed
+/// to reverse a move, avoiding the need to copy the entire Position.
+/// Size: ~16 bytes vs ~64+ bytes for full Position copy.
+#[derive(Clone, Copy, Debug)]
+pub struct MoveUndo {
+    pub captured_piece: Piece,
+    pub captured_square: Square,
+    pub prev_castling_rights: CastlingRights,
+    pub prev_ep_square: Option<Square>,
+    pub prev_halfmove_clock: u8,
+    pub prev_fullmove_number: u16,
+}
+
 #[derive(Clone, Copy, Debug)]
 #[repr(align(64))]
 pub struct Position {
@@ -361,6 +374,208 @@ impl Position {
 
         // Switch side to move
         out.side_to_move = them;
+    }
+
+    /// Make a move in-place, mutating the current position.
+    /// Returns undo information that can be used to unmake the move.
+    /// This avoids copying the entire Position struct (~64 bytes).
+    pub fn make_move(&mut self, mv: &ChessMove) -> MoveUndo {
+        let us = self.side_to_move;
+        let them = us.opposite();
+
+        // Save state for undo
+        let mut undo = MoveUndo {
+            captured_piece: Piece::None,
+            captured_square: match mv.move_type {
+                MoveType::EnPassant => match us {
+                    Color::White => mv.to.backward(1).expect("Invalid EP capture square"),
+                    Color::Black => mv.to.forward(1).expect("Invalid EP capture square"),
+                },
+                _ => mv.to,
+            },
+            prev_castling_rights: self.castling_rights,
+            prev_ep_square: self.ep_square,
+            prev_halfmove_clock: self.halfmove_clock,
+            prev_fullmove_number: self.fullmove_number,
+        };
+
+        let from_mask = BitBoardMask::from_square(mv.from);
+        let moving_piece = self.piece_on[mv.from.index()];
+        debug_assert!(moving_piece != Piece::None, "No piece on from-square");
+
+        // Remove moving piece from source
+        *self.pieces.get_mut(moving_piece) &= !from_mask;
+        self.piece_on[mv.from.index()] = Piece::None;
+
+        // Handle captures
+        let target_piece = self.piece_on[mv.to.index()];
+        let is_promo_capture = matches!(mv.move_type, MoveType::Promotion(_))
+            && target_piece != Piece::None
+            && target_piece.color() == them;
+
+        if matches!(mv.move_type, MoveType::Capture | MoveType::EnPassant) || is_promo_capture {
+            let captured_piece = self.piece_on[undo.captured_square.index()];
+            if captured_piece != Piece::None {
+                undo.captured_piece = captured_piece;
+                let cap_mask = BitBoardMask::from_square(undo.captured_square);
+                *self.pieces.get_mut(captured_piece) &= !cap_mask;
+                self.piece_on[undo.captured_square.index()] = Piece::None;
+            }
+        }
+
+        // Handle castling rook moves
+        match mv.move_type {
+            MoveType::CastleKingside => {
+                let (rook_from, rook_to) = match us {
+                    Color::White => (Square::H1, Square::F1),
+                    Color::Black => (Square::H8, Square::F8),
+                };
+                let rook = Piece::from_parts(us, Some(PieceKind::Rook));
+                let rbb = self.pieces.get_mut(rook);
+                *rbb &= !BitBoardMask::from_square(rook_from);
+                *rbb |= BitBoardMask::from_square(rook_to);
+                self.piece_on[rook_from.index()] = Piece::None;
+                self.piece_on[rook_to.index()] = rook;
+            }
+            MoveType::CastleQueenside => {
+                let (rook_from, rook_to) = match us {
+                    Color::White => (Square::A1, Square::D1),
+                    Color::Black => (Square::A8, Square::D8),
+                };
+                let rook = Piece::from_parts(us, Some(PieceKind::Rook));
+                let rbb = self.pieces.get_mut(rook);
+                *rbb &= !BitBoardMask::from_square(rook_from);
+                *rbb |= BitBoardMask::from_square(rook_to);
+                self.piece_on[rook_from.index()] = Piece::None;
+                self.piece_on[rook_to.index()] = rook;
+            }
+            _ => {}
+        }
+
+        // Place moving/promoted piece on destination
+        let to_mask = BitBoardMask::from_square(mv.to);
+        let final_piece = match mv.move_type {
+            MoveType::Promotion(kind) => Piece::from_parts(us, Some(kind)),
+            _ => moving_piece,
+        };
+        *self.pieces.get_mut(final_piece) |= to_mask;
+        self.piece_on[mv.to.index()] = final_piece;
+
+        // Update occupancy
+        let white_occupancy = or_color(&self.pieces, Color::White);
+        let black_occupancy = or_color(&self.pieces, Color::Black);
+        self.occupancy[OccupancyKind::White] = white_occupancy;
+        self.occupancy[OccupancyKind::Black] = black_occupancy;
+        self.occupancy[OccupancyKind::Both] = white_occupancy | black_occupancy;
+
+        // Update castling rights
+        self.update_castling_rights(mv.from, mv.to);
+
+        // Update en passant square
+        self.ep_square = if is_pawn_double_push(moving_piece, mv.from, mv.to, us) {
+            match us {
+                Color::White => mv.from.forward(1),
+                Color::Black => mv.from.backward(1),
+            }
+        } else {
+            None
+        };
+
+        // Update halfmove clock
+        let was_capture =
+            matches!(mv.move_type, MoveType::Capture | MoveType::EnPassant) || is_promo_capture;
+        let was_pawn_move = moving_piece.kind() == PieceKind::Pawn;
+        self.halfmove_clock = if was_capture || was_pawn_move {
+            0
+        } else {
+            self.halfmove_clock.saturating_add(1)
+        };
+
+        // Update fullmove number
+        if us == Color::Black {
+            self.fullmove_number = self.fullmove_number.saturating_add(1);
+        }
+
+        // Switch side to move
+        self.side_to_move = them;
+
+        undo
+    }
+
+    /// Unmake a move using the undo information returned by make_move.
+    /// Restores the position to its state before the move was made.
+    pub fn unmake_move(&mut self, mv: &ChessMove, undo: &MoveUndo) {
+        let them = self.side_to_move; // Current side is the one that just moved
+        let us = them.opposite(); // Restore to original side
+
+        // Restore simple state
+        self.side_to_move = us;
+        self.castling_rights = undo.prev_castling_rights;
+        self.ep_square = undo.prev_ep_square;
+        self.halfmove_clock = undo.prev_halfmove_clock;
+        self.fullmove_number = undo.prev_fullmove_number;
+
+        // Determine the piece that needs to be moved back
+        let final_piece = self.piece_on[mv.to.index()];
+        let to_mask = BitBoardMask::from_square(mv.to);
+
+        // Remove piece from destination
+        *self.pieces.get_mut(final_piece) &= !to_mask;
+        self.piece_on[mv.to.index()] = Piece::None;
+
+        // Determine original moving piece (could differ if promotion)
+        let moving_piece = match mv.move_type {
+            MoveType::Promotion(_) => Piece::from_parts(us, Some(PieceKind::Pawn)),
+            _ => final_piece,
+        };
+
+        // Restore moving piece to source
+        let from_mask = BitBoardMask::from_square(mv.from);
+        *self.pieces.get_mut(moving_piece) |= from_mask;
+        self.piece_on[mv.from.index()] = moving_piece;
+
+        // Restore captured piece if any
+        if undo.captured_piece != Piece::None {
+            let cap_mask = BitBoardMask::from_square(undo.captured_square);
+            *self.pieces.get_mut(undo.captured_piece) |= cap_mask;
+            self.piece_on[undo.captured_square.index()] = undo.captured_piece;
+        }
+
+        // Undo castling rook moves
+        match mv.move_type {
+            MoveType::CastleKingside => {
+                let (rook_from, rook_to) = match us {
+                    Color::White => (Square::H1, Square::F1),
+                    Color::Black => (Square::H8, Square::F8),
+                };
+                let rook = Piece::from_parts(us, Some(PieceKind::Rook));
+                let rbb = self.pieces.get_mut(rook);
+                *rbb |= BitBoardMask::from_square(rook_from);
+                *rbb &= !BitBoardMask::from_square(rook_to);
+                self.piece_on[rook_from.index()] = rook;
+                self.piece_on[rook_to.index()] = Piece::None;
+            }
+            MoveType::CastleQueenside => {
+                let (rook_from, rook_to) = match us {
+                    Color::White => (Square::A1, Square::D1),
+                    Color::Black => (Square::A8, Square::D8),
+                };
+                let rook = Piece::from_parts(us, Some(PieceKind::Rook));
+                let rbb = self.pieces.get_mut(rook);
+                *rbb |= BitBoardMask::from_square(rook_from);
+                *rbb &= !BitBoardMask::from_square(rook_to);
+                self.piece_on[rook_from.index()] = rook;
+                self.piece_on[rook_to.index()] = Piece::None;
+            }
+            _ => {}
+        }
+
+        // Update occupancy
+        let white_occupancy = or_color(&self.pieces, Color::White);
+        let black_occupancy = or_color(&self.pieces, Color::Black);
+        self.occupancy[OccupancyKind::White] = white_occupancy;
+        self.occupancy[OccupancyKind::Black] = black_occupancy;
+        self.occupancy[OccupancyKind::Both] = white_occupancy | black_occupancy;
     }
 
     const fn update_castling_rights(&mut self, from: Square, to: Square) {

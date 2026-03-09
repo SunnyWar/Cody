@@ -296,10 +296,14 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                                 let local_arena = arena_opt.as_mut().unwrap();
 
                                 local_arena.get_mut(0).position.copy_from(root);
-                                {
-                                    let (parent, child) = local_arena.get_pair_mut(0, 1);
-                                    parent.position.apply_move_into(&m, &mut child.position);
-                                }
+                                let child_pos = {
+                                    let parent = local_arena.get_mut(0);
+                                    let undo = parent.position.make_move(&m);
+                                    let child = parent.position;
+                                    parent.position.unmake_move(&m, &undo);
+                                    child
+                                };
+                                local_arena.get_mut(1).position = child_pos;
 
                                 let mut repetition_history = [0u64; MAX_REPETITION_HISTORY];
                                 repetition_history[0] = root.zobrist_hash();
@@ -465,7 +469,6 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         crate::search::tablebase::set_syzygy_path(path)
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn search_root_serial_window(
         &mut self,
         root: &Position,
@@ -506,10 +509,14 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                 break;
             }
 
-            {
-                let (parent, child) = self.arena.get_pair_mut(0, 1);
-                parent.position.apply_move_into(&m, &mut child.position);
-            }
+            let child_pos = {
+                let parent = self.arena.get_mut(0);
+                let undo = parent.position.make_move(&m);
+                let child = parent.position;
+                parent.position.unmake_move(&m, &undo);
+                child
+            };
+            self.arena.get_mut(1).position = child_pos;
 
             let mut repetition_history = [0u64; MAX_REPETITION_HISTORY];
             repetition_history[0] = root.zobrist_hash();
