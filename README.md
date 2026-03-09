@@ -284,24 +284,14 @@ If `W <= L`, treat the change as not yet proven and iterate.
 
 Cody currently plays at about 2100, based on playing against weak engines: Simplex, Rebel and Minimal.
 
-Engine          Elo Gain
-------          --- ----
-Simplex         2373  508
-Cody-2.0.0.0    2106  241
-Rebel           1992  127
-Minimal         1978  113
-Cody-1.0.0.0    1865    0
-
-
 **Version ELO increases**
-
-| Version      | EloGain |
-|--------------|---------|
-| cody-v1.0.0  | 0       |
-| cody-v1.1.2  | +50.0   |
-| cody-v1.4.3  | +188.3  |
-| cody-v1.9.3  | +206.0  |
-
+| Engine          | Elo Gain |
+|-----------------|----------| 
+| Simplex         |    2373  |
+| **Cody-2.0.0.0**    |    **2106**  |
+| Rebel           |    1992  |
+| Minimal         |    1978  |
+| **Cody-1.0.0.0**    |    **1865**  |
 
 ## 🚀 Development Status
 
