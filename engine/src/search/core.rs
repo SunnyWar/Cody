@@ -16,6 +16,7 @@ use bitboard::movegen::is_move_legal_without_making;
 use bitboard::piece::Color;
 use bitboard::piece::Piece;
 use bitboard::piece::PieceKind;
+use std::cell::Cell;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::atomic::AtomicU64;
@@ -25,6 +26,43 @@ use std::sync::atomic::Ordering;
 pub static NODE_COUNT: AtomicU64 = AtomicU64::new(0);
 pub static SELDEPTH_MAX: AtomicUsize = AtomicUsize::new(0);
 pub static TB_HITS: AtomicU64 = AtomicU64::new(0);
+const NODE_COUNT_FLUSH_BATCH: u64 = 1024;
+
+thread_local! {
+    static LOCAL_NODE_COUNT: Cell<u64> = const { Cell::new(0) };
+}
+
+pub fn reset_node_count() {
+    NODE_COUNT.store(0, Ordering::Relaxed);
+    LOCAL_NODE_COUNT.with(|pending| pending.set(0));
+}
+
+pub fn flush_local_node_count() {
+    LOCAL_NODE_COUNT.with(|pending| {
+        let local = pending.get();
+        if local > 0 {
+            NODE_COUNT.fetch_add(local, Ordering::Relaxed);
+            pending.set(0);
+        }
+    });
+}
+
+pub fn increment_node_count() {
+    LOCAL_NODE_COUNT.with(|pending| {
+        let next = pending.get() + 1;
+        if next >= NODE_COUNT_FLUSH_BATCH {
+            NODE_COUNT.fetch_add(next, Ordering::Relaxed);
+            pending.set(0);
+        } else {
+            pending.set(next);
+        }
+    });
+}
+
+pub fn load_node_count() -> u64 {
+    flush_local_node_count();
+    NODE_COUNT.load(Ordering::Relaxed)
+}
 
 pub fn reset_seldepth(initial_ply: usize) {
     SELDEPTH_MAX.store(initial_ply, Ordering::Relaxed);
@@ -225,7 +263,11 @@ pub fn print_uci_info(
     elapsed_ms: u64,
     hashfull: u16,
 ) {
-    let nodes = NODE_COUNT.load(Ordering::Relaxed);
+    if crate::SUPPRESS_UCI_INFO.load(Ordering::Relaxed) {
+        return;
+    }
+
+    let nodes = load_node_count();
     let tbhits = TB_HITS.load(Ordering::Relaxed);
     let nps = elapsed_ms
         .checked_div(1)
@@ -306,7 +348,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     window: &mut SearchWindow,
     rep_state: &mut RepetitionState,
 ) -> i32 {
-    NODE_COUNT.fetch_add(1, Ordering::Relaxed);
+    increment_node_count();
     update_seldepth(ply);
     let original_alpha = window.alpha;
     // Check stop flag and time budget at each node
@@ -381,10 +423,11 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     let pos_ref = arena.get(ply).position;
     let in_check = ctx.movegen.in_check(&pos_ref);
     let static_eval = evaluate_for_side_to_move(ctx.evaluator, &pos_ref);
+    let is_pv_node = window.beta - window.alpha > 1;
 
     // Reverse Futility Pruning (RFP): if we're way above beta at shallow depths,
     // prune immediately without searching. Don't use when in check or at root.
-    if ply > 0 && !in_check && remaining <= 6 && remaining > 0 {
+    if ply > 0 && !in_check && !is_pv_node && remaining <= 6 && remaining > 0 {
         let rfp_margin = RFP_MARGIN_BASE + (remaining as i32 * RFP_MARGIN_PER_DEPTH);
         if static_eval >= window.beta + rfp_margin {
             return static_eval;
@@ -396,7 +439,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     // qsearch collision), (c) not root, (d) static eval is already close to
     // beta so a fail-high is plausible.
     let can_try_null = static_eval >= window.beta - NULL_MOVE_STATIC_MARGIN_CP;
-    if ply > 0 && remaining > 2 && !in_check && can_try_null {
+    if ply > 0 && remaining > 2 && !in_check && !is_pv_node && can_try_null {
         // Make a null move (pass)
         let mut child_pos = pos_ref;
         child_pos.side_to_move = pos_ref.side_to_move.opposite();
@@ -542,7 +585,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 
         // Late Move Pruning (LMP): at shallow depths, skip quiet moves entirely
         // beyond a certain count.
-        if !in_check && !is_tactical && remaining <= 4 {
+        if !in_check && !is_pv_node && !is_tactical && remaining <= 4 {
             let lmp_threshold = match remaining {
                 1 => 4,
                 2 => 8,
@@ -556,7 +599,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         }
 
         // Extended Futility Pruning: skip quiet moves if static eval + margin < alpha
-        if !in_check && !is_tactical && move_index > 0 {
+        if !in_check && !is_pv_node && !is_tactical && move_index > 0 {
             let can_prune = match remaining {
                 1 => static_eval + FUTILITY_MARGIN_D1 < window.alpha,
                 2 => static_eval + FUTILITY_MARGIN_D2 < window.alpha,
@@ -595,7 +638,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         let mut do_full_depth_search = true;
 
         // Very aggressive LMR: start at move 1 for quiet moves
-        if move_index > 0 && remaining >= 2 && !is_tactical && !in_check {
+        if move_index > 0 && remaining >= 2 && !is_tactical && !in_check && !is_pv_node {
             // Aggressive LMR formula
             let reduction = ((move_index as f64).ln() * (remaining as f64).ln() * 0.7) as usize;
             if reduction > 0 {

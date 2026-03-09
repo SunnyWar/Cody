@@ -17,3 +17,5 @@ pub use crate::test_data::TestCase;
 use std::sync::atomic::AtomicBool;
 // Removed unused Ordering import
 pub static VERBOSE: AtomicBool = AtomicBool::new(false);
+// Temporarily suppress per-depth UCI info during synthetic benchmarks.
+pub static SUPPRESS_UCI_INFO: AtomicBool = AtomicBool::new(false);

@@ -4,13 +4,14 @@ use crate::core::arena::Arena;
 use crate::search::core::INF;
 use crate::search::core::MATE_SCORE;
 use crate::search::core::MAX_REPETITION_HISTORY;
-use crate::search::core::NODE_COUNT;
 use crate::search::core::RepetitionState;
 use crate::search::core::SearchContext;
 use crate::search::core::SearchHeuristics;
 use crate::search::core::SearchWindow;
 use crate::search::core::current_seldepth;
+use crate::search::core::flush_local_node_count;
 use crate::search::core::pick_best_move;
+use crate::search::core::reset_node_count;
 use crate::search::core::reset_seldepth;
 use crate::search::core::search_node_with_arena;
 use crate::search::evaluator::Evaluator;
@@ -31,7 +32,7 @@ const ASPIRATION_START_DELTA_CP: i32 = 20;
 const ASPIRATION_MAX_RESEARCHES: usize = 3;
 const ASPIRATION_MIN_DEPTH: usize = 3;
 const ASPIRATION_MATE_GUARD_CP: i32 = 500;
-const PARALLEL_MIN_DEPTH: usize = 12; // Only use threading for deep searches
+const PARALLEL_MIN_DEPTH: usize = 6; // Enable parallel root search for practical bench depths
 
 pub struct Engine<
     M: MoveGenerator + Clone + Send + Sync + 'static,
@@ -349,6 +350,9 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                                         },
                                     );
 
+                                    // Publish this worker's batched node count.
+                                    flush_local_node_count();
+
                                     // Update shared alpha if we found a better move
                                     loop {
                                         let current = shared_alpha.load(Ordering::Relaxed);
@@ -460,7 +464,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
     }
 
     pub fn clear_state(&mut self) {
-        NODE_COUNT.store(0, Ordering::Relaxed);
+        reset_node_count();
         crate::search::core::TB_HITS.store(0, Ordering::Relaxed);
         self.tt.write().unwrap().clear();
     }

@@ -1,8 +1,10 @@
+use crate::SUPPRESS_UCI_INFO;
 use crate::VERBOSE;
 use crate::api::golimits::GoLimits;
 use crate::search::engine::Engine;
-use crate::search::engine::NODE_COUNT;
 use crate::search::evaluator::MaterialEvaluator;
+use crate::search::load_node_count;
+use crate::search::reset_node_count;
 use crate::test_data::TEST_CASES;
 use crate::test_data::TestCase;
 use bitboard::movegen::SimpleMoveGen;
@@ -379,7 +381,7 @@ impl CodyApi {
         // Use engine's iterative deepening search. We forward the move time limit
         // and a stop flag so the engine can honor them between depths.
         let max_depth = self.limits.depth.unwrap_or(64);
-        NODE_COUNT.store(0, Ordering::Relaxed);
+        reset_node_count();
 
         let time_budget = if self.limits.ponder {
             None
@@ -477,10 +479,28 @@ impl CodyApi {
         limits
     }
 
-    pub fn handle_bench(&mut self, _cmd: &str, out: &mut impl Write) {
-        let depth = 4;
+    fn parse_bench_depth(cmd: &str) -> Option<usize> {
+        let toks: Vec<&str> = cmd.split_whitespace().collect();
+        if toks.len() < 2 {
+            return None;
+        }
+
+        // Support both "bench 8" and "bench depth 8".
+        if toks[1].eq_ignore_ascii_case("depth") {
+            return toks.get(2).and_then(|s| s.parse::<usize>().ok());
+        }
+
+        toks.get(1).and_then(|s| s.parse::<usize>().ok())
+    }
+
+    pub fn handle_bench(&mut self, cmd: &str, out: &mut impl Write) {
+        let depth = Self::parse_bench_depth(cmd).unwrap_or(6);
         let prev_verbose = VERBOSE.load(Ordering::Relaxed);
+        let prev_suppress = SUPPRESS_UCI_INFO.load(Ordering::Relaxed);
         VERBOSE.store(false, Ordering::Relaxed);
+        SUPPRESS_UCI_INFO.store(true, Ordering::Relaxed);
+
+        self.writeln_and_log(out, &format!("Running bench at depth {depth}"));
 
         // Clone into a Vec so we can sort
         let mut cases: Vec<&TestCase> = TEST_CASES.iter().collect();
@@ -504,10 +524,10 @@ impl CodyApi {
             // distort timing or node counts on later positions.
             self.engine.clear_state();
 
-            NODE_COUNT.store(0, Ordering::Relaxed);
+            reset_node_count();
 
             let (bm, _score) = self.engine.search(&pos.position(), depth, None, None);
-            let nodes = NODE_COUNT.load(Ordering::Relaxed);
+            let nodes = load_node_count();
             total_nodes += nodes;
 
             let bm_str = if bm.is_null() {
@@ -535,6 +555,7 @@ impl CodyApi {
         out.flush().unwrap();
 
         VERBOSE.store(prev_verbose, Ordering::Relaxed);
+        SUPPRESS_UCI_INFO.store(prev_suppress, Ordering::Relaxed);
     }
 
     pub fn handle_newgame(&mut self, _out: &mut impl Write) {
