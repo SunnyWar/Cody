@@ -282,12 +282,15 @@ If `W <= L`, treat the change as not yet proven and iterate.
 
 ## 🎯 Playing Strength
 
-Cody currently plays at about 1600, based on playing against weak engines: Simplex and Minimal.
+Cody currently plays at about 2100, based on playing against weak engines: Simplex and Minimal.
 
-Rank Name                          Elo     +/-   Games   Score    Draw
-   0 cody-v1.9.3                   -35     111      20   45.0%   50.0%
-   1 Simplex                       241     206      10   80.0%   40.0%
-   2 Minimal                      -147     135      10   30.0%   60.0%
+Engine         Elo Gain
+------         --- ----
+Simplex       2373  432
+Cody 2.0.0    2154  213
+Minimal       2057  116
+Cody 1.0.0    1941    0
+
 
 **Version ELO increases**
 
