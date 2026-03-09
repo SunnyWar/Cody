@@ -753,7 +753,12 @@ fn evaluate_bare_king_endgame(pos: &Position) -> i32 {
     }
     let mobility_bonus = (8 - defender_mobility) * 18;
 
-    let total_bonus = edge_bonus + proximity_bonus + mobility_bonus;
+    let mut total_bonus = edge_bonus + proximity_bonus + mobility_bonus;
+
+    // KRK-specific guidance: in K+R vs K, static material alone is often not
+    // enough to avoid rook shuffling. Reward practical mating progress:
+    // checking patterns, rook cutoffs, and king support near the defender.
+    total_bonus += evaluate_krk_progress(pos, attacking_color, defending_color, def_sq, att_sq);
 
     // Return from white's perspective
     if attacking_color == Color::White {
@@ -761,4 +766,100 @@ fn evaluate_bare_king_endgame(pos: &Position) -> i32 {
     } else {
         -total_bonus
     }
+}
+
+fn evaluate_krk_progress(
+    pos: &Position,
+    attacking_color: Color,
+    defending_color: Color,
+    def_sq: bitboard::square::Square,
+    att_sq: bitboard::square::Square,
+) -> i32 {
+    let attacker_rooks = pos
+        .pieces
+        .get(Piece::from_parts(attacking_color, Some(PieceKind::Rook)))
+        .count() as i32;
+    let attacker_queens = pos
+        .pieces
+        .get(Piece::from_parts(attacking_color, Some(PieceKind::Queen)))
+        .count() as i32;
+    let attacker_minors = pos
+        .pieces
+        .get(Piece::from_parts(attacking_color, Some(PieceKind::Knight)))
+        .count() as i32
+        + pos
+            .pieces
+            .get(Piece::from_parts(attacking_color, Some(PieceKind::Bishop)))
+            .count() as i32;
+    let attacker_pawns = pos
+        .pieces
+        .get(Piece::from_parts(attacking_color, Some(PieceKind::Pawn)))
+        .count() as i32;
+
+    // Restrict to pure KRK: king + single rook vs lone king.
+    if attacker_rooks != 1 || attacker_queens != 0 || attacker_minors != 0 || attacker_pawns != 0 {
+        return 0;
+    }
+
+    let rook_sq = match pos
+        .pieces
+        .get(Piece::from_parts(attacking_color, Some(PieceKind::Rook)))
+        .first_square()
+    {
+        Some(sq) => sq,
+        None => return 0,
+    };
+
+    let board_state = pos.to_board_state();
+    let mut bonus = 0i32;
+
+    // Immediate pressure is good in KRK.
+    if is_square_attacked(def_sq, attacking_color, &board_state) {
+        bonus += 100;
+    }
+
+    // Encourage rook placements that cut the defending king along rank/file.
+    let rook_file = rook_sq.file() as i32;
+    let rook_rank = rook_sq.rank() as i32;
+    let def_file = def_sq.file() as i32;
+    let def_rank = def_sq.rank() as i32;
+
+    if rook_file != def_file {
+        let allowed_files = if def_file > rook_file {
+            7 - rook_file
+        } else {
+            rook_file
+        };
+        bonus += (7 - allowed_files) * 22;
+    }
+
+    if rook_rank != def_rank {
+        let allowed_ranks = if def_rank > rook_rank {
+            7 - rook_rank
+        } else {
+            rook_rank
+        };
+        bonus += (7 - allowed_ranks) * 22;
+    }
+
+    // Bringing the king close is mandatory to complete mate.
+    let king_file_gap = (att_sq.file() as i32 - def_file).abs();
+    let king_rank_gap = (att_sq.rank() as i32 - def_rank).abs();
+    let king_chebyshev = king_file_gap.max(king_rank_gap);
+    bonus += (7 - king_chebyshev) * 28;
+
+    // Strongly reward cornering in KRK (corners are actual mating nets).
+    let edge_file = def_file.min(7 - def_file);
+    let edge_rank = def_rank.min(7 - def_rank);
+    let corner_distance = edge_file + edge_rank;
+    bonus += (6 - corner_distance) * 24;
+
+    // Tiny tempo nudge: side with the move in KRK should keep initiative.
+    if pos.side_to_move == attacking_color {
+        bonus += 8;
+    } else if pos.side_to_move == defending_color {
+        bonus -= 8;
+    }
+
+    bonus
 }
