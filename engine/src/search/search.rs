@@ -103,13 +103,18 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         )));
     }
 
-    /// Iterative deepening search. max_depth is the maximum search depth to
+    /// Iterative deepening search. `max_depth` is the maximum search depth to
     /// perform. Optionally accepts a time budget in milliseconds and a stop
     /// flag reference. If the time budget is provided the search will stop
     /// after completing the last fully finished depth that doesn't exceed
-    /// the budget. The stop flag (AtomicBool) can be used by the caller to
+    /// the budget. The stop flag (`AtomicBool`) can be used by the caller to
     /// request an early stop; if provided the search will check it
     /// between completed depths.
+    ///
+    /// # Panics
+    ///
+    /// Panics if parallel search is enabled but the thread pool is not
+    /// initialized.
     pub fn search(
         &mut self,
         root: &Position,
@@ -425,12 +430,13 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             // Completed this depth successfully; compute elapsed and print UCI info.
             last_completed_move = best_move;
             last_completed_score = best_score;
+            #[allow(clippy::cast_possible_truncation)]
             let elapsed = start.elapsed().as_millis() as u64;
             let pv_str = if crate::VERBOSE.load(Ordering::Relaxed) && !last_completed_move.is_null()
             {
                 last_completed_move.to_string()
             } else {
-                "".to_string()
+                String::new()
             };
             let seldepth = current_seldepth().max(d);
             let hashfull = self.tt.read().unwrap().hashfull_per_mille();
@@ -463,6 +469,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
     fn probe_for_best_move(&mut self, d: usize, moves: &mut MoveList) {
         let key = self.arena.get(0).position.zobrist_hash();
         let tt_guard = self.tt.read().unwrap();
+        #[allow(clippy::cast_possible_truncation)]
         if let Some(e) = tt_guard.probe(key, d as i8, -INF, INF) {
             let bmove = e.best_move;
             if bmove.is_null() {
@@ -481,19 +488,30 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             #[cfg(debug_assertions)]
             if crate::VERBOSE.load(Ordering::Relaxed) {
                 eprintln!(
-                    "[debug] TT best move not found in root move list: move={} key={}",
-                    bmove, key
+                    "[debug] TT best move not found in root move list: move={bmove} key={key}"
                 );
             }
         }
     }
 
+    /// Clear all search state including node counts, tablebase hits, and
+    /// transposition table.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the transposition table lock is poisoned.
     pub fn clear_state(&mut self) {
         reset_node_count();
         crate::search::core::TB_HITS.store(0, Ordering::Relaxed);
         self.tt.write().unwrap().clear();
     }
 
+    /// Set the path to Syzygy tablebase files.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the tablebase path is invalid or cannot be
+    /// initialized.
     pub fn set_tablebase_path(&mut self, path: &str) -> Result<(), String> {
         crate::search::tablebase::set_syzygy_path(path)
     }
@@ -522,6 +540,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             let m = *moves.get(i).unwrap();
             // Check stop flag and time budget before each root move.
             let now = Instant::now();
+            #[allow(clippy::cast_possible_truncation)]
             let elapsed = now.duration_since(*params.start).as_millis() as u64;
             if let Some(mt) = params.time_budget_ms
                 && elapsed >= mt

@@ -44,12 +44,14 @@ impl TranspositionTable {
     }
 
     pub fn clear(&mut self) {
-        for e in self.entries.iter_mut() {
+        for e in &mut self.entries {
             *e = TTEntry::default();
         }
     }
 
+    #[must_use]
     pub fn probe(&self, key: u64, depth: i8, alpha: i32, beta: i32) -> Option<TTEntry> {
+        #[allow(clippy::cast_possible_truncation)]
         let idx = (key as usize) & self.mask;
         let e = self.entries[idx];
 
@@ -75,6 +77,7 @@ impl TranspositionTable {
     }
 
     pub fn store(&mut self, key: u64, value: i32, depth: i8, flag: TTFlag, best_move: ChessMove) {
+        #[allow(clippy::cast_possible_truncation)]
         let idx = (key as usize) & self.mask;
         let e = &mut self.entries[idx];
         // Replacement: prefer deeper entries
@@ -93,6 +96,7 @@ impl TranspositionTable {
     ///
     /// We sample up to the first 1000 entries to keep this cheap enough for
     /// periodic info reporting.
+    #[must_use]
     pub fn hashfull_per_mille(&self) -> u16 {
         let sample_size = self.entries.len().min(1000);
         if sample_size == 0 {
@@ -106,7 +110,9 @@ impl TranspositionTable {
             .filter(|e| e.key != 0)
             .count();
 
-        ((used * 1000) / sample_size) as u16
+        #[allow(clippy::cast_possible_truncation)]
+        let result = ((used * 1000) / sample_size) as u16;
+        result
     }
 }
 
