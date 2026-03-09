@@ -735,7 +735,7 @@ fn evaluate_bare_king_endgame(pos: &Position) -> i32 {
 
     // King proximity: reward reducing distance between kings
     let king_distance =
-        ((def_file - att_sq.file() as i32).abs() + (def_rank - att_sq.rank() as i32).abs()) as i32;
+        ((def_file - att_sq.file() as i32).abs() + (def_rank - att_sq.rank() as i32).abs());
     let proximity_bonus = (14 - king_distance) * 10; // Closer kings = better
 
     // Penalize lone-king mobility: fewer safe king moves means closer to mate.
