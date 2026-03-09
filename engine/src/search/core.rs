@@ -5,6 +5,7 @@ use crate::core::tt::TranspositionTable;
 use crate::search::evaluator::Evaluator;
 use crate::search::evaluator::evaluate_for_side_to_move;
 use crate::search::quiescence::quiescence_with_arena;
+use crate::search::see::compute_see;
 use crate::util;
 use bitboard::MoveList;
 use bitboard::mov::ChessMove;
@@ -41,7 +42,14 @@ pub fn current_seldepth() -> usize {
 pub const MATE_SCORE: i32 = 30_000;
 // Large infinity value for alpha-beta bounds
 pub const INF: i32 = 1_000_000_000;
-const NULL_MOVE_STATIC_MARGIN_CP: i32 = 120;
+const NULL_MOVE_STATIC_MARGIN_CP: i32 = 100;
+// Reverse futility pruning: margins for different depths
+const RFP_MARGIN_BASE: i32 = 70;
+const RFP_MARGIN_PER_DEPTH: i32 = 80;
+// Futility pruning margins at different depths
+const FUTILITY_MARGIN_D1: i32 = 250;
+const FUTILITY_MARGIN_D2: i32 = 500;
+const FUTILITY_MARGIN_D3: i32 = 800;
 const MAX_SEARCH_PLY: usize = 128;
 pub const MAX_REPETITION_HISTORY: usize = MAX_SEARCH_PLY + 4;
 
@@ -312,8 +320,8 @@ pub fn print_uci_info(
         )
     } else {
         format!(
-            "info depth {} seldepth {} multipv 1 score cp {} nodes {} nps {} hashfull {} tbhits {} \
-             time {} pv {}",
+            "info depth {} seldepth {} multipv 1 score cp {} nodes {} nps {} hashfull {} tbhits \
+             {} time {} pv {}",
             depth, seldepth, score, nodes, nps, hashfull, tbhits, elapsed_ms, pv
         )
     };
@@ -436,14 +444,26 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         }
     }
 
+    // Compute static eval once for pruning decisions
+    let pos_ref = arena.get(ply).position;
+    let in_check = ctx.movegen.in_check(&pos_ref);
+    let static_eval = evaluate_for_side_to_move(ctx.evaluator, &pos_ref);
+
+    // Reverse Futility Pruning (RFP): if we're way above beta at shallow depths,
+    // prune immediately without searching. Don't use when in check or at root.
+    if ply > 0 && !in_check && remaining <= 6 && remaining > 0 {
+        let rfp_margin = RFP_MARGIN_BASE + (remaining as i32 * RFP_MARGIN_PER_DEPTH);
+        if static_eval >= window.beta + rfp_margin {
+            return static_eval;
+        }
+    }
+
     // Null-move pruning: if we can pass and still fail-high, prune the whole
     // subtree. Only try when: (a) not in check, (b) remaining > 2 (to avoid
     // qsearch collision), (c) not root, (d) static eval is already close to
     // beta so a fail-high is plausible.
-    let pos_ref = arena.get(ply).position;
-    let static_eval = evaluate_for_side_to_move(ctx.evaluator, &pos_ref);
     let can_try_null = static_eval >= window.beta - NULL_MOVE_STATIC_MARGIN_CP;
-    if ply > 0 && remaining > 2 && !ctx.movegen.in_check(&pos_ref) && can_try_null {
+    if ply > 0 && remaining > 2 && !in_check && can_try_null {
         // Make a null move (pass)
         let mut child_pos = pos_ref;
         child_pos.side_to_move = pos_ref.side_to_move.opposite();
@@ -452,7 +472,8 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         // Store and restore for non-destructive probe
         if ply + 1 < MAX_SEARCH_PLY {
             arena.get_mut(ply + 1).position = child_pos;
-            let null_reduction = (remaining / 3).max(1);
+            // More aggressive null move reduction
+            let null_reduction = (remaining / 3).max(2).min(remaining - 1);
             let child_key = arena.get(ply + 1).position.zobrist_hash();
             // Optimization: Use unchecked access to avoid redundant bounds checks (safe
             // within ply < MAX_SEARCH_PLY)
@@ -492,8 +513,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     };
 
     if moves.is_empty() {
-        let pos = &arena.get(ply).position;
-        if ctx.movegen.in_check(pos) {
+        if in_check {
             // mate: return losing score adjusted by ply (so earlier mate is worse)
             return -MATE_SCORE + ply as i32;
         }
@@ -570,6 +590,49 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         let move_index = legal_move_count;
         legal_move_count += 1;
 
+        let is_tactical = matches!(
+            m.move_type,
+            MoveType::Capture | MoveType::EnPassant | MoveType::Promotion(_)
+        );
+
+        // Late Move Pruning (LMP): at shallow depths, skip quiet moves entirely
+        // beyond a certain count.
+        if !in_check && !is_tactical && remaining <= 4 {
+            let lmp_threshold = match remaining {
+                1 => 4,
+                2 => 8,
+                3 => 12,
+                4 => 20,
+                _ => 999,
+            };
+            if move_index >= lmp_threshold {
+                continue;
+            }
+        }
+
+        // Extended Futility Pruning: skip quiet moves if static eval + margin < alpha
+        if !in_check && !is_tactical && move_index > 0 {
+            let can_prune = match remaining {
+                1 => static_eval + FUTILITY_MARGIN_D1 < window.alpha,
+                2 => static_eval + FUTILITY_MARGIN_D2 < window.alpha,
+                3 => static_eval + FUTILITY_MARGIN_D3 < window.alpha,
+                _ => false,
+            };
+            if can_prune {
+                continue;
+            }
+        }
+
+        // SEE pruning: skip captures that lose material in main search
+        if is_tactical && remaining >= 1 && move_index > 0 {
+            let see_value = compute_see(&pos_ref, m.from, m.to);
+            // Skip losing captures at higher depths, be more lenient at depth 1
+            let see_threshold = if remaining >= 4 { -50 } else { -100 };
+            if see_value < see_threshold {
+                continue;
+            }
+        }
+
         let child_key = arena.get(ply + 1).position.zobrist_hash();
         // Optimization: Use unchecked access to avoid redundant bounds checks (safe
         // within ply < MAX_SEARCH_PLY)
@@ -582,20 +645,14 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
             rep_state.len
         };
 
-        // Late Move Reduction (LMR): reduce depth for moves beyond the first 2 or 3
-        // if they don't look promising. Re-search at full depth if needed.
+        // Late Move Reduction (LMR): reduce depth for moves that don't look promising.
         let mut depth_for_search = remaining - 1;
         let mut do_full_depth_search = true;
 
-        if move_index > 2
-            && remaining >= 3
-            && !matches!(
-                m.move_type,
-                MoveType::Capture | MoveType::EnPassant | MoveType::Promotion(_)
-            )
-        {
-            // Conservative LMR: reduce by log-based formula
-            let reduction = ((move_index as f64).ln() * (remaining as f64).ln() * 0.5) as usize;
+        // Very aggressive LMR: start at move 1 for quiet moves
+        if move_index > 0 && remaining >= 2 && !is_tactical && !in_check {
+            // Aggressive LMR formula
+            let reduction = ((move_index as f64).ln() * (remaining as f64).ln() * 0.7) as usize;
             if reduction > 0 {
                 depth_for_search = (remaining - 1).saturating_sub(reduction);
                 do_full_depth_search = false;
