@@ -681,6 +681,7 @@ fn evaluate_pawn_advancement(pos: &Position) -> i32 {
 /// In these positions, guide the engine to:
 /// 1. Drive the defending king to the edge/corner
 /// 2. Bring the attacking king close for support
+///
 /// This is critical for converting basic checkmates like K+R vs K.
 fn evaluate_bare_king_endgame(pos: &Position) -> i32 {
     // Quick check: only applies with very few pieces (<=4 total)

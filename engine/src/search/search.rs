@@ -34,6 +34,13 @@ const ASPIRATION_MIN_DEPTH: usize = 3;
 const ASPIRATION_MATE_GUARD_CP: i32 = 500;
 const PARALLEL_MIN_DEPTH: usize = 6; // Enable parallel root search for practical bench depths
 
+struct RootSearchParams<'a> {
+    time_budget_ms: Option<u64>,
+    stop: Option<&'a std::sync::atomic::AtomicBool>,
+    start: &'a Instant,
+    last_info_time: &'a mut Instant,
+}
+
 pub struct Engine<
     M: MoveGenerator + Clone + Send + Sync + 'static,
     E: Evaluator + Clone + Send + Sync + 'static,
@@ -184,18 +191,24 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                     let mut researches = 0usize;
 
                     loop {
+                        let mut params = RootSearchParams {
+                            time_budget_ms,
+                            stop,
+                            start: &start,
+                            last_info_time: &mut last_info_time,
+                        };
+                        let window = SearchWindow {
+                            alpha: -beta,
+                            beta: -alpha,
+                        };
                         let (window_best_move, window_best_score, window_searched_any) = self
                             .search_root_serial_window(
                                 root,
                                 d,
                                 &mut moves,
-                                time_budget_ms,
-                                stop,
-                                &start,
-                                &mut last_info_time,
                                 &mut heuristics,
-                                alpha,
-                                beta,
+                                &mut params,
+                                &window,
                             );
 
                         best_move = window_best_move;
@@ -215,18 +228,24 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
 
                         researches += 1;
                         if researches >= ASPIRATION_MAX_RESEARCHES {
+                            let mut params = RootSearchParams {
+                                time_budget_ms,
+                                stop,
+                                start: &start,
+                                last_info_time: &mut last_info_time,
+                            };
+                            let window = SearchWindow {
+                                alpha: -INF,
+                                beta: INF,
+                            };
                             let (full_best_move, full_best_score, full_searched_any) = self
                                 .search_root_serial_window(
                                     root,
                                     d,
                                     &mut moves,
-                                    time_budget_ms,
-                                    stop,
-                                    &start,
-                                    &mut last_info_time,
                                     &mut heuristics,
-                                    -INF,
-                                    INF,
+                                    &mut params,
+                                    &window,
                                 );
                             best_move = full_best_move;
                             best_score = full_best_score;
@@ -243,17 +262,23 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                         }
                     }
                 } else {
+                    let mut params = RootSearchParams {
+                        time_budget_ms,
+                        stop,
+                        start: &start,
+                        last_info_time: &mut last_info_time,
+                    };
+                    let window = SearchWindow {
+                        alpha: -INF,
+                        beta: INF,
+                    };
                     (best_move, best_score, searched_any) = self.search_root_serial_window(
                         root,
                         d,
                         &mut moves,
-                        time_budget_ms,
-                        stop,
-                        &start,
-                        &mut last_info_time,
                         &mut heuristics,
-                        -INF,
-                        INF,
+                        &mut params,
+                        &window,
                     );
                 }
             } else {
@@ -478,13 +503,9 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         root: &Position,
         d: usize,
         moves: &mut MoveList,
-        time_budget_ms: Option<u64>,
-        stop: Option<&std::sync::atomic::AtomicBool>,
-        start: &Instant,
-        last_info_time: &mut Instant,
         heuristics: &mut SearchHeuristics,
-        alpha: i32,
-        beta: i32,
+        params: &mut RootSearchParams<'_>,
+        window: &SearchWindow,
     ) -> (ChessMove, i32, bool) {
         // Serial path: get exclusive access to the TT
         let mut tt_guard = self.tt.write().unwrap();
@@ -493,7 +514,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         let mut best_score = i32::MIN;
         let mut best_move = *moves.get(0).unwrap();
         let mut searched_any = false;
-        let mut local_alpha = alpha;
+        let mut local_alpha = window.alpha;
 
         for i in 0..moves.len() {
             // Pick best move for this iteration
@@ -501,13 +522,13 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             let m = *moves.get(i).unwrap();
             // Check stop flag and time budget before each root move.
             let now = Instant::now();
-            let elapsed = now.duration_since(*start).as_millis() as u64;
-            if let Some(mt) = time_budget_ms
+            let elapsed = now.duration_since(*params.start).as_millis() as u64;
+            if let Some(mt) = params.time_budget_ms
                 && elapsed >= mt
             {
                 break;
             }
-            if let Some(stopflag) = stop
+            if let Some(stopflag) = params.stop
                 && stopflag.load(Ordering::Relaxed)
             {
                 break;
@@ -531,23 +552,30 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                 evaluator: &self.evaluator,
                 tt: tt_ref,
                 heuristics,
-                stop,
-                time_budget_ms,
-                start_time: Some(start),
+                stop: params.stop,
+                time_budget_ms: params.time_budget_ms,
+                start_time: Some(params.start),
             };
 
             let score = if i == 0 {
-                let mut window = SearchWindow {
-                    alpha: -beta,
+                let mut search_window = SearchWindow {
+                    alpha: -window.beta,
                     beta: -local_alpha,
                 };
                 let mut rep = RepetitionState {
                     history: repetition_history,
                     len: 2,
                 };
-                -search_node_with_arena(&mut ctx, &mut self.arena, 1, d - 1, &mut window, &mut rep)
+                -search_node_with_arena(
+                    &mut ctx,
+                    &mut self.arena,
+                    1,
+                    d - 1,
+                    &mut search_window,
+                    &mut rep,
+                )
             } else {
-                let mut window = SearchWindow {
+                let mut search_window = SearchWindow {
                     alpha: -local_alpha - 1,
                     beta: -local_alpha,
                 };
@@ -560,13 +588,13 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                     &mut self.arena,
                     1,
                     d - 1,
-                    &mut window,
+                    &mut search_window,
                     &mut rep,
                 );
 
-                if pvs_score > local_alpha && pvs_score < beta {
+                if pvs_score > local_alpha && pvs_score < window.beta {
                     let mut full_window = SearchWindow {
-                        alpha: -beta,
+                        alpha: -window.beta,
                         beta: -local_alpha,
                     };
                     let mut full_rep = RepetitionState {
@@ -595,13 +623,15 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
             if score > local_alpha {
                 local_alpha = score;
             }
-            if local_alpha >= beta {
+            if local_alpha >= window.beta {
                 break;
             }
 
             // Periodic progress info is useful for timed UCI searches,
             // but it is expensive noise for fixed-depth bench runs.
-            if time_budget_ms.is_some() && now.duration_since(*last_info_time).as_millis() >= 1000 {
+            if params.time_budget_ms.is_some()
+                && now.duration_since(*params.last_info_time).as_millis() >= 1000
+            {
                 let pv_str = if crate::VERBOSE.load(Ordering::Relaxed) && !best_move.is_null() {
                     best_move.to_string()
                 } else {
@@ -612,7 +642,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                 crate::search::core::print_uci_info(
                     d, seldepth, best_score, &pv_str, elapsed, hashfull,
                 );
-                *last_info_time = now;
+                *params.last_info_time = now;
             }
         }
 
