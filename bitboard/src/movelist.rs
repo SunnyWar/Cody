@@ -44,7 +44,6 @@ impl MoveList {
         self.len = 0;
     }
 
-
     pub fn as_slice(&self) -> &[ChessMove] {
         &self.moves[..self.len]
     }
