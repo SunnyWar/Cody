@@ -27,8 +27,8 @@ use std::sync::atomic::AtomicI32;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
-const ASPIRATION_START_DELTA_CP: i32 = 25;
-const ASPIRATION_MAX_RESEARCHES: usize = 4;
+const ASPIRATION_START_DELTA_CP: i32 = 20;
+const ASPIRATION_MAX_RESEARCHES: usize = 3;
 const ASPIRATION_MIN_DEPTH: usize = 3;
 const ASPIRATION_MATE_GUARD_CP: i32 = 500;
 const PARALLEL_MIN_DEPTH: usize = 12; // Only use threading for deep searches

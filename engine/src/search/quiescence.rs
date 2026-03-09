@@ -19,9 +19,9 @@ const DELTA_MARGIN: i32 = 200; // Queen value margin for delta pruning
 const CHECK_GEN_DEPTH_LIMIT: Option<usize> = None; // None => disable non-capture check generation in qsearch
 /// SEE threshold: prune captures with SEE worse than this value (in centipawns)
 /// -100 means allow trades of equal value; more negative allows bigger losses
-const SEE_QUIET_THRESHOLD: i32 = -50;
+const SEE_QUIET_THRESHOLD: i32 = -100;
 /// SEE threshold in deeper qsearch - tighter pruning to avoid explosion
-const SEE_DEEP_THRESHOLD: i32 = 0;
+const SEE_DEEP_THRESHOLD: i32 = -25;
 /// In very crowded boards, require captures to have clear tactical value.
 const SEE_DENSE_THRESHOLD: i32 = 100;
 
