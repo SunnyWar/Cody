@@ -10,15 +10,17 @@ opt-level = 3
 lto = "fat"
 codegen-units = 1
 panic = "abort"
-strip = true
-debug = false
+strip = false
 overflow-checks = false
 incremental = false
+debug = "line-tables-only"
 
 [profile.dev]
-opt-level = 1              # Keep debug builds fast to compile
-debug = true               # Keep debug symbols
+opt-level = 1
+debug = true
 
 [profile.bench]
 inherits = "release"
-
+# ADDED: This ensures that when you run 'cargo bench', 
+# the profiler can see the internal function names.
+debug = true

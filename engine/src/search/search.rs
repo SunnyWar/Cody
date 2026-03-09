@@ -10,7 +10,7 @@ use crate::search::core::SearchContext;
 use crate::search::core::SearchHeuristics;
 use crate::search::core::SearchWindow;
 use crate::search::core::current_seldepth;
-use crate::search::core::order_moves_with_heuristics_fast;
+use crate::search::core::pick_best_move;
 use crate::search::core::reset_seldepth;
 use crate::search::core::search_node_with_arena;
 use crate::search::evaluator::Evaluator;
@@ -168,13 +168,6 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
 
             // Probe TT and reorder instantly if match found
             self.probe_for_best_move(d, &mut moves);
-            order_moves_with_heuristics_fast(
-                root,
-                &mut moves,
-                &heuristics,
-                0,
-                (!last_completed_move.is_null()).then_some(last_completed_move),
-            );
 
             if self.num_threads <= 1 || d < PARALLEL_MIN_DEPTH {
                 // Use serial search for single-threaded mode or shallow depths
@@ -194,7 +187,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                             .search_root_serial_window(
                                 root,
                                 d,
-                                &moves,
+                                &mut moves,
                                 time_budget_ms,
                                 stop,
                                 &start,
@@ -225,7 +218,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                                 .search_root_serial_window(
                                     root,
                                     d,
-                                    &moves,
+                                    &mut moves,
                                     time_budget_ms,
                                     stop,
                                     &start,
@@ -252,7 +245,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
                     (best_move, best_score, searched_any) = self.search_root_serial_window(
                         root,
                         d,
-                        &moves,
+                        &mut moves,
                         time_budget_ms,
                         stop,
                         &start,
@@ -477,7 +470,7 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         &mut self,
         root: &Position,
         d: usize,
-        moves: &MoveList,
+        moves: &mut MoveList,
         time_budget_ms: Option<u64>,
         stop: Option<&std::sync::atomic::AtomicBool>,
         start: &Instant,
@@ -491,12 +484,14 @@ impl<M: MoveGenerator + Clone + Send + Sync + 'static, E: Evaluator + Clone + Se
         let tt_ref: &mut crate::core::tt::TranspositionTable = &mut tt_guard;
 
         let mut best_score = i32::MIN;
-        let mut best_move = moves[0];
+        let mut best_move = *moves.get(0).unwrap();
         let mut searched_any = false;
         let mut local_alpha = alpha;
 
         for i in 0..moves.len() {
-            let m = moves[i];
+            // Pick best move for this iteration
+            pick_best_move(moves, heuristics, root, 0, i);
+            let m = *moves.get(i).unwrap();
             // Check stop flag and time budget before each root move.
             let now = Instant::now();
             let elapsed = now.duration_since(*start).as_millis() as u64;

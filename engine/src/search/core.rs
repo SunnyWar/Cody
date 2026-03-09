@@ -142,92 +142,34 @@ impl SearchHeuristics {
     }
 }
 
-pub fn order_moves_with_heuristics(
-    pos: &bitboard::position::Position,
-    moves: &mut [ChessMove],
-    heuristics: &SearchHeuristics,
-    ply: usize,
-    pv_move: Option<ChessMove>,
-) {
-    if moves.len() <= 1 {
-        return;
-    }
-
-    if let Some(pv) = pv_move
-        && !pv.is_null()
-        && let Some(idx) = moves.iter().position(|m| *m == pv)
-        && idx != 0
-    {
-        moves.swap(0, idx);
-    }
-
-    let start = if pv_move.is_some_and(|m| !m.is_null() && moves.first().copied() == Some(m)) {
-        1
-    } else {
-        0
-    };
-
-    moves[start..].sort_unstable_by_key(|m| -heuristics.score_move(pos, m, ply));
-}
-
-/// Fast version that works with MoveList
-pub fn order_moves_with_heuristics_fast(
-    pos: &bitboard::position::Position,
+/// Instead of one big sort, we call this in a loop during search.
+/// It finds the best move from 'target_index' to the end and swaps it to
+/// 'target_index'.
+pub fn pick_best_move(
     moves: &mut MoveList,
     heuristics: &SearchHeuristics,
+    pos: &bitboard::position::Position,
     ply: usize,
-    pv_move: Option<ChessMove>,
+    target_index: usize,
 ) {
-    let len = moves.len();
-    if len <= 1 {
+    if target_index >= moves.len() {
         return;
     }
 
-    if let Some(pv) = pv_move
-        && !pv.is_null()
-    {
-        for i in 0..len {
-            if moves[i] == pv {
-                moves.swap(0, i);
-                break;
-            }
+    let slice = moves.as_slice();
+    let mut best_score = i32::MIN;
+    let mut best_idx = target_index;
+
+    let tmp = target_index..moves.len();
+    for i in tmp {
+        let score = heuristics.score_move(pos, &slice[i], ply);
+        if score > best_score {
+            best_score = score;
+            best_idx = i;
         }
     }
 
-    let start = if pv_move.is_some_and(|m| !m.is_null() && !moves.is_empty() && moves[0] == m) {
-        1
-    } else {
-        0
-    };
-
-    if start + 1 >= len {
-        return;
-    }
-
-    let slice = moves.as_mut_slice();
-
-    // Cache heuristic scores once and perform in-place insertion sort by score
-    // (descending). This avoids repeated score recomputation in comparator-based
-    // sorting on the hot path.
-    let mut scores = [0i32; 256];
-    for i in start..len {
-        scores[i] = heuristics.score_move(pos, &slice[i], ply);
-    }
-
-    for i in (start + 1)..len {
-        let key_move = slice[i];
-        let key_score = scores[i];
-        let mut j = i;
-
-        while j > start && scores[j - 1] < key_score {
-            slice[j] = slice[j - 1];
-            scores[j] = scores[j - 1];
-            j -= 1;
-        }
-
-        slice[j] = key_move;
-        scores[j] = key_score;
-    }
+    moves.swap(target_index, best_idx);
 }
 
 const fn piece_value(kind: PieceKind) -> i32 {
@@ -539,8 +481,16 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     let tt_best_move = tt_exact_needs_verify
         .map(|e| e.best_move)
         .filter(|m| !m.is_null());
-    // Full-list move ordering gives alpha-beta the best chance to cut early.
-    order_moves_with_heuristics_fast(&pos, &mut moves, ctx.heuristics, ply, tt_best_move);
+
+    // Move TT best move to front if found
+    if let Some(tt_move) = tt_best_move {
+        for i in 0..moves.len() {
+            if moves[i] == tt_move {
+                moves.swap(0, i);
+                break;
+            }
+        }
+    }
 
     if let Some(e) = tt_exact_needs_verify
         && !e.best_move.is_null()
@@ -571,6 +521,9 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 
     let mut legal_move_count = 0usize;
     for move_idx in 0..moves.len() {
+        // Pick best move for this iteration
+        pick_best_move(&mut moves, ctx.heuristics, &pos, ply, move_idx);
+
         // Prefetch future move entries while iterating the ordered move list.
         // Applying this in search (instead of movegen) targets the true hot loop.
         if move_idx & 7 == 0 {
