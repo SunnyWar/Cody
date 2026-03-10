@@ -174,7 +174,7 @@ pub fn trailing_zeros_nonzero(x: u64) -> u32 {
 ///
 /// Used for: determining board regions, high-priority pieces.
 /// Returns 64 if x == 0.
-pub fn leading_zeros(x: u64) -> u32 {
+pub const fn leading_zeros(x: u64) -> u32 {
     #[cfg(target_arch = "x86_64")]
     {
         #[cfg(target_feature = "lzcnt")]
@@ -235,7 +235,7 @@ pub fn blsr_nonzero(x: u64) -> u64 {
 ///
 /// Isolates a single bit for masking operations.
 /// Example: get the lowest piece on a bitboard without removing it.
-pub fn blsi(x: u64) -> u64 {
+pub const fn blsi(x: u64) -> u64 {
     #[cfg(target_arch = "x86_64")]
     {
         #[cfg(target_feature = "bmi1")]
@@ -267,7 +267,7 @@ pub fn blsi(x: u64) -> u64 {
 ///
 /// Note: AMD Zen 1/2 have slow microcode PEXT (~18 cycles), prefer fallback
 /// there.
-pub fn pext(src: u64, mask: u64) -> u64 {
+pub const fn pext(src: u64, mask: u64) -> u64 {
     #[cfg(target_arch = "x86_64")]
     {
         #[cfg(target_feature = "bmi2")]
@@ -322,7 +322,7 @@ const fn pext_software(src: u64, mut mask: u64) -> u64 {
 /// Inverse of PEXT: deposits bits from `src` into positions specified by
 /// `mask`. Less commonly used in chess engines but available for completeness.
 #[allow(dead_code)]
-pub fn pdep(src: u64, mask: u64) -> u64 {
+pub const fn pdep(src: u64, mask: u64) -> u64 {
     #[cfg(target_arch = "x86_64")]
     {
         #[cfg(target_feature = "bmi2")]
@@ -423,7 +423,7 @@ impl SimdU64x4 {
     }
 
     /// Parallel bitwise AND: compute self & other for all 4 elements.
-    pub fn and(self, other: Self) -> Self {
+    pub const fn and(self, other: Self) -> Self {
         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
         unsafe {
             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
@@ -449,7 +449,7 @@ impl SimdU64x4 {
     }
 
     /// Parallel bitwise OR: compute self | other for all 4 elements.
-    pub fn or(self, other: Self) -> Self {
+    pub const fn or(self, other: Self) -> Self {
         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
         unsafe {
             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
@@ -475,7 +475,7 @@ impl SimdU64x4 {
     }
 
     /// Parallel bitwise XOR: compute self ^ other for all 4 elements.
-    pub fn xor(self, other: Self) -> Self {
+    pub const fn xor(self, other: Self) -> Self {
         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
         unsafe {
             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
@@ -501,7 +501,7 @@ impl SimdU64x4 {
     }
 
     /// Parallel bitwise NOT: compute !self for all 4 elements.
-    fn bitwise_not(self) -> Self {
+    const fn bitwise_not(self) -> Self {
         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
         unsafe {
             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
@@ -553,7 +553,7 @@ impl SimdI32x8 {
     }
 
     /// Parallel addition: add 8 integers simultaneously.
-    fn add_impl(self, other: Self) -> Self {
+    const fn add_impl(self, other: Self) -> Self {
         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
         unsafe {
             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
@@ -583,7 +583,7 @@ impl SimdI32x8 {
     }
 
     /// Parallel subtraction: subtract 8 integers simultaneously.
-    fn sub_impl(self, other: Self) -> Self {
+    const fn sub_impl(self, other: Self) -> Self {
         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
         unsafe {
             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);

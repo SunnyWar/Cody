@@ -256,7 +256,7 @@ impl From<u64> for BitBoardMask {
 // Optimized ray casting functions
 impl BitBoardMask {
     #[must_use]
-    pub fn subray_left_optimized(self, origin_sq: u8) -> BitBoardMask {
+    pub const fn subray_left_optimized(self, origin_sq: u8) -> BitBoardMask {
         // Use bit manipulation for horizontal rays
         let rank_mask = 0xFFu64 << (origin_sq & 56); // Get rank mask
         let occupied_rank = self.0 & rank_mask;
