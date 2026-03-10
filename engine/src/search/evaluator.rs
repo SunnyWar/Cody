@@ -76,6 +76,12 @@ const PAWN_NEAR_PROMOTION: [i32; 8] = [0, 0, 0, 8, 20, 60, 150, 0];
 #[derive(Clone, Copy)]
 pub struct MaterialEvaluator;
 
+impl Default for MaterialEvaluator {
+    fn default() -> Self {
+        MaterialEvaluator
+    }
+}
+
 pub trait Evaluator {
     fn evaluate(&self, pos: &Position) -> i32;
 }

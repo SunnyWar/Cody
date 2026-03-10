@@ -40,9 +40,7 @@ fn main() {
 
         // NNUE integration: load NNUE network from file
         use engine::MaterialEvaluator;
-        use engine::NNUE;
-        use engine::NNUEEvaluator;
-        let api = CodyApi::new(NNUEEvaluator { nnue: NNUE::new() });
+        let api = CodyApi::new(MaterialEvaluator::default());
         api.run();
     }
 }

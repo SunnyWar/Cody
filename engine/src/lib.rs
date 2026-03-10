@@ -1,7 +1,7 @@
 // src/lib.rs
 pub mod api;
 pub mod core;
-pub mod nnue;
+// ...existing code...
 pub mod search;
 pub mod test_data;
 pub mod util;
@@ -9,8 +9,7 @@ pub mod util;
 #[cfg(test)]
 mod perft_integration_test;
 
-pub use crate::nnue::NNUE;
-pub use crate::nnue::NNUEEvaluator;
+// ...existing code...
 pub use crate::search::engine::Engine;
 pub use crate::search::engine::NODE_COUNT;
 pub use crate::search::evaluator::MaterialEvaluator;
