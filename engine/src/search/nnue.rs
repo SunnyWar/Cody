@@ -23,8 +23,24 @@ impl NNUE {
 
     /// Evaluate a position using NNUE
     pub fn evaluate(&self, _pos: &Position) -> i32 {
-        // TODO: Implement feature extraction and inference using self.weights
-        0 // Placeholder
+        // Minimal stub: sum piece-square indices as a fake feature
+        // (Real NNUE would extract features and run through the network)
+        let mut sum = 0i32;
+        for sq in 0..64 {
+            // Use piece_on array to get the piece at each square
+            let piece = _pos.piece_on[sq];
+            // Only count non-empty squares
+            if piece as u8 != 0 {
+                sum += (piece as i32) * (sq as i32);
+            }
+        }
+        sum // Placeholder: replace with NNUE inference
+    }
+}
+
+impl Default for NNUE {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

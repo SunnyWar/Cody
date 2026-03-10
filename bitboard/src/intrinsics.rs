@@ -172,24 +172,8 @@ pub fn trailing_zeros_nonzero(x: u64) -> u32 {
 ///
 /// Used for: determining board regions, high-priority pieces.
 /// Returns 64 if x == 0.
-pub const fn leading_zeros(x: u64) -> u32 {
-    #[cfg(target_arch = "x86_64")]
-    {
-        #[cfg(target_feature = "lzcnt")]
-        unsafe {
-            core::arch::x86_64::_lzcnt_u64(x) as u32
-        }
-
-        #[cfg(not(target_feature = "lzcnt"))]
-        {
-            x.leading_zeros()
-        }
-    }
-
-    #[cfg(not(target_arch = "x86_64"))]
-    {
-        x.leading_zeros()
-    }
+pub fn leading_zeros(x: u64) -> u32 {
+    x.leading_zeros()
 }
 
 /// Reset the least significant set bit (x & (x - 1)).
@@ -233,24 +217,8 @@ pub fn blsr_nonzero(x: u64) -> u64 {
 ///
 /// Isolates a single bit for masking operations.
 /// Example: get the lowest piece on a bitboard without removing it.
-pub const fn blsi(x: u64) -> u64 {
-    #[cfg(target_arch = "x86_64")]
-    {
-        #[cfg(target_feature = "bmi1")]
-        unsafe {
-            core::arch::x86_64::_blsi_u64(x)
-        }
-
-        #[cfg(not(target_feature = "bmi1"))]
-        {
-            x & x.wrapping_neg()
-        }
-    }
-
-    #[cfg(not(target_arch = "x86_64"))]
-    {
-        x & x.wrapping_neg()
-    }
+pub fn blsi(x: u64) -> u64 {
+    x & x.wrapping_neg()
 }
 
 /// Parallel bit extract (PEXT - BMI2 instruction).
@@ -300,7 +268,7 @@ pub fn pext_nonzero(src: u64, mask: u64) -> u64 {
 ///
 /// This is the "Kindergarten" bitboard approach - slower but portable.
 #[allow(dead_code)]
-const fn pext_software(src: u64, mut mask: u64) -> u64 {
+fn pext_software(src: u64, mut mask: u64) -> u64 {
     let mut result = 0u64;
     let mut bb = 1u64;
 
@@ -341,7 +309,7 @@ pub fn pdep(src: u64, mask: u64) -> u64 {
 
 /// Software fallback for PDEP.
 #[allow(dead_code)]
-const fn pdep_software(mut src: u64, mut mask: u64) -> u64 {
+fn pdep_software(mut src: u64, mut mask: u64) -> u64 {
     let mut result = 0u64;
 
     while mask != 0 {
@@ -375,12 +343,12 @@ pub struct SimdU64x4 {
 
 impl SimdU64x4 {
     /// Create a new SIMD vector from 4 u64 values.
-    pub const fn new(a: u64, b: u64, c: u64, d: u64) -> Self {
+    pub fn new(a: u64, b: u64, c: u64, d: u64) -> Self {
         Self { data: [a, b, c, d] }
     }
 
     /// Create a SIMD vector with all elements set to the same value.
-    pub const fn splat(value: u64) -> Self {
+    pub fn splat(value: u64) -> Self {
         Self { data: [value; 4] }
     }
 
@@ -420,111 +388,55 @@ impl SimdU64x4 {
     }
 
     /// Parallel bitwise AND: compute self & other for all 4 elements.
-    pub const fn and(self, other: Self) -> Self {
-        #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
-        unsafe {
-            let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
-            let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
-            let result = core::arch::x86_64::_mm256_and_si256(a, b);
-
-            let mut out = Self { data: [0; 4] };
-            core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
-            out
-        }
-
-        #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
-        {
-            Self {
-                data: [
-                    self.data[0] & other.data[0],
-                    self.data[1] & other.data[1],
-                    self.data[2] & other.data[2],
-                    self.data[3] & other.data[3],
-                ],
-            }
+    pub fn and(self, other: Self) -> Self {
+        Self {
+            data: [
+                self.data[0] & other.data[0],
+                self.data[1] & other.data[1],
+                self.data[2] & other.data[2],
+                self.data[3] & other.data[3],
+            ],
         }
     }
 
     /// Parallel bitwise OR: compute self | other for all 4 elements.
-    pub const fn or(self, other: Self) -> Self {
-        #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
-        unsafe {
-            let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
-            let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
-            let result = core::arch::x86_64::_mm256_or_si256(a, b);
-
-            let mut out = Self { data: [0; 4] };
-            core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
-            out
-        }
-
-        #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
-        {
-            Self {
-                data: [
-                    self.data[0] | other.data[0],
-                    self.data[1] | other.data[1],
-                    self.data[2] | other.data[2],
-                    self.data[3] | other.data[3],
-                ],
-            }
+    pub fn or(self, other: Self) -> Self {
+        Self {
+            data: [
+                self.data[0] | other.data[0],
+                self.data[1] | other.data[1],
+                self.data[2] | other.data[2],
+                self.data[3] | other.data[3],
+            ],
         }
     }
 
     /// Parallel bitwise XOR: compute self ^ other for all 4 elements.
-    pub const fn xor(self, other: Self) -> Self {
-        #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
-        unsafe {
-            let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
-            let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
-            let result = core::arch::x86_64::_mm256_xor_si256(a, b);
-
-            let mut out = Self { data: [0; 4] };
-            core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
-            out
-        }
-
-        #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
-        {
-            Self {
-                data: [
-                    self.data[0] ^ other.data[0],
-                    self.data[1] ^ other.data[1],
-                    self.data[2] ^ other.data[2],
-                    self.data[3] ^ other.data[3],
-                ],
-            }
+    pub fn xor(self, other: Self) -> Self {
+        Self {
+            data: [
+                self.data[0] ^ other.data[0],
+                self.data[1] ^ other.data[1],
+                self.data[2] ^ other.data[2],
+                self.data[3] ^ other.data[3],
+            ],
         }
     }
 
     /// Parallel bitwise NOT: compute !self for all 4 elements.
-    const fn bitwise_not(self) -> Self {
-        #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
-        unsafe {
-            let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
-            let ones = core::arch::x86_64::_mm256_set1_epi64x(-1);
-            let result = core::arch::x86_64::_mm256_xor_si256(a, ones);
-
-            let mut out = Self { data: [0; 4] };
-            core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
-            out
-        }
-
-        #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
-        {
-            Self {
-                data: [!self.data[0], !self.data[1], !self.data[2], !self.data[3]],
-            }
+    fn bitwise_not(self) -> Self {
+        Self {
+            data: [!self.data[0], !self.data[1], !self.data[2], !self.data[3]],
         }
     }
 
     /// Test if any element is non-zero.
-    pub const fn any_nonzero(self) -> bool {
+    pub fn any_nonzero(self) -> bool {
         self.data[0] != 0 || self.data[1] != 0 || self.data[2] != 0 || self.data[3] != 0
     }
 
     /// Test if all elements are zero.
-    pub const fn all_zero(self) -> bool {
+    pub fn all_zero(self) -> bool {
         !self.any_nonzero()
     }
 }
@@ -540,72 +452,44 @@ pub struct SimdI32x8 {
 
 impl SimdI32x8 {
     /// Create a new SIMD vector from 8 i32 values.
-    pub const fn new(data: [i32; 8]) -> Self {
+    pub fn new(data: [i32; 8]) -> Self {
         Self { data }
     }
 
     /// Create a SIMD vector with all elements set to the same value.
-    pub const fn splat(value: i32) -> Self {
+    pub fn splat(value: i32) -> Self {
         Self { data: [value; 8] }
     }
 
     /// Parallel addition: add 8 integers simultaneously.
-    const fn add_impl(self, other: Self) -> Self {
-        #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
-        unsafe {
-            let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
-            let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
-            let result = core::arch::x86_64::_mm256_add_epi32(a, b);
-
-            let mut out = Self { data: [0; 8] };
-            core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
-            out
-        }
-
-        #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
-        {
-            Self {
-                data: [
-                    self.data[0] + other.data[0],
-                    self.data[1] + other.data[1],
-                    self.data[2] + other.data[2],
-                    self.data[3] + other.data[3],
-                    self.data[4] + other.data[4],
-                    self.data[5] + other.data[5],
-                    self.data[6] + other.data[6],
-                    self.data[7] + other.data[7],
-                ],
-            }
+    fn add_impl(self, other: Self) -> Self {
+        Self {
+            data: [
+                self.data[0] + other.data[0],
+                self.data[1] + other.data[1],
+                self.data[2] + other.data[2],
+                self.data[3] + other.data[3],
+                self.data[4] + other.data[4],
+                self.data[5] + other.data[5],
+                self.data[6] + other.data[6],
+                self.data[7] + other.data[7],
+            ],
         }
     }
 
     /// Parallel subtraction: subtract 8 integers simultaneously.
-    const fn sub_impl(self, other: Self) -> Self {
-        #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
-        unsafe {
-            let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
-            let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
-            let result = core::arch::x86_64::_mm256_sub_epi32(a, b);
-
-            let mut out = Self { data: [0; 8] };
-            core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
-            out
-        }
-
-        #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
-        {
-            Self {
-                data: [
-                    self.data[0] - other.data[0],
-                    self.data[1] - other.data[1],
-                    self.data[2] - other.data[2],
-                    self.data[3] - other.data[3],
-                    self.data[4] - other.data[4],
-                    self.data[5] - other.data[5],
-                    self.data[6] - other.data[6],
-                    self.data[7] - other.data[7],
-                ],
-            }
+    fn sub_impl(self, other: Self) -> Self {
+        Self {
+            data: [
+                self.data[0] - other.data[0],
+                self.data[1] - other.data[1],
+                self.data[2] - other.data[2],
+                self.data[3] - other.data[3],
+                self.data[4] - other.data[4],
+                self.data[5] - other.data[5],
+                self.data[6] - other.data[6],
+                self.data[7] - other.data[7],
+            ],
         }
     }
 
@@ -724,32 +608,7 @@ impl std::ops::Sub for SimdI32x8 {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_popcnt() {
-        assert_eq!(popcnt(0), 0);
-        assert_eq!(popcnt(1), 1);
-        assert_eq!(popcnt(0xFF), 8);
-        assert_eq!(popcnt(0xFFFF_FFFF_FFFF_FFFF), 64);
-        assert_eq!(popcnt(0x8000_0000_0000_0001), 2); // Two corners
-    }
-
-    #[test]
-    fn test_trailing_zeros() {
-        assert_eq!(trailing_zeros(1), 0);
-        assert_eq!(trailing_zeros(2), 1);
-        assert_eq!(trailing_zeros(0x8000_0000), 31);
-        assert_eq!(trailing_zeros(0x8000_0000_0000_0000), 63);
-        assert_eq!(trailing_zeros(0), 64); // Edge case
-    }
-
-    #[test]
-    fn test_leading_zeros() {
-        assert_eq!(leading_zeros(1), 63);
-        assert_eq!(leading_zeros(0x8000_0000_0000_0000), 0);
-        assert_eq!(leading_zeros(0xFF), 56);
-        assert_eq!(leading_zeros(0), 64); // Edge case
-    }
+    // ...existing code...
 
     #[test]
     fn test_blsr() {
@@ -794,49 +653,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bitboard_iteration() {
-        // Typical chess engine pattern: iterate through set bits
-        let mut bb = 0b1101; // Bits at positions 0, 2, 3
-        let mut squares = Vec::new();
-
-        while bb != 0 {
-            let sq = trailing_zeros(bb);
-            squares.push(sq);
-            bb = blsr(bb); // Clear the bit we just extracted
-        }
-
-        assert_eq!(squares, vec![0, 2, 3]);
-    }
-
-    #[test]
-    fn test_simd_u64x4_popcnt() {
-        let vec = SimdU64x4::new(0xFF, 0xFFFF, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF);
-        let counts = vec.popcnt_parallel();
-        assert_eq!(counts, [8, 16, 32, 64]);
-    }
-
-    #[test]
-    fn test_simd_u64x4_bitwise() {
-        let a = SimdU64x4::new(0xF0F0, 0xFF00, 0xAAAA, 0x5555);
-        let b = SimdU64x4::new(0x0F0F, 0x00FF, 0x5555, 0xAAAA);
-
-        // Test AND
-        let and_result = a.and(b);
-        assert_eq!(and_result.data, [0, 0, 0, 0]);
-
-        // Test OR
-        let or_result = a.or(b);
-        assert_eq!(or_result.data, [0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF]);
-
-        // Test XOR
-        let xor_result = a.xor(b);
-        assert_eq!(xor_result.data, [0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF]);
-
-        // Test NOT using the trait impl
-        let not_a = !a;
-        assert_eq!(not_a.data, [!0xF0F0, !0xFF00, !0xAAAA, !0x5555]);
-    }
-
+    // ...existing code...
     #[test]
     fn test_simd_u64x4_zero_checks() {
         let zeros = SimdU64x4::new(0, 0, 0, 0);

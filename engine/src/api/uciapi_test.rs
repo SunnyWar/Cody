@@ -1,3 +1,4 @@
+use crate::NNUEEvaluator;
 use crate::VERBOSE;
 use crate::api::uciapi::CodyApi;
 use bitboard::Square;
@@ -5,7 +6,9 @@ use std::sync::atomic::Ordering;
 
 #[test]
 fn test_parse_go_limits_ponder_is_infinite_without_time_or_depth() {
-    let api = CodyApi::new();
+    let api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let limits = api.parse_go_limits("go ponder");
 
     assert!(limits.ponder);
@@ -16,7 +19,9 @@ fn test_parse_go_limits_ponder_is_infinite_without_time_or_depth() {
 
 #[test]
 fn test_parse_go_limits_bare_go_keeps_default_movetime() {
-    let api = CodyApi::new();
+    let api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let limits = api.parse_go_limits("go");
 
     assert_eq!(limits.movetime_ms, Some(1000));
@@ -25,15 +30,26 @@ fn test_parse_go_limits_bare_go_keeps_default_movetime() {
 
 #[test]
 fn test_command_keyword_uses_exact_first_token() {
-    assert_eq!(CodyApi::command_keyword("go depth 4"), Some("go"));
-    assert_eq!(CodyApi::command_keyword("goo"), Some("goo"));
-    assert_eq!(CodyApi::command_keyword("   help   "), Some("help"));
-    assert_eq!(CodyApi::command_keyword("   \t   "), None);
+    assert_eq!(
+        CodyApi::<NNUEEvaluator>::command_keyword("go depth 4"),
+        Some("go")
+    );
+    assert_eq!(
+        CodyApi::<NNUEEvaluator>::command_keyword("goo"),
+        Some("goo")
+    );
+    assert_eq!(
+        CodyApi::<NNUEEvaluator>::command_keyword("   help   "),
+        Some("help")
+    );
+    assert_eq!(CodyApi::<NNUEEvaluator>::command_keyword("   \t   "), None);
 }
 
 #[test]
 fn test_handle_help_lists_allowed_commands() {
-    let api = &mut CodyApi::new();
+    let api = &mut CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut out = Vec::<u8>::new();
 
     api.handle_help(&mut out);
@@ -46,7 +62,9 @@ fn test_handle_help_lists_allowed_commands() {
 
 #[test]
 fn test_dispatch_register_and_register_later_acknowledged() {
-    let api = &mut CodyApi::new();
+    let api = &mut CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut out = Vec::<u8>::new();
 
     let should_quit = api.dispatch_command("register", &mut out);
@@ -64,7 +82,9 @@ fn test_dispatch_register_and_register_later_acknowledged() {
 
 #[test]
 fn test_dispatch_unknown_command_emits_message() {
-    let api = &mut CodyApi::new();
+    let api = &mut CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut out = Vec::<u8>::new();
 
     let should_quit = api.dispatch_command("not_a_real_command", &mut out);
@@ -77,7 +97,9 @@ fn test_dispatch_unknown_command_emits_message() {
 
 #[test]
 fn test_dispatch_quit_returns_true() {
-    let api = &mut CodyApi::new();
+    let api = &mut CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut out = Vec::<u8>::new();
 
     let should_quit = api.dispatch_command("quit", &mut out);
@@ -87,7 +109,9 @@ fn test_dispatch_quit_returns_true() {
 
 #[test]
 fn test_dispatch_stop_sets_stop_flag() {
-    let api = &mut CodyApi::new();
+    let api = &mut CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut out = Vec::<u8>::new();
 
     assert!(!api.stop_requested());
@@ -100,7 +124,9 @@ fn test_dispatch_stop_sets_stop_flag() {
 
 #[test]
 fn test_dispatch_ponderhit_clears_stop_and_ponder_flags() {
-    let api = &mut CodyApi::new();
+    let api = &mut CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut out = Vec::<u8>::new();
 
     // Seed internal state so we can validate the reset behavior.
@@ -119,7 +145,9 @@ fn test_dispatch_ponderhit_clears_stop_and_ponder_flags() {
 
 #[test]
 fn test_parse_go_limits_uses_white_time_budget_when_white_to_move() {
-    let api = CodyApi::new();
+    let api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let limits = api.parse_go_limits("go wtime 60000 btime 30000 winc 1000 binc 500");
 
     assert_eq!(limits.movetime_ms, Some(2100));
@@ -129,7 +157,9 @@ fn test_parse_go_limits_uses_white_time_budget_when_white_to_move() {
 
 #[test]
 fn test_parse_go_limits_uses_black_time_budget_when_black_to_move() {
-    let api = &mut CodyApi::new();
+    let api = &mut CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut out = std::io::sink();
 
     api.handle_position("position startpos moves e2e4", &mut out);
@@ -142,7 +172,9 @@ fn test_parse_go_limits_uses_black_time_budget_when_black_to_move() {
 
 #[test]
 fn test_parse_go_limits_infinite_keeps_no_movetime() {
-    let api = CodyApi::new();
+    let api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let limits = api.parse_go_limits("go infinite");
 
     assert!(limits.infinite);
@@ -152,7 +184,9 @@ fn test_parse_go_limits_infinite_keeps_no_movetime() {
 
 #[test]
 fn test_parse_go_limits_ponder_with_movetime_not_forced_infinite() {
-    let api = CodyApi::new();
+    let api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let limits = api.parse_go_limits("go ponder movetime 50");
 
     assert!(limits.ponder);
@@ -162,7 +196,9 @@ fn test_parse_go_limits_ponder_with_movetime_not_forced_infinite() {
 
 #[test]
 fn test_handle_setoption_verbose_toggles_global_flag() {
-    let api = &mut CodyApi::new();
+    let api = &mut CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
 
     api.handle_setoption("setoption name Verbose value true");
     assert!(VERBOSE.load(Ordering::Relaxed));
@@ -173,7 +209,9 @@ fn test_handle_setoption_verbose_toggles_global_flag() {
 
 #[test]
 fn test_handle_setoption_ponder_toggles_runtime_option() {
-    let api = &mut CodyApi::new();
+    let api = &mut CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
 
     assert!(!api.ponder_enabled());
     api.handle_setoption("setoption name Ponder value true");
@@ -185,7 +223,9 @@ fn test_handle_setoption_ponder_toggles_runtime_option() {
 
 #[test]
 fn test_handle_setoption_syzygypath_is_accepted() {
-    let api = &mut CodyApi::new();
+    let api = &mut CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
 
     // Path may be invalid on CI/dev boxes; this test only validates parsing and
     // command handling stability.
@@ -195,7 +235,9 @@ fn test_handle_setoption_syzygypath_is_accepted() {
 #[allow(clippy::collapsible_if)]
 #[test]
 fn test_uci_position_moves_c3d5_state_consistency() {
-    let api = &mut CodyApi::new();
+    let api = &mut CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut out = std::io::sink();
     // Simulate: position fen ... moves c3d5
     let fen = "r2q1rk1/1p2bppp/p1npbn2/4p3/P3P3/1NN5/1PP1BPPP/R1BQ1R1K w - - 0 1";

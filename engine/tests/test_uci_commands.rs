@@ -9,7 +9,10 @@ use engine::api::uciapi::CodyApi;
 
 #[test]
 fn test_uci_command() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     api.handle_uci(&mut output);
@@ -27,7 +30,10 @@ fn test_uci_command() {
 
 #[test]
 fn test_isready_command() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     api.handle_isready(&mut output);
@@ -38,7 +44,10 @@ fn test_isready_command() {
 
 #[test]
 fn test_position_startpos() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     api.handle_position("position startpos", &mut output);
@@ -52,7 +61,10 @@ fn test_position_startpos() {
 
 #[test]
 fn test_position_startpos_with_moves() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     api.handle_position("position startpos moves e2e4 e7e5", &mut output);
@@ -66,7 +78,10 @@ fn test_position_startpos_with_moves() {
 
 #[test]
 fn test_position_fen() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     let test_fen = "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3";
@@ -78,7 +93,10 @@ fn test_position_fen() {
 
 #[test]
 fn test_position_fen_with_moves() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     let test_fen = "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3";
@@ -94,7 +112,10 @@ fn test_position_fen_with_moves() {
 
 #[test]
 fn test_setoption_threads() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
 
     // Test setting threads to 2
     api.handle_setoption("setoption name Threads value 2");
@@ -105,7 +126,10 @@ fn test_setoption_threads() {
 
 #[test]
 fn test_setoption_verbose() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
 
     // Test enabling verbose mode
     api.handle_setoption("setoption name Verbose value true");
@@ -118,7 +142,10 @@ fn test_setoption_verbose() {
 
 #[test]
 fn test_setoption_hash() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
 
     // Test setting hash size
     api.handle_setoption("setoption name Hash value 32");
@@ -130,7 +157,10 @@ fn test_setoption_hash() {
 
 #[test]
 fn test_setoption_clear_hash() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     // Run a search to populate the hash table
@@ -149,7 +179,10 @@ fn test_setoption_clear_hash() {
 
 #[test]
 fn test_setoption_ponder() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
 
     // Test enabling/disabling ponder
     api.handle_setoption("setoption name Ponder value true");
@@ -160,7 +193,10 @@ fn test_setoption_ponder() {
 
 #[test]
 fn test_go_depth() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     // Set position
@@ -178,7 +214,10 @@ fn test_go_depth() {
 
 #[test]
 fn test_go_movetime() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     api.handle_position("position startpos", &mut output);
@@ -193,7 +232,10 @@ fn test_go_movetime() {
 
 #[test]
 fn test_go_with_time_controls() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     api.handle_position("position startpos", &mut output);
@@ -211,7 +253,10 @@ fn test_go_with_time_controls() {
 
 #[test]
 fn test_go_depth_with_black_to_move() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     // Set position with black to move
@@ -226,7 +271,10 @@ fn test_go_depth_with_black_to_move() {
 
 #[test]
 fn test_go_ponder() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     api.handle_position("position startpos", &mut output);
@@ -241,7 +289,10 @@ fn test_go_ponder() {
 
 #[test]
 fn test_newgame_command() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     // Modify position
@@ -262,7 +313,10 @@ fn test_newgame_command() {
 
 #[test]
 fn test_bench_command() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     api.handle_bench("bench", &mut output);
@@ -275,7 +329,10 @@ fn test_bench_command() {
 
 #[test]
 fn test_position_with_multiple_moves() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     api.handle_position(
@@ -290,7 +347,10 @@ fn test_position_with_multiple_moves() {
 
 #[test]
 fn test_position_with_castling() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     // Italian Game position with castling available
@@ -306,7 +366,10 @@ fn test_position_with_castling() {
 
 #[test]
 fn test_position_with_en_passant() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     // Create a position where en passant is possible
@@ -319,7 +382,10 @@ fn test_position_with_en_passant() {
 
 #[test]
 fn test_go_with_invalid_position_handles_gracefully() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     // Even with default position, go should work
@@ -331,7 +397,10 @@ fn test_go_with_invalid_position_handles_gracefully() {
 
 #[test]
 fn test_setoption_case_insensitive() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
 
     // Test various case combinations
     api.handle_setoption("setoption name threads value 1");
@@ -343,7 +412,10 @@ fn test_setoption_case_insensitive() {
 
 #[test]
 fn test_position_invalid_move_handling() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     // Try to apply an invalid move in the middle of a sequence.
@@ -358,7 +430,10 @@ fn test_position_invalid_move_handling() {
 
 #[test]
 fn test_go_default_time() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     api.handle_position("position startpos", &mut output);
@@ -373,7 +448,10 @@ fn test_go_default_time() {
 
 #[test]
 fn test_position_promotion() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     // Set up a position near promotion
@@ -386,7 +464,10 @@ fn test_position_promotion() {
 
 #[test]
 fn test_complex_position_sequence() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     // Test a complex sequence of position commands
@@ -404,7 +485,10 @@ fn test_complex_position_sequence() {
 
 #[test]
 fn test_go_with_black_time_controls() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     // Position with black to move
@@ -420,7 +504,10 @@ fn test_go_with_black_time_controls() {
 
 #[test]
 fn test_multiple_searches_same_position() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     api.handle_position("position startpos", &mut output);
@@ -437,7 +524,10 @@ fn test_multiple_searches_same_position() {
 
 #[test]
 fn test_go_emits_legal_bestmove_in_reported_move31_position() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     let fen = "1r1k4/6pp/5b2/p4p2/b2P3P/1p2NB2/3R2P1/2K4R b - - 0 31";
@@ -473,7 +563,10 @@ fn test_go_emits_legal_bestmove_in_reported_move31_position() {
 
 #[test]
 fn test_newgame_clears_state() {
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     // Execute a search to populate engine state
@@ -501,7 +594,10 @@ fn test_newgame_clears_state() {
 fn test_round169_illegal_move_a5h3() {
     // Regression test for illegal move a5h3 reported in Round 169
     // Game position after 45. h4, where Black illegally played a5h3
-    let mut api = CodyApi::new();
+    use engine::NNUEEvaluator;
+    let mut api = CodyApi::new(NNUEEvaluator {
+        nnue: Default::default(),
+    });
     let mut output = Vec::new();
 
     let moves = "e2e4 d7d5 e4d5 g8f6 f1b5 c8d7 b5c4 b7b5 c4d3 e7e6 d5e6 d8e7 d1f3 e7e6 e1d1 e6c6 \
