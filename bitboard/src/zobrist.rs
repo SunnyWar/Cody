@@ -66,20 +66,23 @@ use crate::position::Position;
 pub fn compute_zobrist(pos: &Position) -> u64 {
     let mut h: u64 = 0;
 
-    for (piece, bb) in pos.pieces.iter() {
-        let idx = piece_index(piece);
-        // iterate squares set
-        for sq in bb.squares() {
-            let sqi = sq.index();
-            h ^= ZOBRIST_PIECE_KEYS[idx][sqi];
+    // Destructure the tuple (Piece, BitBoardMask)
+    for (p_idx, (_piece, bb)) in pos.pieces.iter().enumerate() {
+        let mut b = bb.0; // Access the underlying u64
+        while b != 0 {
+            let sq = b.trailing_zeros() as usize;
+            h ^= ZOBRIST_PIECE_KEYS[p_idx][sq];
+            b &= b - 1;
         }
     }
 
+    // If Black == 1 and White == 0, this avoids the 'if'
     if pos.side_to_move == Color::Black {
         h ^= ZOBRIST_SIDE;
     }
 
-    // Castling rights: four bits (WK, WQ, BK, BQ)
+    // Convert castling rights to a 4-bit index (0-15)
+    // We'll use your existing ZOBRIST_CASTLE_KEYS [u64; 4]
     if pos.castling_rights.kingside(Color::White) {
         h ^= ZOBRIST_CASTLE_KEYS[0];
     }
@@ -93,8 +96,9 @@ pub fn compute_zobrist(pos: &Position) -> u64 {
         h ^= ZOBRIST_CASTLE_KEYS[3];
     }
 
-    // En-passant: include square index when present
+    // 4. En-Passant
     if let Some(sq) = pos.ep_square {
+        // Using your existing piece keys for index 0
         h ^= ZOBRIST_PIECE_KEYS[0][sq.index()];
     }
 
