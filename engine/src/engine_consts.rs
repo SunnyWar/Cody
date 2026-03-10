@@ -22,4 +22,4 @@ pub const KING_LACKING_ESCAPE_SQUARES: i32 = 20;
 pub const ROOK_ON_OPEN_FILE_BONUS: i32 = 20;
 pub const ROOK_ON_SEMIOPEN_FILE_BONUS: i32 = 10;
 
-pub const PAWN_NEAR_PROMOTION: [i32; 8] = [0, 0, 0, 8, 20, 60, 150, 0];
+pub const PAWN_NEAR_PROMOTION: [i32; 8] = [5, 5, 5, 13, 25, 65, 155, 5];
