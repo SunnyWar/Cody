@@ -30,7 +30,6 @@ fn test_uci_command() {
 #[test]
 fn test_isready_command() {
     // ...existing code...
-    // Replace NNUEEvaluator with a default evaluator or stub as needed
     let mut api = CodyApi::new(MaterialEvaluator::default());
     let mut output = Vec::new();
 
