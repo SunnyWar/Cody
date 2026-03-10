@@ -11,6 +11,8 @@ mod perft_integration_test;
 pub use crate::search::engine::Engine;
 pub use crate::search::engine::NODE_COUNT;
 pub use crate::search::evaluator::MaterialEvaluator;
+pub use crate::search::nnue::NNUE;
+pub use crate::search::nnue::NNUEEvaluator;
 pub use crate::test_data::TEST_CASES;
 pub use crate::test_data::TestCase;
 // Global runtime verbose flag. Can be toggled via UCI setoption or command-line --verbose.

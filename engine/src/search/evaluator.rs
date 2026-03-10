@@ -80,6 +80,8 @@ pub trait Evaluator {
     fn evaluate(&self, pos: &Position) -> i32;
 }
 
+// NNUE trait implementation will be imported from nnue.rs
+
 /// Convert a White-centric evaluator score into side-to-move perspective.
 ///
 /// Negamax expects every node score to be from the perspective of the player

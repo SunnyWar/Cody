@@ -21,8 +21,8 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::sync::mpsc;
 
-pub struct CodyApi {
-    engine: Engine<SimpleMoveGen, MaterialEvaluator>,
+pub struct CodyApi<E: crate::search::evaluator::Evaluator + Clone + Send + Sync + 'static> {
+    engine: Engine<SimpleMoveGen, E>,
     pub current_pos: Position,
     limits: GoLimits,
     ponder_enabled: bool,
@@ -32,15 +32,12 @@ pub struct CodyApi {
     log: Option<File>,
 }
 
-impl Default for CodyApi {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Default implementation removed: CodyApi::new now requires an evaluator
+// argument.
 
-impl CodyApi {
-    pub fn new() -> Self {
-        let mut engine = Engine::new(65_536, SimpleMoveGen, MaterialEvaluator);
+impl<E: crate::search::evaluator::Evaluator + Clone + Send + Sync + 'static> CodyApi<E> {
+    pub fn new(evaluator: E) -> Self {
+        let mut engine = Engine::new(65_536, SimpleMoveGen, evaluator);
 
         // Optimize for multi-core systems: use all available threads (up to 8)
         let num_threads = std::thread::available_parallelism()

@@ -38,7 +38,11 @@ fn main() {
             }
         }
 
-        let api = CodyApi::new();
+        // NNUE integration: load NNUE network from file
+        use engine::MaterialEvaluator;
+        use engine::NNUE;
+        use engine::NNUEEvaluator;
+        let api = CodyApi::new(NNUEEvaluator { nnue: NNUE::new() });
         api.run();
     }
 }
