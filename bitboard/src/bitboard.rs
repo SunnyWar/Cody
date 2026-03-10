@@ -22,6 +22,7 @@ impl Iterator for BitIter {
         if self.0 == 0 {
             None
         } else {
+            #[allow(clippy::cast_possible_truncation)]
             let sq = crate::intrinsics::trailing_zeros_nonzero(self.0) as u8;
             self.0 = crate::intrinsics::blsr_nonzero(self.0); // clear LS1B
             Some(sq)
@@ -29,30 +30,37 @@ impl Iterator for BitIter {
     }
 }
 
+#[must_use]
 pub fn occupancy_to_index(occupancy: BitBoardMask, mask: BitBoardMask) -> usize {
     occupancy_to_index_u64(occupancy.0, mask.0)
 }
 
+#[must_use]
+#[allow(clippy::cast_possible_truncation)]
 pub fn occupancy_to_index_u64(occupancy: u64, mask: u64) -> usize {
     // Use PEXT (Parallel Bits Extract) via our intrinsics module
     // This will use hardware BMI2 when available, software fallback otherwise
     crate::intrinsics::pext(occupancy, mask) as usize
 }
 
+#[must_use]
 pub const fn king_attacks(square: Square) -> BitBoardMask {
     KING_ATTACKS[square.index()]
 }
 
+#[must_use]
 pub const fn knight_attacks(square: Square) -> BitBoardMask {
     KNIGHT_ATTACKS[square.index()]
 }
 
+#[must_use]
 pub fn rook_attacks(sq: Square, occ_bb: BitBoardMask) -> BitBoardMask {
     let mask_bb = ROOK_MASKS[sq.index()];
     let idx = occupancy_to_index_u64(occ_bb.0, mask_bb.0);
     ROOK_ATTACKS[sq.index()][idx]
 }
 
+#[must_use]
 pub fn bishop_attacks(sq: Square, occ_bb: BitBoardMask) -> BitBoardMask {
     let mask_bb = BISHOP_MASKS[sq.index()];
     let idx = occupancy_to_index_u64(occ_bb.0, mask_bb.0);
@@ -78,6 +86,7 @@ pub const ROOK_MASKS: [BitBoardMask; NUM_SQUARES] = {
     table
 };
 
+#[must_use]
 pub fn rook_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
     let sq = square.index();
 
@@ -105,10 +114,12 @@ pub const BISHOP_MASKS: [BitBoardMask; NUM_SQUARES] = {
 };
 
 impl BitBoardMask {
+    #[must_use]
     pub const fn diagonal_for(square: Square) -> BitBoardMask {
         DIAGONAL_MASKS[square.index()]
     }
 
+    #[must_use]
     pub const fn antidiagonal_for(square: Square) -> BitBoardMask {
         ANTIDIAGONAL_MASKS[square.index()]
     }
@@ -136,6 +147,7 @@ pub fn bishop_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardM
 
 /// Const version for compile-time bishop attack computation.
 /// Kept for initializing const tables but not used in hot path.
+#[must_use]
 pub const fn bishop_attacks_from_const(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
     let origin = square.bitboard();
     // Diagonal directions
@@ -157,18 +169,19 @@ const fn pawn_attacks_from(square: Square, color: Color) -> BitBoardMask {
     let bb = square.bitboard();
     match color {
         Color::White => {
-            let nw_attack = BitBoardMask((bb.0 << 7) & NOT_FILE_H.0);
-            let ne_attack = BitBoardMask((bb.0 << 9) & NOT_FILE_A.0);
-            BitBoardMask(nw_attack.0 | ne_attack.0)
+            let nw_target = BitBoardMask((bb.0 << 7) & NOT_FILE_H.0);
+            let ne_target = BitBoardMask((bb.0 << 9) & NOT_FILE_A.0);
+            BitBoardMask(nw_target.0 | ne_target.0)
         }
         Color::Black => {
-            let sw_attack = BitBoardMask((bb.0 >> 9) & NOT_FILE_H.0);
-            let se_attack = BitBoardMask((bb.0 >> 7) & NOT_FILE_A.0);
-            BitBoardMask(sw_attack.0 | se_attack.0)
+            let sw_target = BitBoardMask((bb.0 >> 9) & NOT_FILE_H.0);
+            let se_target = BitBoardMask((bb.0 >> 7) & NOT_FILE_A.0);
+            BitBoardMask(sw_target.0 | se_target.0)
         }
     }
 }
 
+#[must_use]
 pub const fn pawn_attacks_to(sq: Square, attacker_color: Color) -> BitBoardMask {
     // Reverse the direction: squares that can attack `sq` for this color.
     // Direct index computation avoids opposite().index() call overhead.

@@ -32,6 +32,7 @@ pub struct PieceSet {
 }
 
 /// Check if a square is attacked by the given color
+#[must_use]
 pub fn is_square_attacked(square: Square, by_color: Color, board: &BoardState) -> bool {
     let sq_index = square.index();
     let king_color_mask = square.color_mask();
@@ -115,6 +116,7 @@ pub fn is_square_attacked(square: Square, by_color: Color, board: &BoardState) -
 }
 
 /// Check if the king of the given color is in check
+#[must_use]
 pub fn is_king_in_check(king_color: Color, board: &BoardState) -> bool {
     // Fetch the king bitboard for the required colour.
     let king_bb = match king_color {
@@ -132,6 +134,7 @@ pub fn is_king_in_check(king_color: Color, board: &BoardState) -> bool {
     // Square is repr(u8) over 0..63 and the king bitboard has a single legal
     // square.
     let king_square: Square = unsafe {
+        #[allow(clippy::cast_possible_truncation)]
         core::mem::transmute::<u8, Square>(
             crate::intrinsics::trailing_zeros_nonzero(king_bits) as u8
         )

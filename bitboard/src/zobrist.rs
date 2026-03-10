@@ -16,8 +16,8 @@ pub const ZOBRIST_PIECE_KEYS: [[u64; 64]; 12] = {
             let mut j = 0;
             while j < 64 {
                 seed = seed
-                    .wrapping_mul(6364136223846793005)
-                    .wrapping_add(1442695040888963407);
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
                 tbl[i][j] = seed ^ (seed >> 32);
                 j += 1;
             }

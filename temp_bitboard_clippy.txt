@@ -1,3 +1,4 @@
+    Checking bitboard v0.3.1 (D:\Cody\bitboard)
 warning: binding's name is too similar to existing binding
    --> bitboard\src\bitboard.rs:161:17
     |
@@ -1137,21 +1138,6 @@ help: ... or use `try_from` and handle the error accordingly
 182 +             u32::try_from(core::arch::x86_64::_lzcnt_u64(x))
     |
 
-warning: item in documentation is missing backticks
-   --> bitboard\src\intrinsics.rs:200:39
-    |
-200 | /// Example: while bb != 0 { let sq = trailing_zeros(bb); bb = blsr(bb); ... }
-    |                                       ^^^^^^^^^^^^^^^^^^
-    |
-    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
-    = note: `-W clippy::doc-markdown` implied by `-W clippy::pedantic`
-    = help: to override `-W clippy::pedantic` add `#[allow(clippy::doc_markdown)]`
-help: try
-    |
-200 - /// Example: while bb != 0 { let sq = trailing_zeros(bb); bb = blsr(bb); ... }
-200 + /// Example: while bb != 0 { let sq = `trailing_zeros(bb)`; bb = blsr(bb); ... }
-    |
-
 warning: this function could have a `#[must_use]` attribute
    --> bitboard\src\intrinsics.rs:201:8
     |
@@ -1202,19 +1188,6 @@ help: add the attribute
     |
 270 + #[must_use] 
 271 | pub fn pext(src: u64, mask: u64) -> u64 {
-    |
-
-warning: item in documentation is missing backticks
-   --> bitboard\src\intrinsics.rs:293:46
-    |
-293 | /// Precondition: `mask != 0`. Enforced with debug_assert.
-    |                                              ^^^^^^^^^^^^
-    |
-    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
-help: try
-    |
-293 - /// Precondition: `mask != 0`. Enforced with debug_assert.
-293 + /// Precondition: `mask != 0`. Enforced with `debug_assert`.
     |
 
 warning: this function could have a `#[must_use]` attribute
@@ -2036,19 +2009,6 @@ help: add the attribute
 65 ~     pub fn to_square(&self) -> String {
    |
 
-warning: item in documentation is missing backticks
-  --> bitboard\src\movegen\api.rs:29:64
-   |
-29 | /// Fast zero-allocation move generation using stack-allocated MoveList
-   |                                                                ^^^^^^^^
-   |
-   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
-help: try
-   |
-29 - /// Fast zero-allocation move generation using stack-allocated MoveList
-29 + /// Fast zero-allocation move generation using stack-allocated `MoveList`
-   |
-
 warning: this function could have a `#[must_use]` attribute
   --> bitboard\src\movegen\api.rs:30:8
    |
@@ -2220,32 +2180,6 @@ warning: this argument (3 byte) is passed by reference, but would be more effici
     |         ^^^^^^^^^^ help: consider passing by value instead: `ChessMove`
     |
     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref
-
-warning: item in documentation is missing backticks
-   --> bitboard\src\movegen\sliders.rs:120:62
-    |
-120 | /// Optimized queen move generation - now benefits from fast bishop_attacks_from
-    |                                                              ^^^^^^^^^^^^^^^^^^^
-    |
-    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
-help: try
-    |
-120 - /// Optimized queen move generation - now benefits from fast bishop_attacks_from
-120 + /// Optimized queen move generation - now benefits from fast `bishop_attacks_from`
-    |
-
-warning: item in documentation is missing backticks
-  --> bitboard\src\movelist.rs:10:5
-   |
-10 | /// MoveList optimized for cache-line efficiency.
-   |     ^^^^^^^^
-   |
-   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
-help: try
-   |
-10 - /// MoveList optimized for cache-line efficiency.
-10 + /// `MoveList` optimized for cache-line efficiency.
-   |
 
 warning: this method could have a `#[must_use]` attribute
   --> bitboard\src\movelist.rs:22:18
@@ -2429,8 +2363,8 @@ help: add the attribute
 warning: `format!(..)` appended to existing `String`
   --> bitboard\src\perft.rs:61:9
    |
-61 |         result.push_str(&format!("{}: {}\n", move_to_uci(&mv), count));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+61 |         result.push_str(&format!("{}: {count}\n", move_to_uci(&mv)));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: you may need to import the `std::fmt::Write` trait
    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#format_push_string
@@ -2438,50 +2372,22 @@ warning: `format!(..)` appended to existing `String`
    = help: to override `-W clippy::pedantic` add `#[allow(clippy::format_push_string)]`
 help: consider using `write!` to avoid the extra allocation
    |
-61 -         result.push_str(&format!("{}: {}\n", move_to_uci(&mv), count));
-61 +         let _ = write!(result, "{}: {}\n", move_to_uci(&mv), count);
+61 -         result.push_str(&format!("{}: {count}\n", move_to_uci(&mv)));
+61 +         let _ = write!(result, "{}: {count}\n", move_to_uci(&mv));
    |
 
 warning: `format!(..)` appended to existing `String`
   --> bitboard\src\perft.rs:64:5
    |
-64 |     result.push_str(&format!("Total: {}\n", total));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+64 |     result.push_str(&format!("Total: {total}\n"));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: you may need to import the `std::fmt::Write` trait
    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#format_push_string
 help: consider using `write!` to avoid the extra allocation
    |
-64 -     result.push_str(&format!("Total: {}\n", total));
-64 +     let _ = write!(result, "Total: {}\n", total);
-   |
-
-warning: variables can be used directly in the `format!` string
-  --> bitboard\src\perft.rs:64:22
-   |
-64 |     result.push_str(&format!("Total: {}\n", total));
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
-   = note: `-W clippy::uninlined-format-args` implied by `-W clippy::pedantic`
-   = help: to override `-W clippy::pedantic` add `#[allow(clippy::uninlined_format_args)]`
-help: change this to
-   |
-64 -     result.push_str(&format!("Total: {}\n", total));
-64 +     result.push_str(&format!("Total: {total}\n"));
-   |
-
-warning: item in documentation is missing backticks
-  --> bitboard\src\perft.rs:68:15
-   |
-68 | /// Convert a ChessMove to UCI notation (e.g., "e2e4").
-   |               ^^^^^^^^^
-   |
-   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
-help: try
-   |
-68 - /// Convert a ChessMove to UCI notation (e.g., "e2e4").
-68 + /// Convert a `ChessMove` to UCI notation (e.g., "e2e4").
+64 -     result.push_str(&format!("Total: {total}\n"));
+64 +     let _ = write!(result, "Total: {total}\n");
    |
 
 warning: this argument (3 byte) is passed by reference, but would be more efficient if passed by value (limit: 8 byte)
@@ -2501,32 +2407,6 @@ warning: adding items after statements is confusing, since items exist from the 
    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#items_after_statements
    = note: `-W clippy::items-after-statements` implied by `-W clippy::pedantic`
    = help: to override `-W clippy::pedantic` add `#[allow(clippy::items_after_statements)]`
-
-warning: variables can be used directly in the `format!` string
-  --> bitboard\src\perft.rs:84:13
-   |
-84 |             format!("{}{}{}", from, to, promotion_char)
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
-help: change this to
-   |
-84 -             format!("{}{}{}", from, to, promotion_char)
-84 +             format!("{from}{to}{promotion_char}")
-   |
-
-warning: variables can be used directly in the `format!` string
-  --> bitboard\src\perft.rs:86:14
-   |
-86 |         _ => format!("{}{}", from, to),
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
-help: change this to
-   |
-86 -         _ => format!("{}{}", from, to),
-86 +         _ => format!("{from}{to}"),
-   |
 
 warning: this method could have a `#[must_use]` attribute
   --> bitboard\src\piece.rs:20:18
@@ -2757,19 +2637,6 @@ help: ... or use `try_from` and handle the error accordingly
 69 +             .map(|(i, bb)| (unsafe { std::mem::transmute::<u8, Piece>(u8::try_from(i)) }, bb))
    |
 
-warning: item in documentation is missing backticks
-  --> bitboard\src\position.rs:27:26
-   |
-27 | /// Undo information for unmake_move. Stores only the minimal state needed
-   |                          ^^^^^^^^^^^
-   |
-   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
-help: try
-   |
-27 - /// Undo information for unmake_move. Stores only the minimal state needed
-27 + /// Undo information for `unmake_move`. Stores only the minimal state needed
-   |
-
 warning: `as` casting between raw pointers without changing their constness
   --> bitboard\src\position.rs:71:17
    |
@@ -2882,32 +2749,6 @@ help: add the attribute
 168 ~     pub fn piece_at(&self, sq: Square) -> Option<Piece> {
     |
 
-warning: item in documentation is missing backticks
-   --> bitboard\src\position.rs:176:61
-    |
-176 |     /// Direct piece accessor returning Piece (which may be Piece::None).
-    |                                                             ^^^^^^^^^^^
-    |
-    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
-help: try
-    |
-176 -     /// Direct piece accessor returning Piece (which may be Piece::None).
-176 +     /// Direct piece accessor returning Piece (which may be `Piece::None`).
-    |
-
-warning: item in documentation is missing backticks
-   --> bitboard\src\position.rs:181:17
-    |
-181 |     /// Returns Piece::None if square is empty.
-    |                 ^^^^^^^^^^^
-    |
-    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
-help: try
-    |
-181 -     /// Returns Piece::None if square is empty.
-181 +     /// Returns `Piece::None` if square is empty.
-    |
-
 warning: this method could have a `#[must_use]` attribute
    --> bitboard\src\position.rs:182:12
     |
@@ -2982,45 +2823,6 @@ help: ... or use `try_from` and handle the error accordingly
 211 +                     file += u8::try_from(ch.to_digit(10).unwrap());
     |
 
-warning: variables can be used directly in the `format!` string
-   --> bitboard\src\position.rs:215:64
-    |
-215 |                         Piece::from_char(ch).unwrap_or_else(|| panic!("Invalid FEN char: {}", ch));
-    |                                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
-help: change this to
-    |
-215 -                         Piece::from_char(ch).unwrap_or_else(|| panic!("Invalid FEN char: {}", ch));
-215 +                         Piece::from_char(ch).unwrap_or_else(|| panic!("Invalid FEN char: {ch}"));
-    |
-
-warning: variables can be used directly in the `format!` string
-   --> bitboard\src\position.rs:217:44
-    |
-217 |                         .unwrap_or_else(|| panic!("Invalid square: rank {}, file {}", rank, file));
-    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
-help: change this to
-    |
-217 -                         .unwrap_or_else(|| panic!("Invalid square: rank {}, file {}", rank, file));
-217 +                         .unwrap_or_else(|| panic!("Invalid square: rank {rank}, file {file}"));
-    |
-
-warning: variables can be used directly in the `format!` string
-   --> bitboard\src\position.rs:228:18
-    |
-228 |             _ => panic!("Invalid FEN side: {}", side_part),
-    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
-help: change this to
-    |
-228 -             _ => panic!("Invalid FEN side: {}", side_part),
-228 +             _ => panic!("Invalid FEN side: {side_part}"),
-    |
-
 warning: unnecessary `!=` operation
    --> bitboard\src\position.rs:235:25
     |
@@ -3073,19 +2875,6 @@ note: first possible panic found here
 391 |                     Color::White => mv.to.backward(1).expect("Invalid EP capture square"),
     |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_panics_doc
-
-warning: item in documentation is missing backticks
-   --> bitboard\src\position.rs:505:62
-    |
-505 |     /// Unmake a move using the undo information returned by make_move.
-    |                                                              ^^^^^^^^^
-    |
-    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
-help: try
-    |
-505 -     /// Unmake a move using the undo information returned by make_move.
-505 +     /// Unmake a move using the undo information returned by `make_move`.
-    |
 
 warning: usage of wildcard import for enum variants
    --> bitboard\src\position.rs:583:17
@@ -3236,19 +3025,6 @@ help: add the attribute
    |
 48 ~     #[must_use] 
 49 ~     pub fn to_uci(self) -> String {
-   |
-
-warning: variables can be used directly in the `format!` string
-  --> bitboard\src\square.rs:51:9
-   |
-51 |         format!("{}{}", file_char, rank_char)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
-help: change this to
-   |
-51 -         format!("{}{}", file_char, rank_char)
-51 +         format!("{file_char}{rank_char}")
    |
 
 warning: this method could have a `#[must_use]` attribute
@@ -3424,19 +3200,6 @@ help: add the attribute
 126 ~     pub const fn color_mask(self) -> BitBoardMask {
     |
 
-warning: item in documentation is missing backticks
-  --> bitboard\src\zobrist.rs:41:5
-   |
-41 | /// Piece::None (12) maps to 0 (unused in zobrist computation).
-   |     ^^^^^^^^^^^
-   |
-   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
-help: try
-   |
-41 - /// Piece::None (12) maps to 0 (unused in zobrist computation).
-41 + /// `Piece::None` (12) maps to 0 (unused in zobrist computation).
-   |
-
 warning: this function could have a `#[must_use]` attribute
   --> bitboard\src\zobrist.rs:60:14
    |
@@ -3463,7 +3226,5 @@ help: add the attribute
 67 | pub fn compute_zobrist(pos: &Position) -> u64 {
    |
 
-warning: error finalizing incremental compilation session directory `\\?\D:\Cody\target\debug\incremental\bitboard-117em388r2vrj\s-hgif0iezem-014a483-working`: Access is denied. (os error 5)
-
-warning: `bitboard` (lib) generated 291 warnings (run `cargo clippy --fix --lib -p bitboard -- -W clippy::pedantic` to apply 204 suggestions)
-    Finished `dev` profile [optimized + debuginfo] target(s) in 0.05s
+warning: `bitboard` (lib) generated 272 warnings (run `cargo clippy --fix --lib -p bitboard -- -W clippy::pedantic` to apply 186 suggestions)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 35.81s

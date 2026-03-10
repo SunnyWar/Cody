@@ -65,30 +65,37 @@ use std::ops::Shr;
 pub struct BitBoardMask(pub u64);
 
 impl BitBoardMask {
+    #[must_use]
     pub fn and(self, rhs: Self) -> Self {
         self & rhs
     }
 
+    #[must_use]
     pub fn or(self, rhs: Self) -> Self {
         self | rhs
     }
 
+    #[must_use]
     pub const fn shift_left(self, n: u8) -> Self {
         BitBoardMask(self.0 << n)
     }
 
+    #[must_use]
     pub const fn shift_right(self, n: u8) -> Self {
         BitBoardMask(self.0 >> n)
     }
 
+    #[must_use]
     pub const fn contains(&self, sq: Square) -> bool {
         self.contains_square(sq)
     }
 
+    #[must_use]
     pub const fn empty() -> Self {
         Self(0)
     }
 
+    #[must_use]
     pub const fn from_square(sq: Square) -> Self {
         Self(1u64 << (sq as u8))
     }
@@ -101,41 +108,49 @@ impl BitBoardMask {
         self.0 &= !(1u64 << sq.index());
     }
 
+    #[must_use]
     pub const fn is_empty(self) -> bool {
         self.0 == 0
     }
 
+    #[must_use]
     pub fn count(self) -> u32 {
         crate::intrinsics::popcnt(self.0)
     }
 
+    #[must_use]
     pub const fn count_ones(self) -> u32 {
         self.0.count_ones()
     }
 
+    #[must_use]
     pub const fn is_singleton(self) -> bool {
-        // Faster than count_ones() == 1
-        self.0 != 0 && (self.0 & (self.0 - 1)) == 0
+        self.0.is_power_of_two()
     }
 
+    #[must_use]
     pub const fn is_nonempty(self) -> bool {
         self.0 != 0
     }
 
+    #[must_use]
     pub const fn contains_square(self, sq: Square) -> bool {
         (self.0 & (1u64 << (sq as u8))) != 0
     }
 
     /// Returns an iterator over all set squares in this bitboard.
+    #[must_use]
     pub const fn squares(self) -> SquaresIter {
         SquaresIter { bb: self.0 }
     }
 
+    #[must_use]
     pub fn first_square(self) -> Option<Square> {
         if self.0 == 0 {
             None
         } else {
             let tz = crate::intrinsics::trailing_zeros_nonzero(self.0);
+            #[allow(clippy::cast_possible_truncation)]
             Square::try_from_index(tz as u8)
         }
     }
@@ -144,10 +159,12 @@ impl BitBoardMask {
 
     // Move test module to bottom of file at module scope
 
+    #[must_use]
     pub const fn not(self) -> Self {
         BitBoardMask(!self.0)
     }
 
+    #[must_use]
     pub const fn from_squares(squares: &[Square]) -> Self {
         let mut mask = 0u64;
         let mut i = 0;
@@ -238,6 +255,7 @@ impl From<u64> for BitBoardMask {
 
 // Optimized ray casting functions
 impl BitBoardMask {
+    #[must_use]
     pub fn subray_left_optimized(self, origin_sq: u8) -> BitBoardMask {
         // Use bit manipulation for horizontal rays
         let rank_mask = 0xFFu64 << (origin_sq & 56); // Get rank mask
@@ -251,7 +269,7 @@ impl BitBoardMask {
             BitBoardMask((origin_bit - 1) & rank_mask)
         } else {
             // Find rightmost blocker (MSB of left_pieces)
-            let blocker_pos = 63 - crate::intrinsics::leading_zeros(left_pieces);
+            let blocker_pos = left_pieces.ilog2();
             let ray_mask = (origin_bit - 1) & !((1u64 << (blocker_pos + 1)) - 1);
             BitBoardMask(ray_mask)
         }
@@ -283,7 +301,7 @@ impl BitBoardMask {
         }
 
         // Find rightmost blocker (closest to origin)
-        let blocker_pos = 63 - left_occupied.leading_zeros();
+        let blocker_pos = left_occupied.ilog2();
         let ray_mask = (origin_bit - 1) & !((1u64 << (blocker_pos + 1)) - 1);
 
         BitBoardMask(ray_mask & rank_mask)
@@ -363,7 +381,7 @@ impl BitBoardMask {
             return BitBoardMask(down_mask & file_mask);
         }
 
-        let blocker_pos = 63 - down_occupied.leading_zeros();
+        let blocker_pos = down_occupied.ilog2();
         let ray_mask = (origin_bit - 1) & !((1u64 << (blocker_pos + 1)) - 1);
 
         BitBoardMask(ray_mask & file_mask)

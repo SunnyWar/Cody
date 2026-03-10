@@ -11,6 +11,7 @@ pub struct CastlingRights {
 }
 
 impl CastlingRights {
+    #[must_use]
     pub const fn kingside(&self, color: Color) -> bool {
         match color {
             Color::White => self.white_kingside,
@@ -18,6 +19,7 @@ impl CastlingRights {
         }
     }
 
+    #[must_use]
     pub const fn queenside(&self, color: Color) -> bool {
         match color {
             Color::White => self.white_queenside,
@@ -25,6 +27,7 @@ impl CastlingRights {
         }
     }
 
+    #[must_use]
     pub const fn empty() -> Self {
         Self {
             white_kingside: false,
@@ -34,6 +37,7 @@ impl CastlingRights {
         }
     }
 
+    #[must_use]
     pub fn from_fen(s: &str) -> Self {
         let mut rights = Self::empty();
         if s.contains('K') {
@@ -51,6 +55,7 @@ impl CastlingRights {
         rights
     }
 
+    #[must_use]
     pub fn to_fen(&self) -> String {
         let mut s = String::new();
         if self.white_kingside {
