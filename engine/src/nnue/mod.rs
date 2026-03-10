@@ -23,15 +23,10 @@ impl NNUE {
         }
     }
 
-    pub fn evaluate(&self, _pos: &Position) -> i32 {
-        let mut sum = 0i32;
-        for sq in 0..64 {
-            let piece = _pos.piece_on[sq];
-            if piece as u8 != 0 {
-                sum += (piece as i32) * (sq as i32);
-            }
-        }
-        sum
+    pub fn evaluate(&self, pos: &Position) -> i32 {
+        let features = crate::nnue::features::extract_piece_features(pos);
+        let acc = crate::nnue::accumulator::accumulate_features(&features);
+        crate::nnue::network::network_infer(&acc)
     }
 }
 
