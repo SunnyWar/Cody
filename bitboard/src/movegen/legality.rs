@@ -244,21 +244,6 @@ fn is_square_attacked_with_occupancy(
     let attacker_pawns = pos
         .pieces
         .get(Piece::from_parts(attacker_color, Some(PieceKind::Pawn)));
-    let attacker_knights = pos
-        .pieces
-        .get(Piece::from_parts(attacker_color, Some(PieceKind::Knight)));
-    let attacker_bishops = pos
-        .pieces
-        .get(Piece::from_parts(attacker_color, Some(PieceKind::Bishop)));
-    let attacker_rooks = pos
-        .pieces
-        .get(Piece::from_parts(attacker_color, Some(PieceKind::Rook)));
-    let attacker_queens = pos
-        .pieces
-        .get(Piece::from_parts(attacker_color, Some(PieceKind::Queen)));
-    let attacker_king = pos
-        .pieces
-        .get(Piece::from_parts(attacker_color, Some(PieceKind::King)));
 
     // Pawn attacks (independent of occupancy)
     if pawn_attacks_to(sq, attacker_color)
@@ -269,11 +254,20 @@ fn is_square_attacked_with_occupancy(
     }
 
     // Knight attacks (independent of occupancy)
+    let attacker_knights = pos
+        .pieces
+        .get(Piece::from_parts(attacker_color, Some(PieceKind::Knight)));
     if knight_attacks(sq).and(attacker_knights).is_nonempty() {
         return true;
     }
 
     // Bishop/Queen attacks (depend on occupancy)
+    let attacker_bishops = pos
+        .pieces
+        .get(Piece::from_parts(attacker_color, Some(PieceKind::Bishop)));
+    let attacker_queens = pos
+        .pieces
+        .get(Piece::from_parts(attacker_color, Some(PieceKind::Queen)));
     if bishop_attacks_from(sq, occ)
         .and(attacker_bishops | attacker_queens)
         .is_nonempty()
@@ -282,6 +276,9 @@ fn is_square_attacked_with_occupancy(
     }
 
     // Rook/Queen attacks (depend on occupancy)
+    let attacker_rooks = pos
+        .pieces
+        .get(Piece::from_parts(attacker_color, Some(PieceKind::Rook)));
     if rook_attacks_from(sq, occ)
         .and(attacker_rooks | attacker_queens)
         .is_nonempty()
@@ -290,5 +287,8 @@ fn is_square_attacked_with_occupancy(
     }
 
     // King attacks (independent of occupancy)
+    let attacker_king = pos
+        .pieces
+        .get(Piece::from_parts(attacker_color, Some(PieceKind::King)));
     king_attacks(sq).and(attacker_king).is_nonempty()
 }

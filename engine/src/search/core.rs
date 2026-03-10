@@ -487,8 +487,9 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         let (parent, _) = arena.get_pair_mut(ply, ply + 1);
         generate_pseudo_moves_fast(&parent.position)
     };
+    let move_len = moves.len();
 
-    if moves.is_empty() {
+    if move_len == 0 {
         if in_check {
             // mate: return losing score adjusted by ply (so earlier mate is worse)
             return -MATE_SCORE + ply as i32;
@@ -503,7 +504,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
     if let Some(e) = tt_exact_needs_verify
         && !e.best_move.is_null()
     {
-        for i in 0..moves.len() {
+        for i in 0..move_len {
             if moves[i] == e.best_move {
                 moves.swap(0, i);
                 break;
@@ -518,7 +519,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
 
     // Move TT best move to front if found
     if let Some(tt_move) = tt_best_move {
-        for i in 0..moves.len() {
+        for i in 0..move_len {
             if moves[i] == tt_move {
                 moves.swap(0, i);
                 break;
@@ -530,7 +531,7 @@ pub fn search_node_with_arena<M: MoveGenerator, E: Evaluator>(
         && !e.best_move.is_null()
     {
         let mut has_move = false;
-        for i in 0..moves.len() {
+        for i in 0..move_len {
             if moves[i] == e.best_move {
                 has_move = true;
                 break;

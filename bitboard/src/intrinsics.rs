@@ -36,7 +36,6 @@ pub fn prefetch_read<T>(addr: *const T) {
 ///
 /// Similar to `prefetch_read` but targets L2 cache instead of L1.
 /// Useful for data that will be accessed soon but not immediately.
-#[allow(dead_code)]
 pub fn prefetch_read_l2<T>(addr: *const T) {
     #[cfg(target_arch = "x86_64")]
     unsafe {
@@ -61,7 +60,6 @@ pub fn prefetch_read_l2<T>(addr: *const T) {
 ///
 /// Hints that the cache line will be modified soon. On x86 this may use
 /// prefetchw if available, otherwise falls back to regular prefetch.
-#[allow(dead_code)]
 pub fn prefetch_write<T>(addr: *const T) {
     // For now, use the same as prefetch_read since _mm_prefetch doesn't
     // distinguish read vs write on most x86 CPUs (prefetchw is a separate
@@ -267,7 +265,7 @@ pub const fn blsi(x: u64) -> u64 {
 ///
 /// Note: AMD Zen 1/2 have slow microcode PEXT (~18 cycles), prefer fallback
 /// there.
-pub const fn pext(src: u64, mask: u64) -> u64 {
+pub fn pext(src: u64, mask: u64) -> u64 {
     #[cfg(target_arch = "x86_64")]
     {
         #[cfg(target_feature = "bmi2")]
@@ -321,8 +319,7 @@ const fn pext_software(src: u64, mut mask: u64) -> u64 {
 ///
 /// Inverse of PEXT: deposits bits from `src` into positions specified by
 /// `mask`. Less commonly used in chess engines but available for completeness.
-#[allow(dead_code)]
-pub const fn pdep(src: u64, mask: u64) -> u64 {
+pub fn pdep(src: u64, mask: u64) -> u64 {
     #[cfg(target_arch = "x86_64")]
     {
         #[cfg(target_feature = "bmi2")]
