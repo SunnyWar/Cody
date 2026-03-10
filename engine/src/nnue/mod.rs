@@ -24,9 +24,14 @@ impl NNUE {
     }
 
     pub fn evaluate(&self, pos: &Position) -> i32 {
-        let features = crate::nnue::features::extract_piece_features(pos);
-        let acc = crate::nnue::accumulator::accumulate_features(&features);
-        crate::nnue::network::network_infer(&acc)
+        let features = crate::nnue::features::extract_nnue_features(pos);
+        // TODO: update accumulator and network to accept (king_sq, piece, sq) tuples
+        // For now, sum indices as a placeholder
+        let mut sum = 0i32;
+        for (king_sq, piece, sq) in features.iter() {
+            sum += (king_sq.index() as i32) + (piece.index() as i32) + (sq.index() as i32);
+        }
+        sum
     }
 }
 
