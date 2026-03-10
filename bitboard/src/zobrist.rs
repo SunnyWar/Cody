@@ -96,7 +96,7 @@ pub fn compute_zobrist(pos: &Position) -> u64 {
         h ^= ZOBRIST_CASTLE_KEYS[3];
     }
 
-    // 4. En-Passant
+    // En-Passant
     if let Some(sq) = pos.ep_square {
         // Using your existing piece keys for index 0
         h ^= ZOBRIST_PIECE_KEYS[0][sq.index()];
