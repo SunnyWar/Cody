@@ -1,5 +1,28 @@
+use once_cell::sync::Lazy;
+// Mobility bonus array generation (was previously in engine_consts.rs)
+pub fn mobility_bonus_by_square() -> [i32; 64] {
+    let mut bonuses = [0i32; 64];
+    let mut idx = 0usize;
+    while idx < 64 {
+        let file = (idx % 8) as i32;
+        let rank = (idx / 8) as i32;
+        let file_distance = if file >= 3 { file - 3 } else { 3 - file };
+        let rank_distance = if rank >= 3 { rank - 3 } else { 3 - rank };
+        let mut center_distance = file_distance + rank_distance;
+        if center_distance < 1 {
+            center_distance = 1;
+        }
+        let center_bonus = (5 - center_distance) / 2;
+        bonuses[idx] = center_bonus * crate::engine_consts::MOBILITY_WEIGHT;
+        idx += 1;
+    }
+    bonuses
+}
+
+pub static MOBILITY_BONUS_BY_SQUARE: Lazy<[i32; 64]> = Lazy::new(mobility_bonus_by_square);
 // src/search/evaluator.rs
 
+use crate::engine_consts::*;
 use crate::search::piecesquaretable::BISHOP_ENDGAME_TABLE;
 use crate::search::piecesquaretable::BISHOP_SQUARE_TABLE;
 use crate::search::piecesquaretable::KING_ENDGAME_TABLE;
@@ -20,57 +43,6 @@ use bitboard::piece::Color;
 use bitboard::piece::Piece;
 use bitboard::piece::PieceKind;
 use bitboard::position::Position;
-
-/// Piece values in centipawns
-const PIECE_VALUES: [i32; 6] = [
-    100, // Pawn
-    320, // Knight
-    330, // Bishop
-    500, // Rook
-    900, // Queen
-    0,   // King (not scored in material)
-];
-
-const BISHOP_PAIR_BONUS: i32 = 30;
-const DOUBLED_PAWN_PENALTY: i32 = 12;
-const ISOLATED_PAWN_PENALTY: i32 = 10;
-const PASSED_PAWN_BONUS_BY_ADVANCE: [i32; 8] = [0, 5, 10, 18, 28, 42, 60, 0];
-
-// Piece mobility (activity bonus per legal move a piece can make)
-const MOBILITY_WEIGHT: i32 = 4;
-
-const fn mobility_bonus_by_square() -> [i32; 64] {
-    let mut bonuses = [0i32; 64];
-    let mut idx = 0usize;
-    while idx < 64 {
-        let file = (idx % 8) as i32;
-        let rank = (idx / 8) as i32;
-        let file_distance = if file >= 3 { file - 3 } else { 3 - file };
-        let rank_distance = if rank >= 3 { rank - 3 } else { 3 - rank };
-        let mut center_distance = file_distance + rank_distance;
-        if center_distance < 1 {
-            center_distance = 1;
-        }
-        let center_bonus = (5 - center_distance) / 2;
-        bonuses[idx] = center_bonus * MOBILITY_WEIGHT;
-        idx += 1;
-    }
-    bonuses
-}
-
-const MOBILITY_BONUS_BY_SQUARE: [i32; 64] = mobility_bonus_by_square();
-
-// King safety penalties (centipawns per issue)
-const EXPOSED_KING_PENALTY: i32 = 25; // King on open file/rank
-const OPEN_FILE_NEAR_KING: i32 = 15; // Semi-open file near king
-const KING_LACKING_ESCAPE_SQUARES: i32 = 20; // King with few escape squares
-// Rook activity bonuses
-const ROOK_ON_OPEN_FILE_BONUS: i32 = 20; // Rook with no pawns on file
-const ROOK_ON_SEMIOPEN_FILE_BONUS: i32 = 10; // Rook with enemy pawns only
-
-// Advanced pawn promotion bonuses (heavily weighted to encourage winning
-// endgames)
-const PAWN_NEAR_PROMOTION: [i32; 8] = [0, 0, 0, 8, 20, 60, 150, 0];
 /// Simple material-count evaluator.
 /// Positive = advantage for White, negative = advantage for Black.
 #[derive(Clone, Copy)]
@@ -132,7 +104,7 @@ impl Evaluator for MaterialEvaluator {
                         &indices[..count],
                         &PAWN_SQUARE_TABLE,
                         &PAWN_ENDGAME_TABLE,
-                        PIECE_VALUES[PieceKind::Pawn as usize],
+                        MATERIAL_PAWN,
                         phase,
                         sign,
                     );
@@ -178,7 +150,15 @@ impl Evaluator for MaterialEvaluator {
                         _ => 0,
                     };
 
-                    score += sign * (PIECE_VALUES[kind as usize] + pst_bonus);
+                    score += sign
+                        * (match kind {
+                            PieceKind::Pawn => MATERIAL_PAWN,
+                            PieceKind::Knight => MATERIAL_KNIGHT,
+                            PieceKind::Bishop => MATERIAL_BISHOP,
+                            PieceKind::Rook => MATERIAL_ROOK,
+                            PieceKind::Queen => MATERIAL_QUEEN,
+                            PieceKind::King => MATERIAL_KING,
+                        } + pst_bonus);
                 }
             }
         }
