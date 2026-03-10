@@ -48,7 +48,7 @@ impl Square {
     pub fn to_uci(self) -> String {
         let file_char = (b'a' + self.file()) as char;
         let rank_char = (b'1' + self.rank()) as char;
-        format!("{}{}", file_char, rank_char)
+        format!("{file_char}{rank_char}")
     }
 
     pub const fn index(self) -> usize {

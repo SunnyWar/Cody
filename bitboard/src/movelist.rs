@@ -7,7 +7,7 @@ use crate::mov::ChessMove;
 
 const MAX_MOVES: usize = 256;
 
-/// MoveList optimized for cache-line efficiency.
+/// `MoveList` optimized for cache-line efficiency.
 /// Aligned to 64-byte L1 cache lines to reduce cache misses during move
 /// iteration. This alignment is particularly beneficial for tight move
 /// generation and search loops.

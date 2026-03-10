@@ -1,0 +1,3469 @@
+warning: binding's name is too similar to existing binding
+   --> bitboard\src\bitboard.rs:161:17
+    |
+161 |             let ne_attack = BitBoardMask((bb.0 << 9) & NOT_FILE_A.0);
+    |                 ^^^^^^^^^
+    |
+note: existing binding defined here
+   --> bitboard\src\bitboard.rs:160:17
+    |
+160 |             let nw_attack = BitBoardMask((bb.0 << 7) & NOT_FILE_H.0);
+    |                 ^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#similar_names
+    = note: `-W clippy::similar-names` implied by `-W clippy::pedantic`
+    = help: to override `-W clippy::pedantic` add `#[allow(clippy::similar_names)]`
+
+warning: binding's name is too similar to existing binding
+   --> bitboard\src\bitboard.rs:166:17
+    |
+166 |             let se_attack = BitBoardMask((bb.0 >> 7) & NOT_FILE_A.0);
+    |                 ^^^^^^^^^
+    |
+note: existing binding defined here
+   --> bitboard\src\bitboard.rs:165:17
+    |
+165 |             let sw_attack = BitBoardMask((bb.0 >> 9) & NOT_FILE_H.0);
+    |                 ^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#similar_names
+
+warning: long literal lacking separators
+  --> bitboard\src\zobrist.rs:19:35
+   |
+19 |                     .wrapping_mul(6364136223846793005)
+   |                                   ^^^^^^^^^^^^^^^^^^^ help: consider: `6_364_136_223_846_793_005`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unreadable_literal
+   = note: `-W clippy::unreadable-literal` implied by `-W clippy::pedantic`
+   = help: to override `-W clippy::pedantic` add `#[allow(clippy::unreadable_literal)]`
+
+warning: long literal lacking separators
+  --> bitboard\src\zobrist.rs:20:35
+   |
+20 |                     .wrapping_add(1442695040888963407);
+   |                                   ^^^^^^^^^^^^^^^^^^^ help: consider: `1_442_695_040_888_963_407`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unreadable_literal
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\attack.rs:35:8
+   |
+35 | pub fn is_square_attacked(square: Square, by_color: Color, board: &BoardState) -> bool {
+   |        ^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+   = note: `-W clippy::must-use-candidate` implied by `-W clippy::pedantic`
+   = help: to override `-W clippy::pedantic` add `#[allow(clippy::must_use_candidate)]`
+help: add the attribute
+   |
+35 + #[must_use] 
+36 | pub fn is_square_attacked(square: Square, by_color: Color, board: &BoardState) -> bool {
+   |
+
+warning: this function could have a `#[must_use]` attribute
+   --> bitboard\src\attack.rs:118:8
+    |
+118 | pub fn is_king_in_check(king_color: Color, board: &BoardState) -> bool {
+    |        ^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+118 + #[must_use] 
+119 | pub fn is_king_in_check(king_color: Color, board: &BoardState) -> bool {
+    |
+
+warning: casting `u32` to `u8` may truncate the value
+   --> bitboard\src\attack.rs:136:13
+    |
+136 |             crate::intrinsics::trailing_zeros_nonzero(king_bits) as u8
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_truncation
+    = note: `-W clippy::cast-possible-truncation` implied by `-W clippy::pedantic`
+    = help: to override `-W clippy::pedantic` add `#[allow(clippy::cast_possible_truncation)]`
+help: ... or use `try_from` and handle the error accordingly
+    |
+136 -             crate::intrinsics::trailing_zeros_nonzero(king_bits) as u8
+136 +             u8::try_from(crate::intrinsics::trailing_zeros_nonzero(king_bits))
+    |
+
+warning: casting `u32` to `u8` may truncate the value
+  --> bitboard\src\bitboard.rs:25:22
+   |
+25 |             let sq = crate::intrinsics::trailing_zeros_nonzero(self.0) as u8;
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_truncation
+help: ... or use `try_from` and handle the error accordingly
+   |
+25 -             let sq = crate::intrinsics::trailing_zeros_nonzero(self.0) as u8;
+25 +             let sq = u8::try_from(crate::intrinsics::trailing_zeros_nonzero(self.0));
+   |
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\bitboard.rs:32:8
+   |
+32 | pub fn occupancy_to_index(occupancy: BitBoardMask, mask: BitBoardMask) -> usize {
+   |        ^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+32 + #[must_use] 
+33 | pub fn occupancy_to_index(occupancy: BitBoardMask, mask: BitBoardMask) -> usize {
+   |
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\bitboard.rs:36:8
+   |
+36 | pub fn occupancy_to_index_u64(occupancy: u64, mask: u64) -> usize {
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+36 + #[must_use] 
+37 | pub fn occupancy_to_index_u64(occupancy: u64, mask: u64) -> usize {
+   |
+
+warning: casting `u64` to `usize` may truncate the value on targets with 32-bit wide pointers
+  --> bitboard\src\bitboard.rs:39:5
+   |
+39 |     crate::intrinsics::pext(occupancy, mask) as usize
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_truncation
+help: ... or use `try_from` and handle the error accordingly
+   |
+39 -     crate::intrinsics::pext(occupancy, mask) as usize
+39 +     usize::try_from(crate::intrinsics::pext(occupancy, mask))
+   |
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\bitboard.rs:42:14
+   |
+42 | pub const fn king_attacks(square: Square) -> BitBoardMask {
+   |              ^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+42 + #[must_use] 
+43 | pub const fn king_attacks(square: Square) -> BitBoardMask {
+   |
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\bitboard.rs:46:14
+   |
+46 | pub const fn knight_attacks(square: Square) -> BitBoardMask {
+   |              ^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+46 + #[must_use] 
+47 | pub const fn knight_attacks(square: Square) -> BitBoardMask {
+   |
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\bitboard.rs:50:8
+   |
+50 | pub fn rook_attacks(sq: Square, occ_bb: BitBoardMask) -> BitBoardMask {
+   |        ^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+50 + #[must_use] 
+51 | pub fn rook_attacks(sq: Square, occ_bb: BitBoardMask) -> BitBoardMask {
+   |
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\bitboard.rs:56:8
+   |
+56 | pub fn bishop_attacks(sq: Square, occ_bb: BitBoardMask) -> BitBoardMask {
+   |        ^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+56 + #[must_use] 
+57 | pub fn bishop_attacks(sq: Square, occ_bb: BitBoardMask) -> BitBoardMask {
+   |
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\bitboard.rs:81:8
+   |
+81 | pub fn rook_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
+   |        ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+81 + #[must_use] 
+82 | pub fn rook_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboard.rs:108:18
+    |
+108 |     pub const fn diagonal_for(square: Square) -> BitBoardMask {
+    |                  ^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+108 ~     #[must_use] 
+109 ~     pub const fn diagonal_for(square: Square) -> BitBoardMask {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboard.rs:112:18
+    |
+112 |     pub const fn antidiagonal_for(square: Square) -> BitBoardMask {
+    |                  ^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+112 ~     #[must_use] 
+113 ~     pub const fn antidiagonal_for(square: Square) -> BitBoardMask {
+    |
+
+warning: this function could have a `#[must_use]` attribute
+   --> bitboard\src\bitboard.rs:125:8
+    |
+125 | pub fn bishop_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
+    |        ^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+125 + #[must_use] 
+126 | pub fn bishop_attacks_from(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
+    |
+
+warning: this function could have a `#[must_use]` attribute
+   --> bitboard\src\bitboard.rs:139:14
+    |
+139 | pub const fn bishop_attacks_from_const(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+139 + #[must_use] 
+140 | pub const fn bishop_attacks_from_const(square: Square, occupancy: BitBoardMask) -> BitBoardMask {
+    |
+
+warning: this function could have a `#[must_use]` attribute
+   --> bitboard\src\bitboard.rs:172:14
+    |
+172 | pub const fn pawn_attacks_to(sq: Square, attacker_color: Color) -> BitBoardMask {
+    |              ^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+172 + #[must_use] 
+173 | pub const fn pawn_attacks_to(sq: Square, attacker_color: Color) -> BitBoardMask {
+    |
+
+warning: casting `u32` to `u8` may truncate the value
+  --> bitboard\src\bitboardmask.rs:18:62
+   |
+18 |             Some(unsafe { core::mem::transmute::<u8, Square>(tz as u8) })
+   |                                                              ^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_truncation
+help: ... or use `try_from` and handle the error accordingly
+   |
+18 -             Some(unsafe { core::mem::transmute::<u8, Square>(tz as u8) })
+18 +             Some(unsafe { core::mem::transmute::<u8, Square>(u8::try_from(tz)) })
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\bitboardmask.rs:68:12
+   |
+68 |     pub fn and(self, rhs: Self) -> Self {
+   |            ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+68 ~     #[must_use] 
+69 ~     pub fn and(self, rhs: Self) -> Self {
+   |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+  --> bitboard\src\bitboardmask.rs:68:5
+   |
+68 | /     pub fn and(self, rhs: Self) -> Self {
+69 | |         self & rhs
+70 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+   = note: `-W clippy::return-self-not-must-use` implied by `-W clippy::pedantic`
+   = help: to override `-W clippy::pedantic` add `#[allow(clippy::return_self_not_must_use)]`
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\bitboardmask.rs:72:12
+   |
+72 |     pub fn or(self, rhs: Self) -> Self {
+   |            ^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+72 ~     #[must_use] 
+73 ~     pub fn or(self, rhs: Self) -> Self {
+   |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+  --> bitboard\src\bitboardmask.rs:72:5
+   |
+72 | /     pub fn or(self, rhs: Self) -> Self {
+73 | |         self | rhs
+74 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\bitboardmask.rs:76:18
+   |
+76 |     pub const fn shift_left(self, n: u8) -> Self {
+   |                  ^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+76 ~     #[must_use] 
+77 ~     pub const fn shift_left(self, n: u8) -> Self {
+   |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+  --> bitboard\src\bitboardmask.rs:76:5
+   |
+76 | /     pub const fn shift_left(self, n: u8) -> Self {
+77 | |         BitBoardMask(self.0 << n)
+78 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\bitboardmask.rs:80:18
+   |
+80 |     pub const fn shift_right(self, n: u8) -> Self {
+   |                  ^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+80 ~     #[must_use] 
+81 ~     pub const fn shift_right(self, n: u8) -> Self {
+   |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+  --> bitboard\src\bitboardmask.rs:80:5
+   |
+80 | /     pub const fn shift_right(self, n: u8) -> Self {
+81 | |         BitBoardMask(self.0 >> n)
+82 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\bitboardmask.rs:84:18
+   |
+84 |     pub const fn contains(&self, sq: Square) -> bool {
+   |                  ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+84 ~     #[must_use] 
+85 ~     pub const fn contains(&self, sq: Square) -> bool {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\bitboardmask.rs:88:18
+   |
+88 |     pub const fn empty() -> Self {
+   |                  ^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+88 ~     #[must_use] 
+89 ~     pub const fn empty() -> Self {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\bitboardmask.rs:92:18
+   |
+92 |     pub const fn from_square(sq: Square) -> Self {
+   |                  ^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+92 ~     #[must_use] 
+93 ~     pub const fn from_square(sq: Square) -> Self {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:104:18
+    |
+104 |     pub const fn is_empty(self) -> bool {
+    |                  ^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+104 ~     #[must_use] 
+105 ~     pub const fn is_empty(self) -> bool {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:108:12
+    |
+108 |     pub fn count(self) -> u32 {
+    |            ^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+108 ~     #[must_use] 
+109 ~     pub fn count(self) -> u32 {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:112:18
+    |
+112 |     pub const fn count_ones(self) -> u32 {
+    |                  ^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+112 ~     #[must_use] 
+113 ~     pub const fn count_ones(self) -> u32 {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:116:18
+    |
+116 |     pub const fn is_singleton(self) -> bool {
+    |                  ^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+116 ~     #[must_use] 
+117 ~     pub const fn is_singleton(self) -> bool {
+    |
+
+warning: manually reimplementing `is_power_of_two`
+   --> bitboard\src\bitboardmask.rs:118:24
+    |
+118 |         self.0 != 0 && (self.0 & (self.0 - 1)) == 0
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.is_power_of_two()`: `self.0.is_power_of_two()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_power_of_two
+    = note: `-W clippy::manual-is-power-of-two` implied by `-W clippy::pedantic`
+    = help: to override `-W clippy::pedantic` add `#[allow(clippy::manual_is_power_of_two)]`
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:121:18
+    |
+121 |     pub const fn is_nonempty(self) -> bool {
+    |                  ^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+121 ~     #[must_use] 
+122 ~     pub const fn is_nonempty(self) -> bool {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:125:18
+    |
+125 |     pub const fn contains_square(self, sq: Square) -> bool {
+    |                  ^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+125 ~     #[must_use] 
+126 ~     pub const fn contains_square(self, sq: Square) -> bool {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:130:18
+    |
+130 |     pub const fn squares(self) -> SquaresIter {
+    |                  ^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+130 ~     #[must_use] 
+131 ~     pub const fn squares(self) -> SquaresIter {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:134:12
+    |
+134 |     pub fn first_square(self) -> Option<Square> {
+    |            ^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+134 ~     #[must_use] 
+135 ~     pub fn first_square(self) -> Option<Square> {
+    |
+
+warning: casting `u32` to `u8` may truncate the value
+   --> bitboard\src\bitboardmask.rs:139:36
+    |
+139 |             Square::try_from_index(tz as u8)
+    |                                    ^^^^^^^^
+    |
+    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_truncation
+help: ... or use `try_from` and handle the error accordingly
+    |
+139 -             Square::try_from_index(tz as u8)
+139 +             Square::try_from_index(u8::try_from(tz))
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:147:18
+    |
+147 |     pub const fn not(self) -> Self {
+    |                  ^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+147 ~     #[must_use] 
+148 ~     pub const fn not(self) -> Self {
+    |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+   --> bitboard\src\bitboardmask.rs:147:5
+    |
+147 | /     pub const fn not(self) -> Self {
+148 | |         BitBoardMask(!self.0)
+149 | |     }
+    | |_____^
+    |
+    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:151:18
+    |
+151 |     pub const fn from_squares(squares: &[Square]) -> Self {
+    |                  ^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+151 ~     #[must_use] 
+152 ~     pub const fn from_squares(squares: &[Square]) -> Self {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:241:12
+    |
+241 |     pub fn subray_left_optimized(self, origin_sq: u8) -> BitBoardMask {
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+241 ~     #[must_use] 
+242 ~     pub fn subray_left_optimized(self, origin_sq: u8) -> BitBoardMask {
+    |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+   --> bitboard\src\bitboardmask.rs:241:5
+    |
+241 | /     pub fn subray_left_optimized(self, origin_sq: u8) -> BitBoardMask {
+242 | |         // Use bit manipulation for horizontal rays
+243 | |         let rank_mask = 0xFFu64 << (origin_sq & 56); // Get rank mask
+244 | |         let occupied_rank = self.0 & rank_mask;
+...   |
+258 | |     }
+    | |_____^
+    |
+    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: using decimal literal for bitwise operation
+   --> bitboard\src\bitboardmask.rs:243:49
+    |
+243 |         let rank_mask = 0xFFu64 << (origin_sq & 56); // Get rank mask
+    |                                                 ^^
+    |
+    = help: use binary (0b11_1000), hex (0x0038), or octal (0o70) notation for better readability
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#decimal_bitwise_operands
+    = note: `-W clippy::decimal-bitwise-operands` implied by `-W clippy::pedantic`
+    = help: to override `-W clippy::pedantic` add `#[allow(clippy::decimal_bitwise_operands)]`
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:261:18
+    |
+261 |     pub const fn subray_left(self, origin: BitBoardMask) -> BitBoardMask {
+    |                  ^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+261 ~     #[must_use] 
+262 ~     pub const fn subray_left(self, origin: BitBoardMask) -> BitBoardMask {
+    |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+   --> bitboard\src\bitboardmask.rs:261:5
+    |
+261 | /     pub const fn subray_left(self, origin: BitBoardMask) -> BitBoardMask {
+262 | |         // Get the origin square position
+263 | |         let origin_pos = origin.0.trailing_zeros();
+264 | |         if origin_pos >= 64 {
+...   |
+289 | |         BitBoardMask(ray_mask & rank_mask)
+290 | |     }
+    | |_____^
+    |
+    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: manually reimplementing `ilog2`
+   --> bitboard\src\bitboardmask.rs:286:27
+    |
+286 |         let blocker_pos = 63 - left_occupied.leading_zeros();
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `left_occupied.ilog2()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_ilog2
+    = note: `-W clippy::manual-ilog2` implied by `-W clippy::pedantic`
+    = help: to override `-W clippy::pedantic` add `#[allow(clippy::manual_ilog2)]`
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:292:18
+    |
+292 |     pub const fn subray_right(self, origin: BitBoardMask) -> BitBoardMask {
+    |                  ^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+292 ~     #[must_use] 
+293 ~     pub const fn subray_right(self, origin: BitBoardMask) -> BitBoardMask {
+    |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+   --> bitboard\src\bitboardmask.rs:292:5
+    |
+292 | /     pub const fn subray_right(self, origin: BitBoardMask) -> BitBoardMask {
+293 | |         let origin_pos = origin.0.trailing_zeros();
+294 | |         if origin_pos >= 64 {
+295 | |             return BitBoardMask::empty();
+...   |
+317 | |         BitBoardMask(ray_mask & rank_mask)
+318 | |     }
+    | |_____^
+    |
+    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:321:18
+    |
+321 |     pub const fn subray_up(self, origin: BitBoardMask) -> BitBoardMask {
+    |                  ^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+321 ~     #[must_use] 
+322 ~     pub const fn subray_up(self, origin: BitBoardMask) -> BitBoardMask {
+    |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+   --> bitboard\src\bitboardmask.rs:321:5
+    |
+321 | /     pub const fn subray_up(self, origin: BitBoardMask) -> BitBoardMask {
+322 | |         let origin_pos = origin.0.trailing_zeros();
+323 | |         if origin_pos >= 64 {
+324 | |             return BitBoardMask::empty();
+...   |
+344 | |         BitBoardMask(ray_mask & file_mask)
+345 | |     }
+    | |_____^
+    |
+    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:347:18
+    |
+347 |     pub const fn subray_down(self, origin: BitBoardMask) -> BitBoardMask {
+    |                  ^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+347 ~     #[must_use] 
+348 ~     pub const fn subray_down(self, origin: BitBoardMask) -> BitBoardMask {
+    |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+   --> bitboard\src\bitboardmask.rs:347:5
+    |
+347 | /     pub const fn subray_down(self, origin: BitBoardMask) -> BitBoardMask {
+348 | |         let origin_pos = origin.0.trailing_zeros();
+349 | |         if origin_pos >= 64 {
+350 | |             return BitBoardMask::empty();
+...   |
+369 | |         BitBoardMask(ray_mask & file_mask)
+370 | |     }
+    | |_____^
+    |
+    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: manually reimplementing `ilog2`
+   --> bitboard\src\bitboardmask.rs:366:27
+    |
+366 |         let blocker_pos = 63 - down_occupied.leading_zeros();
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `down_occupied.ilog2()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_ilog2
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:374:18
+    |
+374 |     pub const fn subray_up_right(self, origin: BitBoardMask) -> BitBoardMask {
+    |                  ^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+374 ~     #[must_use] 
+375 ~     pub const fn subray_up_right(self, origin: BitBoardMask) -> BitBoardMask {
+    |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+   --> bitboard\src\bitboardmask.rs:374:5
+    |
+374 | /     pub const fn subray_up_right(self, origin: BitBoardMask) -> BitBoardMask {
+375 | |         // Simplified implementation - full optimization would require diagonal masks
+376 | |         let mut ray = BitBoardMask::empty();
+377 | |         let mut probe = BitBoardMask(origin.0 << 9);
+...   |
+402 | |         ray
+403 | |     }
+    | |_____^
+    |
+    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:405:18
+    |
+405 |     pub const fn subray_down_left(self, origin: BitBoardMask) -> BitBoardMask {
+    |                  ^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+405 ~     #[must_use] 
+406 ~     pub const fn subray_down_left(self, origin: BitBoardMask) -> BitBoardMask {
+    |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+   --> bitboard\src\bitboardmask.rs:405:5
+    |
+405 | /     pub const fn subray_down_left(self, origin: BitBoardMask) -> BitBoardMask {
+406 | |         let mut ray = BitBoardMask::empty();
+407 | |         let mut probe = BitBoardMask(origin.0 >> 9);
+...   |
+417 | |         ray
+418 | |     }
+    | |_____^
+    |
+    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:420:18
+    |
+420 |     pub const fn subray_up_left(self, origin: BitBoardMask) -> BitBoardMask {
+    |                  ^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+420 ~     #[must_use] 
+421 ~     pub const fn subray_up_left(self, origin: BitBoardMask) -> BitBoardMask {
+    |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+   --> bitboard\src\bitboardmask.rs:420:5
+    |
+420 | /     pub const fn subray_up_left(self, origin: BitBoardMask) -> BitBoardMask {
+421 | |         let mut ray = BitBoardMask::empty();
+422 | |         let mut probe = BitBoardMask(origin.0 << 7);
+423 | |         while probe.0 != 0 && (probe.0 & 0x7F7F_7F7F_7F7F_7F7F) != 0 {
+...   |
+431 | |         ray
+432 | |     }
+    | |_____^
+    |
+    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:434:18
+    |
+434 |     pub const fn subray_down_right(self, origin: BitBoardMask) -> BitBoardMask {
+    |                  ^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+434 ~     #[must_use] 
+435 ~     pub const fn subray_down_right(self, origin: BitBoardMask) -> BitBoardMask {
+    |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+   --> bitboard\src\bitboardmask.rs:434:5
+    |
+434 | /     pub const fn subray_down_right(self, origin: BitBoardMask) -> BitBoardMask {
+435 | |         let mut ray = BitBoardMask::empty();
+436 | |         let mut probe = BitBoardMask(origin.0 >> 7);
+437 | |         while probe.0 != 0 && (probe.0 & 0xFEFE_FEFE_FEFE_FEFE) != 0 {
+...   |
+445 | |         ray
+446 | |     }
+    | |_____^
+    |
+    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\bitboardmask.rs:450:12
+    |
+450 |     pub fn subray_horizontal_bmi2(self, origin_sq: u8, direction: bool) -> BitBoardMask {
+    |            ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+450 ~     #[must_use] 
+451 ~     pub fn subray_horizontal_bmi2(self, origin_sq: u8, direction: bool) -> BitBoardMask {
+    |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+   --> bitboard\src\bitboardmask.rs:450:5
+    |
+450 | /     pub fn subray_horizontal_bmi2(self, origin_sq: u8, direction: bool) -> BitBoardMask {
+451 | |         if std::arch::is_x86_feature_detected!("bmi2") {
+452 | |             let rank = (origin_sq / 8) as u64;
+453 | |             let rank_mask = 0xFFu64 << (rank * 8);
+...   |
+476 | |     }
+    | |_____^
+    |
+    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: casts from `u8` to `u64` can be expressed infallibly using `From`
+   --> bitboard\src\bitboardmask.rs:452:24
+    |
+452 |             let rank = (origin_sq / 8) as u64;
+    |                        ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: an `as` cast can become silently lossy if the types change in the future
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_lossless
+    = note: `-W clippy::cast-lossless` implied by `-W clippy::pedantic`
+    = help: to override `-W clippy::pedantic` add `#[allow(clippy::cast_lossless)]`
+help: use `u64::from` instead
+    |
+452 -             let rank = (origin_sq / 8) as u64;
+452 +             let rank = u64::from(origin_sq / 8);
+    |
+
+warning: casting `u64` to `u8` may truncate the value
+   --> bitboard\src\bitboardmask.rs:454:28
+    |
+454 |             let occupied = crate::intrinsics::pext(self.0, rank_mask) as u8;
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_truncation
+help: ... or use `try_from` and handle the error accordingly
+    |
+454 -             let occupied = crate::intrinsics::pext(self.0, rank_mask) as u8;
+454 +             let occupied = u8::try_from(crate::intrinsics::pext(self.0, rank_mask));
+    |
+
+warning: casts from `u8` to `u64` can be expressed infallibly using `From`
+   --> bitboard\src\bitboardmask.rs:467:50
+    |
+467 |             BitBoardMask(crate::intrinsics::pdep(ray as u64, rank_mask))
+    |                                                  ^^^^^^^^^^
+    |
+    = help: an `as` cast can become silently lossy if the types change in the future
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_lossless
+help: use `u64::from` instead
+    |
+467 -             BitBoardMask(crate::intrinsics::pdep(ray as u64, rank_mask))
+467 +             BitBoardMask(crate::intrinsics::pdep(u64::from(ray), rank_mask))
+    |
+
+warning: more than 3 bools in a struct
+  --> bitboard\src\castling.rs:6:1
+   |
+ 6 | / pub struct CastlingRights {
+ 7 | |     pub(crate) white_kingside: bool,
+ 8 | |     pub(crate) white_queenside: bool,
+ 9 | |     pub(crate) black_kingside: bool,
+10 | |     pub(crate) black_queenside: bool,
+11 | | }
+   | |_^
+   |
+   = help: consider using a state machine or refactoring bools into two-variant enums
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#struct_excessive_bools
+   = note: `-W clippy::struct-excessive-bools` implied by `-W clippy::pedantic`
+   = help: to override `-W clippy::pedantic` add `#[allow(clippy::struct_excessive_bools)]`
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\castling.rs:14:18
+   |
+14 |     pub const fn kingside(&self, color: Color) -> bool {
+   |                  ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+14 ~     #[must_use] 
+15 ~     pub const fn kingside(&self, color: Color) -> bool {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\castling.rs:21:18
+   |
+21 |     pub const fn queenside(&self, color: Color) -> bool {
+   |                  ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+21 ~     #[must_use] 
+22 ~     pub const fn queenside(&self, color: Color) -> bool {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\castling.rs:28:18
+   |
+28 |     pub const fn empty() -> Self {
+   |                  ^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+28 ~     #[must_use] 
+29 ~     pub const fn empty() -> Self {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\castling.rs:37:12
+   |
+37 |     pub fn from_fen(s: &str) -> Self {
+   |            ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+37 ~     #[must_use] 
+38 ~     pub fn from_fen(s: &str) -> Self {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\castling.rs:54:12
+   |
+54 |     pub fn to_fen(&self) -> String {
+   |            ^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+54 ~     #[must_use] 
+55 ~     pub fn to_fen(&self) -> String {
+   |
+
+warning: `as` casting between raw pointers without changing their constness
+  --> bitboard\src\intrinsics.rs:17:42
+   |
+17 |         core::arch::x86_64::_mm_prefetch(addr as *const i8, core::arch::x86_64::_MM_HINT_T0);
+   |                                          ^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `addr.cast::<i8>()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+   = note: `-W clippy::ptr-as-ptr` implied by `-W clippy::pedantic`
+   = help: to override `-W clippy::pedantic` add `#[allow(clippy::ptr_as_ptr)]`
+
+warning: `as` casting between raw pointers without changing their constness
+  --> bitboard\src\intrinsics.rs:43:42
+   |
+43 |         core::arch::x86_64::_mm_prefetch(addr as *const i8, core::arch::x86_64::_MM_HINT_T1);
+   |                                          ^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `addr.cast::<i8>()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\intrinsics.rs:81:8
+   |
+81 | pub fn popcnt(x: u64) -> u32 {
+   |        ^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+81 + #[must_use] 
+82 | pub fn popcnt(x: u64) -> u32 {
+   |
+
+warning: casting `i32` to `u32` may lose the sign of the value
+  --> bitboard\src\intrinsics.rs:87:13
+   |
+87 |             core::arch::x86_64::_popcnt64(x as i64) as u32
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `core::arch::x86_64::_popcnt64(x as i64).cast_unsigned()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_sign_loss
+   = note: `-W clippy::cast-sign-loss` implied by `-W clippy::pedantic`
+   = help: to override `-W clippy::pedantic` add `#[allow(clippy::cast_sign_loss)]`
+
+warning: casting `u64` to `i64` may wrap around the value
+  --> bitboard\src\intrinsics.rs:87:43
+   |
+87 |             core::arch::x86_64::_popcnt64(x as i64) as u32
+   |                                           ^^^^^^^^ help: if this is intentional, use `cast_signed()` instead: `x.cast_signed()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+   = note: `-W clippy::cast-possible-wrap` implied by `-W clippy::pedantic`
+   = help: to override `-W clippy::pedantic` add `#[allow(clippy::cast_possible_wrap)]`
+
+warning: this function could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:140:8
+    |
+140 | pub fn trailing_zeros(x: u64) -> u32 {
+    |        ^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+140 + #[must_use] 
+141 | pub fn trailing_zeros(x: u64) -> u32 {
+    |
+
+warning: this function could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:151:8
+    |
+151 | pub fn trailing_zeros_nonzero(x: u64) -> u32 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+151 + #[must_use] 
+152 | pub fn trailing_zeros_nonzero(x: u64) -> u32 {
+    |
+
+warning: casting `u64` to `u32` may truncate the value
+   --> bitboard\src\intrinsics.rs:158:13
+    |
+158 |             core::arch::x86_64::_tzcnt_u64(x) as u32
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_truncation
+help: ... or use `try_from` and handle the error accordingly
+    |
+158 -             core::arch::x86_64::_tzcnt_u64(x) as u32
+158 +             u32::try_from(core::arch::x86_64::_tzcnt_u64(x))
+    |
+
+warning: this function could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:177:8
+    |
+177 | pub fn leading_zeros(x: u64) -> u32 {
+    |        ^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+177 + #[must_use] 
+178 | pub fn leading_zeros(x: u64) -> u32 {
+    |
+
+warning: casting `u64` to `u32` may truncate the value
+   --> bitboard\src\intrinsics.rs:182:13
+    |
+182 |             core::arch::x86_64::_lzcnt_u64(x) as u32
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_truncation
+help: ... or use `try_from` and handle the error accordingly
+    |
+182 -             core::arch::x86_64::_lzcnt_u64(x) as u32
+182 +             u32::try_from(core::arch::x86_64::_lzcnt_u64(x))
+    |
+
+warning: item in documentation is missing backticks
+   --> bitboard\src\intrinsics.rs:200:39
+    |
+200 | /// Example: while bb != 0 { let sq = trailing_zeros(bb); bb = blsr(bb); ... }
+    |                                       ^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+    = note: `-W clippy::doc-markdown` implied by `-W clippy::pedantic`
+    = help: to override `-W clippy::pedantic` add `#[allow(clippy::doc_markdown)]`
+help: try
+    |
+200 - /// Example: while bb != 0 { let sq = trailing_zeros(bb); bb = blsr(bb); ... }
+200 + /// Example: while bb != 0 { let sq = `trailing_zeros(bb)`; bb = blsr(bb); ... }
+    |
+
+warning: this function could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:201:8
+    |
+201 | pub fn blsr(x: u64) -> u64 {
+    |        ^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+201 + #[must_use] 
+202 | pub fn blsr(x: u64) -> u64 {
+    |
+
+warning: this function could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:212:8
+    |
+212 | pub fn blsr_nonzero(x: u64) -> u64 {
+    |        ^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+212 + #[must_use] 
+213 | pub fn blsr_nonzero(x: u64) -> u64 {
+    |
+
+warning: this function could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:238:8
+    |
+238 | pub fn blsi(x: u64) -> u64 {
+    |        ^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+238 + #[must_use] 
+239 | pub fn blsi(x: u64) -> u64 {
+    |
+
+warning: this function could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:270:8
+    |
+270 | pub fn pext(src: u64, mask: u64) -> u64 {
+    |        ^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+270 + #[must_use] 
+271 | pub fn pext(src: u64, mask: u64) -> u64 {
+    |
+
+warning: item in documentation is missing backticks
+   --> bitboard\src\intrinsics.rs:293:46
+    |
+293 | /// Precondition: `mask != 0`. Enforced with debug_assert.
+    |                                              ^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+    |
+293 - /// Precondition: `mask != 0`. Enforced with debug_assert.
+293 + /// Precondition: `mask != 0`. Enforced with `debug_assert`.
+    |
+
+warning: this function could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:296:8
+    |
+296 | pub fn pext_nonzero(src: u64, mask: u64) -> u64 {
+    |        ^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+296 + #[must_use] 
+297 | pub fn pext_nonzero(src: u64, mask: u64) -> u64 {
+    |
+
+warning: this function could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:325:8
+    |
+325 | pub fn pdep(src: u64, mask: u64) -> u64 {
+    |        ^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+325 + #[must_use] 
+326 | pub fn pdep(src: u64, mask: u64) -> u64 {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:381:18
+    |
+381 |     pub const fn new(a: u64, b: u64, c: u64, d: u64) -> Self {
+    |                  ^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+381 ~     #[must_use] 
+382 ~     pub const fn new(a: u64, b: u64, c: u64, d: u64) -> Self {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:386:18
+    |
+386 |     pub const fn splat(value: u64) -> Self {
+    |                  ^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+386 ~     #[must_use] 
+387 ~     pub const fn splat(value: u64) -> Self {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:394:12
+    |
+394 |     pub fn popcnt_parallel(self) -> [u32; 4] {
+    |            ^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+394 ~     #[must_use] 
+395 ~     pub fn popcnt_parallel(self) -> [u32; 4] {
+    |
+
+warning: casting `i32` to `u32` may lose the sign of the value
+   --> bitboard\src\intrinsics.rs:403:17
+    |
+403 |                 core::arch::x86_64::_popcnt64(self.data[0] as i64) as u32,
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `core::arch::x86_64::_popcnt64(self.data[0] as i64).cast_unsigned()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_sign_loss
+
+warning: casting `u64` to `i64` may wrap around the value
+   --> bitboard\src\intrinsics.rs:403:47
+    |
+403 |                 core::arch::x86_64::_popcnt64(self.data[0] as i64) as u32,
+    |                                               ^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_signed()` instead: `self.data[0].cast_signed()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+warning: casting `i32` to `u32` may lose the sign of the value
+   --> bitboard\src\intrinsics.rs:404:17
+    |
+404 |                 core::arch::x86_64::_popcnt64(self.data[1] as i64) as u32,
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `core::arch::x86_64::_popcnt64(self.data[1] as i64).cast_unsigned()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_sign_loss
+
+warning: casting `u64` to `i64` may wrap around the value
+   --> bitboard\src\intrinsics.rs:404:47
+    |
+404 |                 core::arch::x86_64::_popcnt64(self.data[1] as i64) as u32,
+    |                                               ^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_signed()` instead: `self.data[1].cast_signed()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+warning: casting `i32` to `u32` may lose the sign of the value
+   --> bitboard\src\intrinsics.rs:405:17
+    |
+405 |                 core::arch::x86_64::_popcnt64(self.data[2] as i64) as u32,
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `core::arch::x86_64::_popcnt64(self.data[2] as i64).cast_unsigned()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_sign_loss
+
+warning: casting `u64` to `i64` may wrap around the value
+   --> bitboard\src\intrinsics.rs:405:47
+    |
+405 |                 core::arch::x86_64::_popcnt64(self.data[2] as i64) as u32,
+    |                                               ^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_signed()` instead: `self.data[2].cast_signed()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+warning: casting `i32` to `u32` may lose the sign of the value
+   --> bitboard\src\intrinsics.rs:406:17
+    |
+406 |                 core::arch::x86_64::_popcnt64(self.data[3] as i64) as u32,
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `core::arch::x86_64::_popcnt64(self.data[3] as i64).cast_unsigned()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_sign_loss
+
+warning: casting `u64` to `i64` may wrap around the value
+   --> bitboard\src\intrinsics.rs:406:47
+    |
+406 |                 core::arch::x86_64::_popcnt64(self.data[3] as i64) as u32,
+    |                                               ^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_signed()` instead: `self.data[3].cast_signed()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:426:12
+    |
+426 |     pub fn and(self, other: Self) -> Self {
+    |            ^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+426 ~     #[must_use] 
+427 ~     pub fn and(self, other: Self) -> Self {
+    |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+   --> bitboard\src\intrinsics.rs:426:5
+    |
+426 | /     pub fn and(self, other: Self) -> Self {
+427 | |         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+428 | |         unsafe {
+429 | |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+...   |
+449 | |     }
+    | |_____^
+    |
+    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: casting from `*const u64` to a more-strictly-aligned pointer (`*const std::arch::x86_64::__m256i`) (8 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:429:60
+    |
+429 |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+    = note: `-W clippy::cast-ptr-alignment` implied by `-W clippy::pedantic`
+    = help: to override `-W clippy::pedantic` add `#[allow(clippy::cast_ptr_alignment)]`
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:429:60
+    |
+429 |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `self.data.as_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: casting from `*const u64` to a more-strictly-aligned pointer (`*const std::arch::x86_64::__m256i`) (8 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:430:60
+    |
+430 |             let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:430:60
+    |
+430 |             let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `other.data.as_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: casting from `*mut u64` to a more-strictly-aligned pointer (`*mut std::arch::x86_64::__m256i`) (8 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:434:53
+    |
+434 |             core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:434:53
+    |
+434 |             core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `out.data.as_mut_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:452:12
+    |
+452 |     pub fn or(self, other: Self) -> Self {
+    |            ^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+452 ~     #[must_use] 
+453 ~     pub fn or(self, other: Self) -> Self {
+    |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+   --> bitboard\src\intrinsics.rs:452:5
+    |
+452 | /     pub fn or(self, other: Self) -> Self {
+453 | |         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+454 | |         unsafe {
+455 | |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+...   |
+475 | |     }
+    | |_____^
+    |
+    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: casting from `*const u64` to a more-strictly-aligned pointer (`*const std::arch::x86_64::__m256i`) (8 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:455:60
+    |
+455 |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:455:60
+    |
+455 |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `self.data.as_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: casting from `*const u64` to a more-strictly-aligned pointer (`*const std::arch::x86_64::__m256i`) (8 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:456:60
+    |
+456 |             let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:456:60
+    |
+456 |             let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `other.data.as_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: casting from `*mut u64` to a more-strictly-aligned pointer (`*mut std::arch::x86_64::__m256i`) (8 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:460:53
+    |
+460 |             core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:460:53
+    |
+460 |             core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `out.data.as_mut_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:478:12
+    |
+478 |     pub fn xor(self, other: Self) -> Self {
+    |            ^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+478 ~     #[must_use] 
+479 ~     pub fn xor(self, other: Self) -> Self {
+    |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+   --> bitboard\src\intrinsics.rs:478:5
+    |
+478 | /     pub fn xor(self, other: Self) -> Self {
+479 | |         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+480 | |         unsafe {
+481 | |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+...   |
+501 | |     }
+    | |_____^
+    |
+    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: casting from `*const u64` to a more-strictly-aligned pointer (`*const std::arch::x86_64::__m256i`) (8 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:481:60
+    |
+481 |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:481:60
+    |
+481 |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `self.data.as_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: casting from `*const u64` to a more-strictly-aligned pointer (`*const std::arch::x86_64::__m256i`) (8 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:482:60
+    |
+482 |             let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:482:60
+    |
+482 |             let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `other.data.as_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: casting from `*mut u64` to a more-strictly-aligned pointer (`*mut std::arch::x86_64::__m256i`) (8 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:486:53
+    |
+486 |             core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:486:53
+    |
+486 |             core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `out.data.as_mut_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: casting from `*const u64` to a more-strictly-aligned pointer (`*const std::arch::x86_64::__m256i`) (8 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:507:60
+    |
+507 |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:507:60
+    |
+507 |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `self.data.as_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: casting from `*mut u64` to a more-strictly-aligned pointer (`*mut std::arch::x86_64::__m256i`) (8 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:512:53
+    |
+512 |             core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:512:53
+    |
+512 |             core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `out.data.as_mut_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:525:18
+    |
+525 |     pub const fn any_nonzero(self) -> bool {
+    |                  ^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+525 ~     #[must_use] 
+526 ~     pub const fn any_nonzero(self) -> bool {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:530:18
+    |
+530 |     pub const fn all_zero(self) -> bool {
+    |                  ^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+530 ~     #[must_use] 
+531 ~     pub const fn all_zero(self) -> bool {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:546:18
+    |
+546 |     pub const fn new(data: [i32; 8]) -> Self {
+    |                  ^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+546 ~     #[must_use] 
+547 ~     pub const fn new(data: [i32; 8]) -> Self {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:551:18
+    |
+551 |     pub const fn splat(value: i32) -> Self {
+    |                  ^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+551 ~     #[must_use] 
+552 ~     pub const fn splat(value: i32) -> Self {
+    |
+
+warning: casting from `*const i32` to a more-strictly-aligned pointer (`*const std::arch::x86_64::__m256i`) (4 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:559:60
+    |
+559 |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:559:60
+    |
+559 |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `self.data.as_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: casting from `*const i32` to a more-strictly-aligned pointer (`*const std::arch::x86_64::__m256i`) (4 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:560:60
+    |
+560 |             let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:560:60
+    |
+560 |             let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `other.data.as_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: casting from `*mut i32` to a more-strictly-aligned pointer (`*mut std::arch::x86_64::__m256i`) (4 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:564:53
+    |
+564 |             core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:564:53
+    |
+564 |             core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `out.data.as_mut_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: casting from `*const i32` to a more-strictly-aligned pointer (`*const std::arch::x86_64::__m256i`) (4 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:589:60
+    |
+589 |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:589:60
+    |
+589 |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `self.data.as_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: casting from `*const i32` to a more-strictly-aligned pointer (`*const std::arch::x86_64::__m256i`) (4 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:590:60
+    |
+590 |             let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:590:60
+    |
+590 |             let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `other.data.as_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: casting from `*mut i32` to a more-strictly-aligned pointer (`*mut std::arch::x86_64::__m256i`) (4 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:594:53
+    |
+594 |             core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:594:53
+    |
+594 |             core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `out.data.as_mut_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:616:12
+    |
+616 |     pub fn horizontal_sum(self) -> i32 {
+    |            ^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+616 ~     #[must_use] 
+617 ~     pub fn horizontal_sum(self) -> i32 {
+    |
+
+warning: casting from `*const i32` to a more-strictly-aligned pointer (`*const std::arch::x86_64::__m256i`) (4 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:619:62
+    |
+619 |             let vec = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+    |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:619:62
+    |
+619 |             let vec = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+    |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `self.data.as_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:639:12
+    |
+639 |     pub fn max(self, other: Self) -> Self {
+    |            ^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+639 ~     #[must_use] 
+640 ~     pub fn max(self, other: Self) -> Self {
+    |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+   --> bitboard\src\intrinsics.rs:639:5
+    |
+639 | /     pub fn max(self, other: Self) -> Self {
+640 | |         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+641 | |         unsafe {
+642 | |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+...   |
+666 | |     }
+    | |_____^
+    |
+    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: casting from `*const i32` to a more-strictly-aligned pointer (`*const std::arch::x86_64::__m256i`) (4 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:642:60
+    |
+642 |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:642:60
+    |
+642 |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `self.data.as_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: casting from `*const i32` to a more-strictly-aligned pointer (`*const std::arch::x86_64::__m256i`) (4 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:643:60
+    |
+643 |             let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:643:60
+    |
+643 |             let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `other.data.as_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: casting from `*mut i32` to a more-strictly-aligned pointer (`*mut std::arch::x86_64::__m256i`) (4 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:647:53
+    |
+647 |             core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:647:53
+    |
+647 |             core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `out.data.as_mut_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\intrinsics.rs:669:12
+    |
+669 |     pub fn min(self, other: Self) -> Self {
+    |            ^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+669 ~     #[must_use] 
+670 ~     pub fn min(self, other: Self) -> Self {
+    |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+   --> bitboard\src\intrinsics.rs:669:5
+    |
+669 | /     pub fn min(self, other: Self) -> Self {
+670 | |         #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+671 | |         unsafe {
+672 | |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+...   |
+696 | |     }
+    | |_____^
+    |
+    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: casting from `*const i32` to a more-strictly-aligned pointer (`*const std::arch::x86_64::__m256i`) (4 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:672:60
+    |
+672 |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:672:60
+    |
+672 |             let a = core::arch::x86_64::_mm256_loadu_si256(self.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `self.data.as_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: casting from `*const i32` to a more-strictly-aligned pointer (`*const std::arch::x86_64::__m256i`) (4 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:673:60
+    |
+673 |             let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:673:60
+    |
+673 |             let b = core::arch::x86_64::_mm256_loadu_si256(other.data.as_ptr() as *const _);
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `other.data.as_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: casting from `*mut i32` to a more-strictly-aligned pointer (`*mut std::arch::x86_64::__m256i`) (4 < 32 bytes)
+   --> bitboard\src\intrinsics.rs:677:53
+    |
+677 |             core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_ptr_alignment
+
+warning: `as` casting between raw pointers without changing their constness
+   --> bitboard\src\intrinsics.rs:677:53
+    |
+677 |             core::arch::x86_64::_mm256_storeu_si256(out.data.as_mut_ptr() as *mut _, result);
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `out.data.as_mut_ptr().cast()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\mov.rs:25:18
+   |
+25 |     pub const fn new(from: Square, to: Square, move_type: MoveType) -> Self {
+   |                  ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+25 ~     #[must_use] 
+26 ~     pub const fn new(from: Square, to: Square, move_type: MoveType) -> Self {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\mov.rs:33:18
+   |
+33 |     pub const fn null() -> Self {
+   |                  ^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+33 ~     #[must_use] 
+34 ~     pub const fn null() -> Self {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\mov.rs:41:12
+   |
+41 |     pub fn is_null(&self) -> bool {
+   |            ^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+41 ~     #[must_use] 
+42 ~     pub fn is_null(&self) -> bool {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\mov.rs:45:18
+   |
+45 |     pub const fn from(&self) -> Square {
+   |                  ^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+45 ~     #[must_use] 
+46 ~     pub const fn from(&self) -> Square {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\mov.rs:49:18
+   |
+49 |     pub const fn to(&self) -> Square {
+   |                  ^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+49 ~     #[must_use] 
+50 ~     pub const fn to(&self) -> Square {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\mov.rs:53:18
+   |
+53 |     pub const fn promotion(&self) -> Option<PieceKind> {
+   |                  ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+53 ~     #[must_use] 
+54 ~     pub const fn promotion(&self) -> Option<PieceKind> {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\mov.rs:60:12
+   |
+60 |     pub fn from_square(&self) -> String {
+   |            ^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+60 ~     #[must_use] 
+61 ~     pub fn from_square(&self) -> String {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\mov.rs:64:12
+   |
+64 |     pub fn to_square(&self) -> String {
+   |            ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+64 ~     #[must_use] 
+65 ~     pub fn to_square(&self) -> String {
+   |
+
+warning: item in documentation is missing backticks
+  --> bitboard\src\movegen\api.rs:29:64
+   |
+29 | /// Fast zero-allocation move generation using stack-allocated MoveList
+   |                                                                ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+29 - /// Fast zero-allocation move generation using stack-allocated MoveList
+29 + /// Fast zero-allocation move generation using stack-allocated `MoveList`
+   |
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\movegen\api.rs:30:8
+   |
+30 | pub fn generate_pseudo_moves_fast(pos: &Position) -> MoveList {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+30 + #[must_use] 
+31 | pub fn generate_pseudo_moves_fast(pos: &Position) -> MoveList {
+   |
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\movegen\api.rs:50:8
+   |
+50 | pub fn generate_legal_moves_fast(pos: &Position) -> MoveList {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+50 + #[must_use] 
+51 | pub fn generate_legal_moves_fast(pos: &Position) -> MoveList {
+   |
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\movegen\api.rs:69:8
+   |
+69 | pub fn generate_legal_moves(pos: &Position) -> Vec<ChessMove> {
+   |        ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+69 + #[must_use] 
+70 | pub fn generate_legal_moves(pos: &Position) -> Vec<ChessMove> {
+   |
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\movegen\api.rs:74:8
+   |
+74 | pub fn generate_pseudo_captures_fast(pos: &Position) -> MoveList {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+74 + #[must_use] 
+75 | pub fn generate_pseudo_captures_fast(pos: &Position) -> MoveList {
+   |
+
+warning: this function could have a `#[must_use]` attribute
+   --> bitboard\src\movegen\api.rs:122:8
+    |
+122 | pub fn validate_legal_move_generation(pos: &Position) -> bool {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+122 + #[must_use] 
+123 | pub fn validate_legal_move_generation(pos: &Position) -> bool {
+    |
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\movegen\captures.rs:16:8
+   |
+16 | pub fn generate_pseudo_captures_fast(pos: &Position) -> MoveList {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+16 + #[must_use] 
+17 | pub fn generate_pseudo_captures_fast(pos: &Position) -> MoveList {
+   |
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\movegen\legality.rs:17:8
+   |
+17 | pub fn is_legal(pos: &Position, m: &ChessMove) -> bool {
+   |        ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+17 + #[must_use] 
+18 | pub fn is_legal(pos: &Position, m: &ChessMove) -> bool {
+   |
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\movegen\legality.rs:39:8
+   |
+39 | pub fn is_legal_fast(original_pos: &Position, pos_after_move: &Position) -> bool {
+   |        ^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+39 + #[must_use] 
+40 | pub fn is_legal_fast(original_pos: &Position, pos_after_move: &Position) -> bool {
+   |
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\movegen\legality.rs:56:8
+   |
+56 | pub fn is_in_check(pos: &Position, color: Color) -> bool {
+   |        ^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+56 + #[must_use] 
+57 | pub fn is_in_check(pos: &Position, color: Color) -> bool {
+   |
+
+warning: this could be rewritten as `let...else`
+  --> bitboard\src\movegen\legality.rs:58:5
+   |
+58 | /     let king_sq = match pos.pieces.get(king_piece).first_square() {
+59 | |         Some(sq) => sq,
+60 | |         None => return false,
+61 | |     };
+   | |______^ help: consider writing: `let Some(king_sq) = pos.pieces.get(king_piece).first_square() else { return false };`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
+   = note: `-W clippy::manual-let-else` implied by `-W clippy::pedantic`
+   = help: to override `-W clippy::pedantic` add `#[allow(clippy::manual_let_else)]`
+
+warning: this function could have a `#[must_use]` attribute
+   --> bitboard\src\movegen\legality.rs:125:8
+    |
+125 | pub fn is_move_legal_without_making(pos: &Position, mv: &ChessMove) -> bool {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+125 + #[must_use] 
+126 | pub fn is_move_legal_without_making(pos: &Position, mv: &ChessMove) -> bool {
+    |
+
+warning: this could be rewritten as `let...else`
+   --> bitboard\src\movegen\legality.rs:131:5
+    |
+131 | /     let king_sq = match pos.pieces.get(king_piece).first_square() {
+132 | |         Some(sq) => sq,
+133 | |         None => return false, // No king = illegal position
+134 | |     };
+    | |______^ help: consider writing: `let Some(king_sq) = pos.pieces.get(king_piece).first_square() else { return false };`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
+
+warning: this argument (3 byte) is passed by reference, but would be more efficient if passed by value (limit: 8 byte)
+   --> bitboard\src\movegen\legality.rs:180:9
+    |
+180 |     mv: &ChessMove,
+    |         ^^^^^^^^^^ help: consider passing by value instead: `ChessMove`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref
+    = note: `-W clippy::trivially-copy-pass-by-ref` implied by `-W clippy::pedantic`
+    = help: to override `-W clippy::pedantic` add `#[allow(clippy::trivially_copy_pass_by_ref)]`
+
+warning: this argument (3 byte) is passed by reference, but would be more efficient if passed by value (limit: 8 byte)
+   --> bitboard\src\movegen\legality.rs:212:9
+    |
+212 |     mv: &ChessMove,
+    |         ^^^^^^^^^^ help: consider passing by value instead: `ChessMove`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref
+
+warning: item in documentation is missing backticks
+   --> bitboard\src\movegen\sliders.rs:120:62
+    |
+120 | /// Optimized queen move generation - now benefits from fast bishop_attacks_from
+    |                                                              ^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+    |
+120 - /// Optimized queen move generation - now benefits from fast bishop_attacks_from
+120 + /// Optimized queen move generation - now benefits from fast `bishop_attacks_from`
+    |
+
+warning: item in documentation is missing backticks
+  --> bitboard\src\movelist.rs:10:5
+   |
+10 | /// MoveList optimized for cache-line efficiency.
+   |     ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+10 - /// MoveList optimized for cache-line efficiency.
+10 + /// `MoveList` optimized for cache-line efficiency.
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\movelist.rs:22:18
+   |
+22 |     pub const fn new() -> Self {
+   |                  ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+22 ~     #[must_use] 
+23 ~     pub const fn new() -> Self {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\movelist.rs:35:18
+   |
+35 |     pub const fn len(&self) -> usize {
+   |                  ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+35 ~     #[must_use] 
+36 ~     pub const fn len(&self) -> usize {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\movelist.rs:39:18
+   |
+39 |     pub const fn is_empty(&self) -> bool {
+   |                  ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+39 ~     #[must_use] 
+40 ~     pub const fn is_empty(&self) -> bool {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\movelist.rs:47:12
+   |
+47 |     pub fn as_slice(&self) -> &[ChessMove] {
+   |            ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+47 ~     #[must_use] 
+48 ~     pub fn as_slice(&self) -> &[ChessMove] {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\movelist.rs:59:18
+   |
+59 |     pub const fn get(&self, index: usize) -> Option<&ChessMove> {
+   |                  ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+59 ~     #[must_use] 
+60 ~     pub const fn get(&self, index: usize) -> Option<&ChessMove> {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\movelist.rs:76:12
+   |
+76 |     pub fn to_vec(&self) -> Vec<ChessMove> {
+   |            ^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+76 ~     #[must_use] 
+77 ~     pub fn to_vec(&self) -> Vec<ChessMove> {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\movelist.rs:81:12
+   |
+81 |     pub fn from_vec(vec: Vec<ChessMove>) -> Self {
+   |            ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+81 ~     #[must_use] 
+82 ~     pub fn from_vec(vec: Vec<ChessMove>) -> Self {
+   |
+
+warning: borrow as raw pointer
+  --> bitboard\src\movelist.rs:95:24
+   |
+95 |             let addr = &self.moves[prefetch_idx] as *const ChessMove;
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&raw const self.moves[prefetch_idx]`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#borrow_as_ptr
+   = note: `-W clippy::borrow-as-ptr` implied by `-W clippy::pedantic`
+   = help: to override `-W clippy::pedantic` add `#[allow(clippy::borrow_as_ptr)]`
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\occupancy.rs:20:18
+   |
+20 |     pub const fn new() -> Self {
+   |                  ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+20 ~     #[must_use] 
+21 ~     pub const fn new() -> Self {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\occupancy.rs:30:18
+   |
+30 |     pub const fn is_empty(&self) -> bool {
+   |                  ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+30 ~     #[must_use] 
+31 ~     pub const fn is_empty(&self) -> bool {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\occupancy.rs:36:12
+   |
+36 |     pub fn get_both(&self) -> BitBoardMask {
+   |            ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+36 ~     #[must_use] 
+37 ~     pub fn get_both(&self) -> BitBoardMask {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\occupancy.rs:44:12
+   |
+44 |     pub fn get_by_color(&self, color: crate::piece::Color) -> BitBoardMask {
+   |            ^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+44 ~     #[must_use] 
+45 ~     pub fn get_by_color(&self, color: crate::piece::Color) -> BitBoardMask {
+   |
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\perft.rs:22:8
+   |
+22 | pub fn perft(pos: &Position, depth: u32) -> u64 {
+   |        ^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+22 + #[must_use] 
+23 | pub fn perft(pos: &Position, depth: u32) -> u64 {
+   |
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\perft.rs:46:8
+   |
+46 | pub fn perft_divide(pos: &Position, depth: u32) -> String {
+   |        ^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+46 + #[must_use] 
+47 | pub fn perft_divide(pos: &Position, depth: u32) -> String {
+   |
+
+warning: `format!(..)` appended to existing `String`
+  --> bitboard\src\perft.rs:61:9
+   |
+61 |         result.push_str(&format!("{}: {}\n", move_to_uci(&mv), count));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: you may need to import the `std::fmt::Write` trait
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#format_push_string
+   = note: `-W clippy::format-push-string` implied by `-W clippy::pedantic`
+   = help: to override `-W clippy::pedantic` add `#[allow(clippy::format_push_string)]`
+help: consider using `write!` to avoid the extra allocation
+   |
+61 -         result.push_str(&format!("{}: {}\n", move_to_uci(&mv), count));
+61 +         let _ = write!(result, "{}: {}\n", move_to_uci(&mv), count);
+   |
+
+warning: `format!(..)` appended to existing `String`
+  --> bitboard\src\perft.rs:64:5
+   |
+64 |     result.push_str(&format!("Total: {}\n", total));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: you may need to import the `std::fmt::Write` trait
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#format_push_string
+help: consider using `write!` to avoid the extra allocation
+   |
+64 -     result.push_str(&format!("Total: {}\n", total));
+64 +     let _ = write!(result, "Total: {}\n", total);
+   |
+
+warning: variables can be used directly in the `format!` string
+  --> bitboard\src\perft.rs:64:22
+   |
+64 |     result.push_str(&format!("Total: {}\n", total));
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+   = note: `-W clippy::uninlined-format-args` implied by `-W clippy::pedantic`
+   = help: to override `-W clippy::pedantic` add `#[allow(clippy::uninlined_format_args)]`
+help: change this to
+   |
+64 -     result.push_str(&format!("Total: {}\n", total));
+64 +     result.push_str(&format!("Total: {total}\n"));
+   |
+
+warning: item in documentation is missing backticks
+  --> bitboard\src\perft.rs:68:15
+   |
+68 | /// Convert a ChessMove to UCI notation (e.g., "e2e4").
+   |               ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+68 - /// Convert a ChessMove to UCI notation (e.g., "e2e4").
+68 + /// Convert a `ChessMove` to UCI notation (e.g., "e2e4").
+   |
+
+warning: this argument (3 byte) is passed by reference, but would be more efficient if passed by value (limit: 8 byte)
+  --> bitboard\src\perft.rs:69:20
+   |
+69 | fn move_to_uci(mv: &ChessMove) -> String {
+   |                    ^^^^^^^^^^ help: consider passing by value instead: `ChessMove`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref
+
+warning: adding items after statements is confusing, since items exist from the start of the scope
+  --> bitboard\src\perft.rs:74:5
+   |
+74 |     use crate::mov::MoveType;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#items_after_statements
+   = note: `-W clippy::items-after-statements` implied by `-W clippy::pedantic`
+   = help: to override `-W clippy::pedantic` add `#[allow(clippy::items_after_statements)]`
+
+warning: variables can be used directly in the `format!` string
+  --> bitboard\src\perft.rs:84:13
+   |
+84 |             format!("{}{}{}", from, to, promotion_char)
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+   |
+84 -             format!("{}{}{}", from, to, promotion_char)
+84 +             format!("{from}{to}{promotion_char}")
+   |
+
+warning: variables can be used directly in the `format!` string
+  --> bitboard\src\perft.rs:86:14
+   |
+86 |         _ => format!("{}{}", from, to),
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+   |
+86 -         _ => format!("{}{}", from, to),
+86 +         _ => format!("{from}{to}"),
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\piece.rs:20:18
+   |
+20 |     pub const fn opposite(self) -> Color {
+   |                  ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+20 ~     #[must_use] 
+21 ~     pub const fn opposite(self) -> Color {
+   |
+
+warning: missing `#[must_use]` attribute on a method returning `Self`
+  --> bitboard\src\piece.rs:20:5
+   |
+20 | /     pub const fn opposite(self) -> Color {
+21 | |         match self {
+22 | |             Color::White => Color::Black,
+23 | |             Color::Black => Color::White,
+24 | |         }
+25 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\piece.rs:27:18
+   |
+27 |     pub const fn index(self) -> usize {
+   |                  ^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+27 ~     #[must_use] 
+28 ~     pub const fn index(self) -> usize {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\piece.rs:54:18
+   |
+54 |     pub const fn index(self) -> usize {
+   |                  ^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+54 ~     #[must_use] 
+55 ~     pub const fn index(self) -> usize {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\piece.rs:58:18
+   |
+58 |     pub const fn from_parts(color: Color, kind: Option<PieceKind>) -> Self {
+   |                  ^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+58 ~     #[must_use] 
+59 ~     pub const fn from_parts(color: Color, kind: Option<PieceKind>) -> Self {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\piece.rs:87:18
+   |
+87 |     pub const fn color(self) -> Color {
+   |                  ^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+87 ~     #[must_use] 
+88 ~     pub const fn color(self) -> Color {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\piece.rs:95:18
+   |
+95 |     pub const fn kind(self) -> PieceKind {
+   |                  ^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+95 ~     #[must_use] 
+96 ~     pub const fn kind(self) -> PieceKind {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\piece.rs:101:18
+    |
+101 |     pub const fn to_char(self) -> char {
+    |                  ^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+101 ~     #[must_use] 
+102 ~     pub const fn to_char(self) -> char {
+    |
+
+warning: usage of wildcard import for enum variants
+   --> bitboard\src\piece.rs:102:13
+    |
+102 |         use Piece::*;
+    |             ^^^^^^^^ help: try: `Piece::{WhitePawn, WhiteKnight, WhiteBishop, WhiteRook, WhiteQueen, WhiteKing, BlackPawn, BlackKnight, BlackBishop, BlackRook, BlackQueen, BlackKing, None}`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#enum_glob_use
+    = note: `-W clippy::enum-glob-use` implied by `-W clippy::pedantic`
+    = help: to override `-W clippy::pedantic` add `#[allow(clippy::enum_glob_use)]`
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\piece.rs:122:18
+    |
+122 |     pub const fn from_char(c: char) -> Option<Self> {
+    |                  ^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+122 ~     #[must_use] 
+123 ~     pub const fn from_char(c: char) -> Option<Self> {
+    |
+
+warning: usage of wildcard import for enum variants
+   --> bitboard\src\piece.rs:123:13
+    |
+123 |         use Piece::*;
+    |             ^^^^^^^^ help: try: `Piece::{WhitePawn, WhiteKnight, WhiteBishop, WhiteRook, WhiteQueen, WhiteKing, BlackPawn, BlackKnight, BlackBishop, BlackRook, BlackQueen, BlackKing, None}`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#enum_glob_use
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\piece.rs:144:18
+    |
+144 |     pub const fn from_uci(ch: char) -> Option<Self> {
+    |                  ^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+144 ~     #[must_use] 
+145 ~     pub const fn from_uci(ch: char) -> Option<Self> {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\piece.rs:155:18
+    |
+155 |     pub const fn to_uci(self) -> char {
+    |                  ^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+155 ~     #[must_use] 
+156 ~     pub const fn to_uci(self) -> char {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\piecebitboards.rs:13:18
+   |
+13 |     pub const fn new() -> Self {
+   |                  ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+13 ~     #[must_use] 
+14 ~     pub const fn new() -> Self {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\piecebitboards.rs:21:12
+   |
+21 |     pub fn get(&self, piece: Piece) -> BitBoardMask {
+   |            ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+21 ~     #[must_use] 
+22 ~     pub fn get(&self, piece: Piece) -> BitBoardMask {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\piecebitboards.rs:36:12
+   |
+36 |     pub fn all(&self) -> BitBoardMask {
+   |            ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+36 ~     #[must_use] 
+37 ~     pub fn all(&self) -> BitBoardMask {
+   |
+
+warning: casting `usize` to `u8` may truncate the value
+  --> bitboard\src\piecebitboards.rs:60:72
+   |
+60 |             .map(|(i, &bb)| (unsafe { std::mem::transmute::<u8, Piece>(i as u8) }, bb))
+   |                                                                        ^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_truncation
+help: ... or use `try_from` and handle the error accordingly
+   |
+60 -             .map(|(i, &bb)| (unsafe { std::mem::transmute::<u8, Piece>(i as u8) }, bb))
+60 +             .map(|(i, &bb)| (unsafe { std::mem::transmute::<u8, Piece>(u8::try_from(i)) }, bb))
+   |
+
+warning: casting `usize` to `u8` may truncate the value
+  --> bitboard\src\piecebitboards.rs:69:71
+   |
+69 |             .map(|(i, bb)| (unsafe { std::mem::transmute::<u8, Piece>(i as u8) }, bb))
+   |                                                                       ^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_truncation
+help: ... or use `try_from` and handle the error accordingly
+   |
+69 -             .map(|(i, bb)| (unsafe { std::mem::transmute::<u8, Piece>(i as u8) }, bb))
+69 +             .map(|(i, bb)| (unsafe { std::mem::transmute::<u8, Piece>(u8::try_from(i)) }, bb))
+   |
+
+warning: item in documentation is missing backticks
+  --> bitboard\src\position.rs:27:26
+   |
+27 | /// Undo information for unmake_move. Stores only the minimal state needed
+   |                          ^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+27 - /// Undo information for unmake_move. Stores only the minimal state needed
+27 + /// Undo information for `unmake_move`. Stores only the minimal state needed
+   |
+
+warning: `as` casting between raw pointers without changing their constness
+  --> bitboard\src\position.rs:71:17
+   |
+71 |                 other as *const Position as *const u8,
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `(other as *const Position).cast::<u8>()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: reference as raw pointer
+  --> bitboard\src\position.rs:71:17
+   |
+71 |                 other as *const Position as *const u8,
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref::<Position>(other)`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ref_as_ptr
+   = note: `-W clippy::ref-as-ptr` implied by `-W clippy::pedantic`
+   = help: to override `-W clippy::pedantic` add `#[allow(clippy::ref_as_ptr)]`
+
+warning: `as` casting between raw pointers without changing their constness
+  --> bitboard\src\position.rs:72:17
+   |
+72 |                 self as *mut Position as *mut u8,
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `(self as *mut Position).cast::<u8>()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+
+warning: reference as raw pointer
+  --> bitboard\src\position.rs:72:17
+   |
+72 |                 self as *mut Position as *mut u8,
+   |                 ^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_mut::<Position>(self)`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ref_as_ptr
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\position.rs:80:12
+   |
+80 |     pub fn all_pieces(&self) -> BitBoardMask {
+   |            ^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+80 ~     #[must_use] 
+81 ~     pub fn all_pieces(&self) -> BitBoardMask {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\position.rs:85:12
+   |
+85 |     pub fn our_pieces(&self, us: Color) -> BitBoardMask {
+   |            ^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+85 ~     #[must_use] 
+86 ~     pub fn our_pieces(&self, us: Color) -> BitBoardMask {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\position.rs:91:12
+   |
+91 |     pub fn can_castle_kingside(&self, color: Color) -> bool {
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+91 ~     #[must_use] 
+92 ~     pub fn can_castle_kingside(&self, color: Color) -> bool {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\position.rs:112:12
+    |
+112 |     pub fn can_castle_queenside(&self, color: Color) -> bool {
+    |            ^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+112 ~     #[must_use] 
+113 ~     pub fn can_castle_queenside(&self, color: Color) -> bool {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\position.rs:136:12
+    |
+136 |     pub fn their_pieces(&self, us: Color) -> BitBoardMask {
+    |            ^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+136 ~     #[must_use] 
+137 ~     pub fn their_pieces(&self, us: Color) -> BitBoardMask {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\position.rs:167:12
+    |
+167 |     pub fn piece_at(&self, sq: Square) -> Option<Piece> {
+    |            ^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+167 ~     #[must_use] 
+168 ~     pub fn piece_at(&self, sq: Square) -> Option<Piece> {
+    |
+
+warning: item in documentation is missing backticks
+   --> bitboard\src\position.rs:176:61
+    |
+176 |     /// Direct piece accessor returning Piece (which may be Piece::None).
+    |                                                             ^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+    |
+176 -     /// Direct piece accessor returning Piece (which may be Piece::None).
+176 +     /// Direct piece accessor returning Piece (which may be `Piece::None`).
+    |
+
+warning: item in documentation is missing backticks
+   --> bitboard\src\position.rs:181:17
+    |
+181 |     /// Returns Piece::None if square is empty.
+    |                 ^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+    |
+181 -     /// Returns Piece::None if square is empty.
+181 +     /// Returns `Piece::None` if square is empty.
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\position.rs:182:12
+    |
+182 |     pub fn piece_at_square(&self, sq: Square) -> Piece {
+    |            ^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+182 ~     #[must_use] 
+183 ~     pub fn piece_at_square(&self, sq: Square) -> Piece {
+    |
+
+warning: docs for function which may panic missing `# Panics` section
+   --> bitboard\src\position.rs:187:5
+    |
+187 |     pub fn from_fen(fen: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: first possible panic found here
+   --> bitboard\src\position.rs:191:13
+    |
+191 |             panic!("Invalid FEN: expected 6 parts");
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_panics_doc
+    = note: `-W clippy::missing-panics-doc` implied by `-W clippy::pedantic`
+    = help: to override `-W clippy::pedantic` add `#[allow(clippy::missing_panics_doc)]`
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\position.rs:187:12
+    |
+187 |     pub fn from_fen(fen: &str) -> Self {
+    |            ^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+187 ~     #[must_use] 
+188 ~     pub fn from_fen(fen: &str) -> Self {
+    |
+
+warning: only a `panic!` in `if`-then statement
+   --> bitboard\src\position.rs:190:9
+    |
+190 | /         if parts.len() != 6 {
+191 | |             panic!("Invalid FEN: expected 6 parts");
+192 | |         }
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_assert
+    = note: `-W clippy::manual-assert` implied by `-W clippy::pedantic`
+    = help: to override `-W clippy::pedantic` add `#[allow(clippy::manual_assert)]`
+help: replace `if`-then-`panic!` with `assert!`
+    |
+190 -         if parts.len() != 6 {
+191 -             panic!("Invalid FEN: expected 6 parts");
+192 -         }
+190 +         assert!(parts.len() == 6, "Invalid FEN: expected 6 parts");
+    |
+
+warning: casting `u32` to `u8` may truncate the value
+   --> bitboard\src\position.rs:211:29
+    |
+211 |                     file += ch.to_digit(10).unwrap() as u8;
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_truncation
+help: ... or use `try_from` and handle the error accordingly
+    |
+211 -                     file += ch.to_digit(10).unwrap() as u8;
+211 +                     file += u8::try_from(ch.to_digit(10).unwrap());
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> bitboard\src\position.rs:215:64
+    |
+215 |                         Piece::from_char(ch).unwrap_or_else(|| panic!("Invalid FEN char: {}", ch));
+    |                                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+215 -                         Piece::from_char(ch).unwrap_or_else(|| panic!("Invalid FEN char: {}", ch));
+215 +                         Piece::from_char(ch).unwrap_or_else(|| panic!("Invalid FEN char: {ch}"));
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> bitboard\src\position.rs:217:44
+    |
+217 |                         .unwrap_or_else(|| panic!("Invalid square: rank {}, file {}", rank, file));
+    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+217 -                         .unwrap_or_else(|| panic!("Invalid square: rank {}, file {}", rank, file));
+217 +                         .unwrap_or_else(|| panic!("Invalid square: rank {rank}, file {file}"));
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> bitboard\src\position.rs:228:18
+    |
+228 |             _ => panic!("Invalid FEN side: {}", side_part),
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+228 -             _ => panic!("Invalid FEN side: {}", side_part),
+228 +             _ => panic!("Invalid FEN side: {side_part}"),
+    |
+
+warning: unnecessary `!=` operation
+   --> bitboard\src\position.rs:235:25
+    |
+235 |           pos.ep_square = if ep_part != "-" {
+    |  _________________________^
+236 | |             let file = ep_part.as_bytes()[0] - b'a';
+237 | |             let rank = ep_part.as_bytes()[1] - b'1';
+238 | |             Square::from_rank_file(rank, file)
+239 | |         } else {
+240 | |             None
+241 | |         };
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#if_not_else
+    = note: `-W clippy::if-not-else` implied by `-W clippy::pedantic`
+    = help: to override `-W clippy::pedantic` add `#[allow(clippy::if_not_else)]`
+help: try
+    |
+235 ~         pos.ep_square = if ep_part == "-" {
+236 +             None
+237 +         } else {
+238 +             let file = ep_part.as_bytes()[0] - b'a';
+239 +             let rank = ep_part.as_bytes()[1] - b'1';
+240 +             Square::from_rank_file(rank, file)
+241 ~         };
+    |
+
+warning: docs for function which may panic missing `# Panics` section
+   --> bitboard\src\position.rs:250:5
+    |
+250 |     pub fn apply_move_into(&self, mv: &ChessMove, out: &mut Position) {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: first possible panic found here
+   --> bitboard\src\position.rs:272:33
+    |
+272 |                 Color::White => mv.to.backward(1).expect("Invalid EP capture square"),
+    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_panics_doc
+
+warning: docs for function which may panic missing `# Panics` section
+   --> bitboard\src\position.rs:382:5
+    |
+382 |     pub fn make_move(&mut self, mv: &ChessMove) -> MoveUndo {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: first possible panic found here
+   --> bitboard\src\position.rs:391:37
+    |
+391 |                     Color::White => mv.to.backward(1).expect("Invalid EP capture square"),
+    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_panics_doc
+
+warning: item in documentation is missing backticks
+   --> bitboard\src\position.rs:505:62
+    |
+505 |     /// Unmake a move using the undo information returned by make_move.
+    |                                                              ^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+    |
+505 -     /// Unmake a move using the undo information returned by make_move.
+505 +     /// Unmake a move using the undo information returned by `make_move`.
+    |
+
+warning: usage of wildcard import for enum variants
+   --> bitboard\src\position.rs:583:17
+    |
+583 |             use Square::*;
+    |                 ^^^^^^^^^ help: try: `Square::{E1, E8, A1, H1, A8, H8}`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#enum_glob_use
+
+warning: docs for function which may panic missing `# Panics` section
+   --> bitboard\src\position.rs:605:5
+    |
+605 |     pub fn to_fen(&self) -> String {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: first possible panic found here
+   --> bitboard\src\position.rs:611:30
+    |
+611 |                 let square = Square::from_rank_file(rank, file).unwrap();
+    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_panics_doc
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\position.rs:664:12
+    |
+664 |     pub fn parse_uci_move(&self, mv: &str) -> Option<ChessMove> {
+    |            ^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+664 ~     #[must_use] 
+665 ~     pub fn parse_uci_move(&self, mv: &str) -> Option<ChessMove> {
+    |
+
+warning: doc comment uses two spaces for a hard line break
+   --> bitboard\src\position.rs:693:79
+    |
+693 |     /// parsing with legality verification to reject moves that leave the king  
+    |                                                                               ^^
+694 |     /// in check. This prevents desync while remaining robust to minor parsing  
+    |                                                                               ^^
+    |
+    = help: replace this double space with a backslash: `\`
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_comment_double_space_linebreaks
+    = note: `-W clippy::doc-comment-double-space-linebreaks` implied by `-W clippy::pedantic`
+    = help: to override `-W clippy::pedantic` add `#[allow(clippy::doc_comment_double_space_linebreaks)]`
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\position.rs:696:12
+    |
+696 |     pub fn parse_uci_move_trusted(&self, mv: &str) -> Option<ChessMove> {
+    |            ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+696 ~     #[must_use] 
+697 ~     pub fn parse_uci_move_trusted(&self, mv: &str) -> Option<ChessMove> {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\position.rs:749:12
+    |
+749 |     pub fn to_board_state(&self) -> BoardState {
+    |            ^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+749 ~     #[must_use] 
+750 ~     pub fn to_board_state(&self) -> BoardState {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\position.rs:772:12
+    |
+772 |     pub fn zobrist_hash(&self) -> u64 {
+    |            ^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+772 ~     #[must_use] 
+773 ~     pub fn zobrist_hash(&self) -> u64 {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\square.rs:25:12
+   |
+25 |     pub fn from_coords(file: char, rank: char) -> Option<Self> {
+   |            ^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+25 ~     #[must_use] 
+26 ~     pub fn from_coords(file: char, rank: char) -> Option<Self> {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\square.rs:36:18
+   |
+36 |     pub const fn file(self) -> u8 {
+   |                  ^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+36 ~     #[must_use] 
+37 ~     pub const fn file(self) -> u8 {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\square.rs:40:18
+   |
+40 |     pub const fn rank(self) -> u8 {
+   |                  ^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+40 ~     #[must_use] 
+41 ~     pub const fn rank(self) -> u8 {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\square.rs:44:18
+   |
+44 |     pub const fn bitboard(self) -> BitBoardMask {
+   |                  ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+44 ~     #[must_use] 
+45 ~     pub const fn bitboard(self) -> BitBoardMask {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\square.rs:48:12
+   |
+48 |     pub fn to_uci(self) -> String {
+   |            ^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+48 ~     #[must_use] 
+49 ~     pub fn to_uci(self) -> String {
+   |
+
+warning: variables can be used directly in the `format!` string
+  --> bitboard\src\square.rs:51:9
+   |
+51 |         format!("{}{}", file_char, rank_char)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+   |
+51 -         format!("{}{}", file_char, rank_char)
+51 +         format!("{file_char}{rank_char}")
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\square.rs:54:18
+   |
+54 |     pub const fn index(self) -> usize {
+   |                  ^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+54 ~     #[must_use] 
+55 ~     pub const fn index(self) -> usize {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\square.rs:58:18
+   |
+58 |     pub const fn try_from_index(idx: u8) -> Option<Self> {
+   |                  ^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+58 ~     #[must_use] 
+59 ~     pub const fn try_from_index(idx: u8) -> Option<Self> {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\square.rs:66:12
+   |
+66 |     pub fn from_rank_file(rank: u8, file: u8) -> Option<Self> {
+   |            ^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+66 ~     #[must_use] 
+67 ~     pub fn from_rank_file(rank: u8, file: u8) -> Option<Self> {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\square.rs:76:18
+   |
+76 |     pub const fn all_array() -> [Square; 64] {
+   |                  ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+76 ~     #[must_use] 
+77 ~     pub const fn all_array() -> [Square; 64] {
+   |
+
+warning: casting `usize` to `u8` may truncate the value
+  --> bitboard\src\square.rs:80:69
+   |
+80 |             squares[i] = unsafe { std::mem::transmute::<u8, Square>(i as u8) };
+   |                                                                     ^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_truncation
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\square.rs:86:18
+   |
+86 |     pub const fn file_char(self) -> char {
+   |                  ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+86 ~     #[must_use] 
+87 ~     pub const fn file_char(self) -> char {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\square.rs:90:18
+   |
+90 |     pub const fn rank_char(self) -> char {
+   |                  ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+90 ~     #[must_use] 
+91 ~     pub const fn rank_char(self) -> char {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+  --> bitboard\src\square.rs:94:12
+   |
+94 |     pub fn forward(self, n: u8) -> Option<Self> {
+   |            ^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+94 ~     #[must_use] 
+95 ~     pub fn forward(self, n: u8) -> Option<Self> {
+   |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\square.rs:101:12
+    |
+101 |     pub fn backward(self, n: u8) -> Option<Self> {
+    |            ^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+101 ~     #[must_use] 
+102 ~     pub fn backward(self, n: u8) -> Option<Self> {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\square.rs:108:12
+    |
+108 |     pub fn advance(self, offset: i8) -> Option<Self> {
+    |            ^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+108 ~     #[must_use] 
+109 ~     pub fn advance(self, offset: i8) -> Option<Self> {
+    |
+
+warning: casting `i8` to `u8` may lose the sign of the value
+   --> bitboard\src\square.rs:111:61
+    |
+111 |             Some(unsafe { std::mem::transmute::<u8, Square>(idx as u8) })
+    |                                                             ^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `idx.cast_unsigned()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_sign_loss
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\square.rs:117:18
+    |
+117 |     pub const fn file_mask(self) -> BitBoardMask {
+    |                  ^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+117 ~     #[must_use] 
+118 ~     pub const fn file_mask(self) -> BitBoardMask {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\square.rs:121:18
+    |
+121 |     pub const fn rank_mask(self) -> BitBoardMask {
+    |                  ^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+121 ~     #[must_use] 
+122 ~     pub const fn rank_mask(self) -> BitBoardMask {
+    |
+
+warning: this method could have a `#[must_use]` attribute
+   --> bitboard\src\square.rs:125:18
+    |
+125 |     pub const fn color_mask(self) -> BitBoardMask {
+    |                  ^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+125 ~     #[must_use] 
+126 ~     pub const fn color_mask(self) -> BitBoardMask {
+    |
+
+warning: item in documentation is missing backticks
+  --> bitboard\src\zobrist.rs:41:5
+   |
+41 | /// Piece::None (12) maps to 0 (unused in zobrist computation).
+   |     ^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+41 - /// Piece::None (12) maps to 0 (unused in zobrist computation).
+41 + /// `Piece::None` (12) maps to 0 (unused in zobrist computation).
+   |
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\zobrist.rs:60:14
+   |
+60 | pub const fn piece_index(p: Piece) -> usize {
+   |              ^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+60 + #[must_use] 
+61 | pub const fn piece_index(p: Piece) -> usize {
+   |
+
+warning: this function could have a `#[must_use]` attribute
+  --> bitboard\src\zobrist.rs:66:8
+   |
+66 | pub fn compute_zobrist(pos: &Position) -> u64 {
+   |        ^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+66 + #[must_use] 
+67 | pub fn compute_zobrist(pos: &Position) -> u64 {
+   |
+
+warning: error finalizing incremental compilation session directory `\\?\D:\Cody\target\debug\incremental\bitboard-117em388r2vrj\s-hgif0iezem-014a483-working`: Access is denied. (os error 5)
+
+warning: `bitboard` (lib) generated 291 warnings (run `cargo clippy --fix --lib -p bitboard -- -W clippy::pedantic` to apply 204 suggestions)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.05s

@@ -58,17 +58,17 @@ pub fn perft_divide(pos: &Position, depth: u32) -> String {
         pos.apply_move_into(&mv, &mut next_pos);
         let count = perft(&next_pos, depth - 1);
         total += count;
-        result.push_str(&format!("{}: {}\n", move_to_uci(&mv), count));
+        result.push_str(&format!("{}: {count}\n", move_to_uci(&mv)));
     }
 
-    result.push_str(&format!("Total: {}\n", total));
+    result.push_str(&format!("Total: {total}\n"));
     result
 }
 
-/// Convert a ChessMove to UCI notation (e.g., "e2e4").
+/// Convert a `ChessMove` to UCI notation (e.g., "e2e4").
 fn move_to_uci(mv: &ChessMove) -> String {
-    let from = format!("{}", mv.from);
-    let to = format!("{}", mv.to);
+    let from = mv.from.to_string();
+    let to = mv.to.to_string();
 
     // Handle promotions
     use crate::mov::MoveType;
@@ -81,9 +81,9 @@ fn move_to_uci(mv: &ChessMove) -> String {
                 crate::piece::PieceKind::Queen => 'q',
                 _ => '?',
             };
-            format!("{}{}{}", from, to, promotion_char)
+            format!("{from}{to}{promotion_char}")
         }
-        _ => format!("{}{}", from, to),
+        _ => format!("{from}{to}"),
     }
 }
 

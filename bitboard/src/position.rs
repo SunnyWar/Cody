@@ -24,9 +24,9 @@ pub struct MoveGenContext {
     pub occupancy: BitBoardMask,
 }
 
-/// Undo information for unmake_move. Stores only the minimal state needed
-/// to reverse a move, avoiding the need to copy the entire Position.
-/// Size: ~16 bytes vs ~64+ bytes for full Position copy.
+/// Undo information for `unmake_move`. Stores only the minimal state needed
+/// to reverse a move, avoiding the need to copy the entire `Position`.
+/// Size: ~16 bytes vs ~64+ bytes for full `Position` copy.
 #[derive(Clone, Copy, Debug)]
 pub struct MoveUndo {
     pub captured_piece: Piece,
@@ -173,12 +173,12 @@ impl Position {
         }
     }
 
-    /// Direct piece accessor returning Piece (which may be Piece::None).
-    /// Eliminates Option wrapping overhead by returning the raw Piece value.
-    /// Preferred in hot paths where None is explicitly checked (SEE,
-    /// quiescence).
+    /// Direct piece accessor returning `Piece` (which may be `Piece::None`).
+    /// Eliminates `Option` wrapping overhead by returning the raw `Piece`
+    /// value. Preferred in hot paths where `None` is explicitly checked
+    /// (SEE, quiescence).
     ///
-    /// Returns Piece::None if square is empty.
+    /// Returns `Piece::None` if square is empty.
     pub fn piece_at_square(&self, sq: Square) -> Piece {
         // Safety: Square::index() is always in-bounds for [0..64].
         unsafe { *self.piece_on.get_unchecked(sq.index()) }
@@ -212,9 +212,9 @@ impl Position {
                 }
                 _ => {
                     let piece =
-                        Piece::from_char(ch).unwrap_or_else(|| panic!("Invalid FEN char: {}", ch));
+                        Piece::from_char(ch).unwrap_or_else(|| panic!("Invalid FEN char: {ch}"));
                     let square = Square::from_rank_file(rank, file)
-                        .unwrap_or_else(|| panic!("Invalid square: rank {}, file {}", rank, file));
+                        .unwrap_or_else(|| panic!("Invalid square: rank {rank}, file {file}"));
                     pos.set_piece(square, piece);
                     file += 1;
                 }
@@ -225,7 +225,7 @@ impl Position {
         pos.side_to_move = match side_part {
             "w" => Color::White,
             "b" => Color::Black,
-            _ => panic!("Invalid FEN side: {}", side_part),
+            _ => panic!("Invalid FEN side: {side_part}"),
         };
 
         // Castling rights
@@ -502,7 +502,7 @@ impl Position {
         undo
     }
 
-    /// Unmake a move using the undo information returned by make_move.
+    /// Unmake a move using the undo information returned by `make_move`.
     /// Restores the position to its state before the move was made.
     pub fn unmake_move(&mut self, mv: &ChessMove, undo: &MoveUndo) {
         let them = self.side_to_move; // Current side is the one that just moved

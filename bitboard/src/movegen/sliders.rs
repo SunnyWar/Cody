@@ -117,7 +117,7 @@ pub fn generate_pseudo_rook_moves(
     }
 }
 
-/// Optimized queen move generation - now benefits from fast bishop_attacks_from
+/// Optimized queen move generation - now benefits from fast `bishop_attacks_from`
 pub fn generate_pseudo_queen_moves(
     pos: &Position,
     context: &MoveGenContext,

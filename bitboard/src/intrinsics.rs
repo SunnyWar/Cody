@@ -197,7 +197,7 @@ pub fn leading_zeros(x: u64) -> u32 {
 /// Reset the least significant set bit (x & (x - 1)).
 ///
 /// Critical for fast bitboard iteration: repeatedly extract and clear LSB.
-/// Example: while bb != 0 { let sq = trailing_zeros(bb); bb = blsr(bb); ... }
+/// Example: `while bb != 0 { let sq = trailing_zeros(bb); bb = blsr(bb); ... }`
 pub fn blsr(x: u64) -> u64 {
     if x == 0 {
         return 0;
@@ -290,7 +290,7 @@ pub fn pext(src: u64, mask: u64) -> u64 {
 
 /// Parallel bit extract (PEXT) - optimized for guaranteed non-zero mask.
 ///
-/// Precondition: `mask != 0`. Enforced with debug_assert.
+/// Precondition: `mask != 0`. Enforced with `debug_assert`.
 /// This version is preferred for hot paths where mask is always non-zero
 /// (e.g., occupancy indexing with valid occupancy masks).
 pub fn pext_nonzero(src: u64, mask: u64) -> u64 {

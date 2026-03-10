@@ -36,9 +36,9 @@ pub const ZOBRIST_CASTLE_KEYS: [u64; 4] = [
     0x89AB_CDEF_0123_4567u64,
 ];
 
-/// Const lookup table mapping Piece discriminant directly to zobrist index.
-/// Pieces 0-11 (WhitePawn..BlackKing) map to zobrist indices 0-11.
-/// Piece::None (12) maps to 0 (unused in zobrist computation).
+/// Const lookup table mapping `Piece` discriminant directly to zobrist index.
+/// Pieces 0-11 (`WhitePawn`..`BlackKing`) map to zobrist indices 0-11.
+/// `Piece::None` (12) maps to 0 (unused in zobrist computation).
 const PIECE_ZOBRIST_INDEX: [usize; 13] = [
     0,  // WhitePawn
     1,  // WhiteKnight

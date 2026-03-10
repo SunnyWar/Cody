@@ -26,7 +26,7 @@ impl MoveGenerator for SimpleMoveGen {
     }
 }
 
-/// Fast zero-allocation move generation using stack-allocated MoveList
+/// Fast zero-allocation move generation using stack-allocated `MoveList`
 pub fn generate_pseudo_moves_fast(pos: &Position) -> MoveList {
     let mut moves = MoveList::new();
     let us = pos.side_to_move;
