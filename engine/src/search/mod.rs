@@ -3,7 +3,6 @@ pub mod search;
 
 pub mod engine;
 pub mod evaluator;
-pub mod nnue;
 pub mod piecesquaretable;
 pub mod quiescence;
 pub mod see;
