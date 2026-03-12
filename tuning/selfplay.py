@@ -49,7 +49,7 @@ cmd = [
     CUTECHESS_CLI,
     "-engine", f"cmd=./{os.path.basename(ENGINE_PATH)}", "name=Candidate",
     "-engine", f"cmd=./{os.path.basename(BASELINE_PATH)}", "name=Champion",
-    "-each", "tc=10+0.1", "proto=uci",
+    "-each", "tc=30+0.1", "proto=uci",
     "-games", str(GAMES),
     "-openings", "file=UHO_Lichess_4852_v1.epd", "format=epd", "order=sequential",
     "-repeat", "-recover",
