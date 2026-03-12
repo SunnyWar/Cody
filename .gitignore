@@ -34,7 +34,7 @@ gauntlet.log
 gauntlet.pgn
 
 # Ignore Clippy raw output logs
-.orchestrator_logs/clippy_raw_output.json
+.orchestrator_logs/
 
 # Local configuration (never commit this)
 config.json
