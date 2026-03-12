@@ -31,9 +31,13 @@ def run_step(cmd, description, cwd=None):
     result = subprocess.run(cmd, cwd=cwd, shell=True, capture_output=True, text=True)
     if result.returncode != 0:
         print(f"FAILED: {description}")
-        if result.stderr:
-            print("Error output:")
-            print(result.stderr)
+        print("\n==================== Subprocess ERROR ====================")
+        print(f"Exit code: {result.returncode}")
+        print("STDOUT:")
+        print(result.stdout)
+        print("STDERR:")
+        print(result.stderr)
+        print("========================================================\n")
         sys.exit(1)
     return result.stdout if result.stdout else None
 

@@ -16,8 +16,12 @@ BASELINE_PATH = sys.argv[4] if len(sys.argv) > 4 else ENGINE_PATH
 
 # Copy engine binaries to current directory for CuteChess
 import shutil
-local_candidate = os.path.join(os.getcwd(), os.path.basename(ENGINE_PATH))
-local_baseline = os.path.join(os.getcwd(), os.path.basename(BASELINE_PATH))
+def normalize_path(p):
+    return os.path.normcase(os.path.abspath(p))
+local_candidate = normalize_path(os.path.join(os.getcwd(), os.path.basename(ENGINE_PATH)))
+# Always copy baseline from build release location
+build_baseline = normalize_path(os.path.join(os.path.dirname(__file__), '..', 'target', 'release', 'cody.exe'))
+local_baseline = normalize_path(os.path.join(os.getcwd(), 'baseline.exe'))
 import time
 def safe_copy(src, dst, label):
     max_attempts = 5
@@ -38,10 +42,15 @@ def safe_copy(src, dst, label):
     print(f"ERROR: Could not copy {label} after {max_attempts} attempts.")
     return False
 
-# Only copy candidate engine; baseline.exe should already be present
 if not safe_copy(ENGINE_PATH, local_candidate, "candidate engine"):
     sys.exit(1)
-# Use local_baseline as-is
+# Always copy D:/cody/target/release/cody.exe to baseline.exe before the match
+try:
+    shutil.copy2(build_baseline, local_baseline)
+    print(f"Copied {build_baseline} to {local_baseline} as baseline engine.")
+except Exception as e:
+    print(f"ERROR: Failed to copy {build_baseline} to {local_baseline}: {e}")
+    sys.exit(1)
 
 # Run cutechess match
 
@@ -56,6 +65,7 @@ cmd = [
     "-pgnout", "temp_match.pgn"
 ]
 
+
 print("Running CuteChess command:")
 print(" ", " ".join(cmd))
 result = subprocess.run(cmd, capture_output=True, text=True)
@@ -63,6 +73,15 @@ print("CuteChess stdout:")
 print(result.stdout)
 print("CuteChess stderr:")
 print(result.stderr)
+if result.returncode != 0:
+    print("\n==================== CuteChess ERROR ====================")
+    print(f"CRITICAL: CuteChess failed with exit code {result.returncode}")
+    print("STDOUT:")
+    print(result.stdout)
+    print("STDERR:")
+    print(result.stderr)
+    print("========================================================\n")
+    sys.exit(1)
 
 import os
 if not os.path.exists("temp_match.pgn"):

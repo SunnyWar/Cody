@@ -18,6 +18,10 @@ def update_consts(param_dict):
         "MOBILITY_WEIGHT", "EXPOSED_KING_PENALTY", "OPEN_FILE_NEAR_KING", "KING_LACKING_ESCAPE_SQUARES",
         "ROOK_ON_OPEN_FILE_BONUS", "ROOK_ON_SEMIOPEN_FILE_BONUS"
     ]
+    # Add all PASSED_PAWN_BONUS_BY_ADVANCE_[1-8] and PAWN_NEAR_PROMOTION_[1-8] as int constants
+    for i in range(1, 9):
+        int_consts.append(f"PASSED_PAWN_BONUS_BY_ADVANCE_{i}")
+        int_consts.append(f"PAWN_NEAR_PROMOTION_{i}")
     array_consts = ["PASSED_PAWN_BONUS_BY_ADVANCE", "PAWN_NEAR_PROMOTION"]
     for k, v in param_dict.items():
         pat = rf'(pub const {k}: [^=]+ = )[^;]+(;)'  # Only pub consts
