@@ -1,0 +1,48 @@
+[
+  {
+    "id": 1,
+    "params": {
+      "MATERIAL_ROOK": 425.0,
+      "OPEN_FILE_NEAR_KING": 4.0,
+      "DOUBLED_PAWN_PENALTY": 30.0,
+      "MATERIAL_QUEEN": 873.0,
+      "ROOK_ON_SEMIOPEN_FILE_BONUS": 14.0,
+      "BISHOP_PAIR_BONUS": 38.0,
+      "KING_LACKING_ESCAPE_SQUARES": 5.0,
+      "MATERIAL_BISHOP": 336.0,
+      "MOBILITY_WEIGHT": 8.0,
+      "MATERIAL_KING": 0.0,
+      "PAWN_NEAR_PROMOTION": 132.0,
+      "EXPOSED_KING_PENALTY": 42.0,
+      "MATERIAL_KNIGHT": 254.0,
+      "MATERIAL_PAWN": 75.0,
+      "PASSED_PAWN_BONUS_BY_ADVANCE": 51.0,
+      "ISOLATED_PAWN_PENALTY": 24.0,
+      "ROOK_ON_OPEN_FILE_BONUS": 11.0
+    },
+    "score": null
+  },
+  {
+    "id": 2,
+    "params": {
+      "MATERIAL_ROOK": 528.0,
+      "ROOK_ON_OPEN_FILE_BONUS": 32.0,
+      "MATERIAL_QUEEN": 858.0,
+      "DOUBLED_PAWN_PENALTY": 29.0,
+      "KING_LACKING_ESCAPE_SQUARES": 12.0,
+      "EXPOSED_KING_PENALTY": 16.0,
+      "MATERIAL_BISHOP": 309.0,
+      "MATERIAL_KNIGHT": 285.0,
+      "PAWN_NEAR_PROMOTION": 117.0,
+      "MATERIAL_KING": 0.0,
+      "ISOLATED_PAWN_PENALTY": 14.0,
+      "MATERIAL_PAWN": 117.0,
+      "OPEN_FILE_NEAR_KING": 26.0,
+      "PASSED_PAWN_BONUS_BY_ADVANCE": 17.0,
+      "MOBILITY_WEIGHT": 1.0,
+      "ROOK_ON_SEMIOPEN_FILE_BONUS": 17.0,
+      "BISHOP_PAIR_BONUS": 14.0
+    },
+    "score": null
+  }
+]

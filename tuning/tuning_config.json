@@ -1,0 +1,8 @@
+{
+  "max_iterations": 2,
+  "games_per_match": 2,
+  "tuning_dir": "D:/cody/tuning",
+  "engine_bin": "D:/cody/target/release/cody.exe",
+  "baseline_bin": "D:/cody/tuning/baseline.exe",
+  "cody_tuner_exe": "D:/cody_tuner/target/release/cody_tuner.exe"
+}
