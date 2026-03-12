@@ -29,15 +29,12 @@ def update_consts(param_dict):
                 except Exception:
                     pass
             elif k in array_consts:
-                # Ensure array values are ints
+                # Only update if value is a list
                 if isinstance(val, list):
                     val = '[' + ', '.join(str(int(round(float(x)))) for x in val) + ']'
-                elif isinstance(val, str) and val.startswith('[') and val.endswith(']'):
-                    try:
-                        arr = json.loads(val)
-                        val = '[' + ', '.join(str(int(round(float(x)))) for x in arr) + ']'
-                    except Exception:
-                        pass
+                else:
+                    print(f"WARNING: Skipping array constant '{k}' because value is not a list: {val}")
+                    return m.group(0)  # Leave unchanged
             return f'{m.group(1)}{val}{m.group(2)}'
         content = re.sub(pat, repl, content)
     with open(CONST_FILE, 'w', encoding='utf-8') as f:
