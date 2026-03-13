@@ -6,7 +6,7 @@ import json
 import os
 CUTECHESS_CLI = r"C:\Program Files (x86)\Cute Chess\cutechess-cli.exe"
 ENGINE_PATH = sys.argv[1] if len(sys.argv) > 1 else "../target/release/cody.exe"
-GAMES = int(sys.argv[2]) if len(sys.argv) > 2 else 10
+GAMES = int(sys.argv[2]) if len(sys.argv) > 2 else 5
 RESULTS_FILE = sys.argv[3] if len(sys.argv) > 3 else "results.json"
 
 # Baseline engine (for tuning, can be same as candidate or a reference)
