@@ -33,59 +33,43 @@ pub const ROOK_ON_OPEN_FILE_BONUS: i32 = 7;
 pub const ROOK_ON_SEMIOPEN_FILE_BONUS: i32 = 9;
 
 // Tuning Range: [0, 100] per rank
-pub const PASSED_PAWN_BONUS_BY_ADVANCE_1: i32 = 5;
+pub const PPBBA_1: i32 = 5;
 // Tuning Range: [0, 100] per rank
-pub const PASSED_PAWN_BONUS_BY_ADVANCE_2: i32 = 5;
+pub const PPBBA_2: i32 = 5;
 // Tuning Range: [0, 100] per rank
-pub const PASSED_PAWN_BONUS_BY_ADVANCE_3: i32 = 5;
+pub const PPBBA_3: i32 = 5;
 // Tuning Range: [0, 100] per rank
-pub const PASSED_PAWN_BONUS_BY_ADVANCE_4: i32 = 13;
+pub const PPBBA_4: i32 = 13;
 // Tuning Range: [0, 100] per rank
-pub const PASSED_PAWN_BONUS_BY_ADVANCE_5: i32 = 25;
+pub const PPBBA_5: i32 = 25;
 // Tuning Range: [0, 100] per rank
-pub const PASSED_PAWN_BONUS_BY_ADVANCE_6: i32 = 65;
+pub const PPBBA_6: i32 = 65;
 // Tuning Range: [0, 100] per rank
-pub const PASSED_PAWN_BONUS_BY_ADVANCE_7: i32 = 155;
+pub const PPBBA_7: i32 = 155;
 // Tuning Range: [0, 100] per rank
-pub const PASSED_PAWN_BONUS_BY_ADVANCE_8: i32 = 5;
+pub const PPBBA_8: i32 = 5;
 
 // NOT TUNEABLE
 pub const PASSED_PAWN_BONUS_BY_ADVANCE: [i32; 8] = [
-    PASSED_PAWN_BONUS_BY_ADVANCE_1,
-    PASSED_PAWN_BONUS_BY_ADVANCE_2,
-    PASSED_PAWN_BONUS_BY_ADVANCE_3,
-    PASSED_PAWN_BONUS_BY_ADVANCE_4,
-    PASSED_PAWN_BONUS_BY_ADVANCE_5,
-    PASSED_PAWN_BONUS_BY_ADVANCE_6,
-    PASSED_PAWN_BONUS_BY_ADVANCE_7,
-    PASSED_PAWN_BONUS_BY_ADVANCE_8,
+    PPBBA_1, PPBBA_2, PPBBA_3, PPBBA_4, PPBBA_5, PPBBA_6, PPBBA_7, PPBBA_8,
 ];
 
 // Tuning Range: [0, 200] per rank
-pub const PAWN_NEAR_PROMOTION_1: i32 = 5;
+pub const PNP_1: i32 = 5;
 // Tuning Range: [0, 200] per rank
-pub const PAWN_NEAR_PROMOTION_2: i32 = 5;
+pub const PNP_2: i32 = 5;
 // Tuning Range: [0, 200] per rank
-pub const PAWN_NEAR_PROMOTION_3: i32 = 5;
+pub const PNP_3: i32 = 5;
 // Tuning Range: [0, 200] per rank
-pub const PAWN_NEAR_PROMOTION_4: i32 = 13;
+pub const PNP_4: i32 = 13;
 // Tuning Range: [0, 200] per rank
-pub const PAWN_NEAR_PROMOTION_5: i32 = 25;
+pub const PNP_5: i32 = 25;
 // Tuning Range: [0, 200] per rank
-pub const PAWN_NEAR_PROMOTION_6: i32 = 65;
+pub const PNP_6: i32 = 65;
 // Tuning Range: [0, 200] per rank
-pub const PAWN_NEAR_PROMOTION_7: i32 = 155;
+pub const PNP_7: i32 = 155;
 // Tuning Range: [0, 200] per rank
-pub const PAWN_NEAR_PROMOTION_8: i32 = 5;
+pub const PNP_8: i32 = 5;
 
 // NOT TUNEABLE
-pub const PAWN_NEAR_PROMOTION: [i32; 8] = [
-    PAWN_NEAR_PROMOTION_1,
-    PAWN_NEAR_PROMOTION_2,
-    PAWN_NEAR_PROMOTION_3,
-    PAWN_NEAR_PROMOTION_4,
-    PAWN_NEAR_PROMOTION_5,
-    PAWN_NEAR_PROMOTION_6,
-    PAWN_NEAR_PROMOTION_7,
-    PAWN_NEAR_PROMOTION_8,
-];
+pub const PAWN_NEAR_PROMOTION: [i32; 8] = [PNP_1, PNP_2, PNP_3, PNP_4, PNP_5, PNP_6, PNP_7, PNP_8];

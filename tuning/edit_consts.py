@@ -16,17 +16,17 @@ def update_consts(param_dict):
         "MATERIAL_PAWN", "MATERIAL_KNIGHT", "MATERIAL_BISHOP", "MATERIAL_ROOK", "MATERIAL_QUEEN",
         "MATERIAL_KING", "BISHOP_PAIR_BONUS", "DOUBLED_PAWN_PENALTY", "ISOLATED_PAWN_PENALTY",
         "MOBILITY_WEIGHT", "EXPOSED_KING_PENALTY", "OPEN_FILE_NEAR_KING", "KING_LACKING_ESCAPE_SQUARES",
-        "ROOK_ON_OPEN_FILE_BONUS", "ROOK_ON_SEMIOPEN_FILE_BONUS", "PAWN_NEAR_PROMOTION_1", "PAWN_NEAR_PROMOTION_2",
-        "PAWN_NEAR_PROMOTION_3", "PAWN_NEAR_PROMOTION_4", "PAWN_NEAR_PROMOTION_5, PAWN_NEAR_PROMOTION_6",
-        "PAWN_NEAR_PROMOTION_7", "PAWN_NEAR_PROMOTION_8", "PASSED_PAWN_BONUS_BY_ADVANCE_1", 
-        "PASSED_PAWN_BONUS_BY_ADVANCE_2", "PASSED_PAWN_BONUS_BY_ADVANCE_3", "PASSED_PAWN_BONUS_BY_ADVANCE_4",
-        "PASSED_PAWN_BONUS_BY_ADVANCE_5", "PASSED_PAWN_BONUS_BY_ADVANCE_6", "PASSED_PAWN_BONUS_BY_ADVANCE_7",
-        "PASSED_PAWN_BONUS_BY_ADVANCE_8"
+        "ROOK_ON_OPEN_FILE_BONUS", "ROOK_ON_SEMIOPEN_FILE_BONUS", "PNP_1", "PNP_2",
+        "PNP_3", "PNP_4", "PNP_5, PNP_6",
+        "PNP_7", "PNP_8", "PPBBA_1", 
+        "PPBBA_2", "PPBBA_3", "PPBBA_4",
+        "PPBBA_5", "PPBBA_6", "PPBBA_7",
+        "PPBBA_8"
     ]
-    # Add all PASSED_PAWN_BONUS_BY_ADVANCE_[1-8] and PAWN_NEAR_PROMOTION_[1-8] as int constants
+    # Add all PPBBA_[1-8] and PNP_[1-8] as int constants
     for i in range(1, 9):
-        int_consts.append(f"PASSED_PAWN_BONUS_BY_ADVANCE_{i}")
-        int_consts.append(f"PAWN_NEAR_PROMOTION_{i}")
+        int_consts.append(f"PPBBA_{i}")
+        int_consts.append(f"PNP_{i}")
     array_consts = ["PASSED_PAWN_BONUS_BY_ADVANCE", "PAWN_NEAR_PROMOTION"]
     for k, v in param_dict.items():
         pat = rf'(pub const {k}: [^=]+ = )[^;]+(;)'  # Only pub consts
