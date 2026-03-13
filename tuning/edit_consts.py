@@ -23,11 +23,7 @@ def update_consts(param_dict):
         "PPBBA_5", "PPBBA_6", "PPBBA_7",
         "PPBBA_8"
     ]
-    # Add all PPBBA_[1-8] and PNP_[1-8] as int constants
-    for i in range(1, 9):
-        int_consts.append(f"PPBBA_{i}")
-        int_consts.append(f"PNP_{i}")
-    array_consts = ["PASSED_PAWN_BONUS_BY_ADVANCE", "PAWN_NEAR_PROMOTION"]
+   
     for k, v in param_dict.items():
         pat = rf'(pub const {k}: [^=]+ = )[^;]+(;)'  # Only pub consts
         def repl(m):
@@ -37,13 +33,6 @@ def update_consts(param_dict):
                     val = int(round(float(val)))
                 except Exception:
                     pass
-            elif k in array_consts:
-                # Only update if value is a list
-                if isinstance(val, list):
-                    val = '[' + ', '.join(str(int(round(float(x)))) for x in val) + ']'
-                else:
-                    print(f"WARNING: Skipping array constant '{k}' because value is not a list: {val}")
-                    return m.group(0)  # Leave unchanged
             return f'{m.group(1)}{val}{m.group(2)}'
         content = re.sub(pat, repl, content)
     with open(CONST_FILE, 'w', encoding='utf-8') as f:
