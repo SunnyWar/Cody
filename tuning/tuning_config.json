@@ -1,6 +1,6 @@
 {
-  "max_iterations": 5,
-  "games_per_match": 20,
+  "max_iterations": 100,
+  "games_per_match": 10,
   "tuning_dir": "D:/cody/tuning",
   "engine_bin": "D:/cody/target/release/cody.exe",
   "baseline_bin": "D:/cody/tuning/baseline.exe",

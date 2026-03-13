@@ -193,18 +193,7 @@ fn evaluate_bishop_pair(pos: &Position) -> i32 {
     let white_bishops = counts[0] as i32;
     let black_bishops = counts[1] as i32;
 
-    let white_bonus = if white_bishops >= 2 {
-        BISHOP_PAIR_BONUS
-    } else {
-        0
-    };
-    let black_bonus = if black_bishops >= 2 {
-        BISHOP_PAIR_BONUS
-    } else {
-        0
-    };
-
-    white_bonus - black_bonus
+    ((white_bishops >= 2) as i32 - (black_bishops >= 2) as i32) * BISHOP_PAIR_BONUS
 }
 
 fn evaluate_pawn_structure(pos: &Position) -> i32 {
